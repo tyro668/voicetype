@@ -1,6 +1,6 @@
 # voicetype
 
-这是一个语音转文字输入的应用，配置了语音转换模型后可以轻松将语音输入转化成文字
+这是一个语音转文字输入的应用，配置了语音转换模型后可以轻松将语音输入转化成文字，并且会在文字转化完成后，自动插入当前应用的光标所在的位置，实习自动输入。
 
 ## 启动调试
 
@@ -44,3 +44,14 @@ powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 |-----|-----|
 |端点URL|https://open.bigmodel.cn/api/paas/v4|
 |模型名称|GLM-4.7|
+
+## 用户界面
+
+通用设置
+![通用设置](screenshots/main.png)
+语音模型设置
+![语音模型设置](screenshots/voice_setting.png)
+
+录音效果
+![录音效果](screenshots/record.png)
+
