@@ -83,4 +83,21 @@ class OverlayService {
   static Future<void> openAccessibilityPrivacy() async {
     await _channel.invokeMethod('openAccessibilityPrivacy');
   }
+
+  /// 注册全局快捷键（macOS Carbon HotKey）
+  static Future<bool> registerHotkey({
+    required int keyCode,
+    int modifiers = 0,
+  }) async {
+    final result = await _channel.invokeMethod<bool>('registerHotkey', {
+      'keyCode': keyCode,
+      'modifiers': modifiers,
+    });
+    return result ?? false;
+  }
+
+  /// 取消全局快捷键注册
+  static Future<void> unregisterHotkey() async {
+    await _channel.invokeMethod('unregisterHotkey');
+  }
 }

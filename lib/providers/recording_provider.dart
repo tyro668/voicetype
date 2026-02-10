@@ -305,14 +305,24 @@ class RecordingProvider extends ChangeNotifier {
       } else {
         _error = '转录结果为空';
         debugPrint('[recording] transcribe empty result');
+        await _showTranscribeFailedOverlay();
       }
 
       notifyListeners();
     } catch (e) {
       _error = '转录失败: $e';
       debugPrint('[recording] transcribe failed: $e');
+      await _showTranscribeFailedOverlay();
       notifyListeners();
     }
+  }
+
+  Future<void> _showTranscribeFailedOverlay() async {
+    try {
+      await OverlayService.showOverlay(state: 'transcribe_failed');
+      await Future.delayed(const Duration(seconds: 3));
+      await OverlayService.hideOverlay();
+    } catch (_) {}
   }
 
   Future<void> _loadHistory() async {

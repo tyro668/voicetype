@@ -132,6 +132,15 @@ class OverlayView: NSView {
         self.stopPulse()
         self.stopSpinAnimation()
         self.startWaveAnimation()
+      } else if state == "transcribe_failed" {
+        self.statusLabel.stringValue = "语音转录失败"
+        self.dotView.layer?.backgroundColor = NSColor.systemRed.cgColor
+        self.dotView.isHidden = false
+        self.durationLabel.isHidden = true
+        self.barViews.forEach { $0.isHidden = true }
+        self.stopWaveAnimation()
+        self.stopSpinAnimation()
+        self.stopPulse()
       } else {
         self.barViews.forEach { $0.isHidden = true }
         self.stopWaveAnimation()

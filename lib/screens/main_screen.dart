@@ -41,6 +41,8 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedNav = 0;
   bool _processing = false;
+  late VoidCallback _settingsListener;
+  bool _didShowAccessibilityGuide = false;
 
   static const _navItems = [
     _NavItem(icon: Icons.settings_outlined, label: '通用'),
@@ -57,13 +59,57 @@ class _MainScreenState extends State<MainScreen> {
     OverlayService.init();
     OverlayService.onGlobalKeyEvent = _handleGlobalKeyEvent;
     _ensureAccessibilityPermission();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = context.read<SettingsProvider>();
+      _settingsListener = () {
+        final keyCode = _macKeyCodeFor(settings.hotkey);
+        if (keyCode != null) {
+          OverlayService.registerHotkey(keyCode: keyCode);
+        }
+      };
+      settings.addListener(_settingsListener);
+      _settingsListener();
+    });
   }
 
   Future<void> _ensureAccessibilityPermission() async {
     final granted = await OverlayService.checkAccessibility();
     if (!granted) {
       await OverlayService.requestAccessibility();
+      final recheck = await OverlayService.checkAccessibility();
+      if (!recheck && mounted && !_didShowAccessibilityGuide) {
+        _didShowAccessibilityGuide = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showAccessibilityGuide();
+          }
+        });
+      }
     }
+  }
+
+  void _showAccessibilityGuide() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('需要辅助功能权限'),
+        content: const Text('为实现自动输入，需要在“系统设置 > 隐私与安全性 > 辅助功能”中勾选 VoiceType。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('稍后'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              OverlayService.openAccessibilityPrivacy();
+            },
+            child: const Text('打开设置'),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _hasValidSttModel(SettingsProvider settings) {
@@ -93,7 +139,18 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     OverlayService.onGlobalKeyEvent = null;
+    final settings = context.read<SettingsProvider>();
+    settings.removeListener(_settingsListener);
     super.dispose();
+  }
+
+  int? _macKeyCodeFor(LogicalKeyboardKey key) {
+    for (final entry in _macKeyCodeMap.entries) {
+      if (entry.value == key) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 
   /// 处理来自原生层的全局快捷键事件（唯一的快捷键入口）

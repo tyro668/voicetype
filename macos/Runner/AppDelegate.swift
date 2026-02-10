@@ -10,6 +10,21 @@ class AppDelegate: FlutterAppDelegate {
   var globalMonitor: Any?
   var localMonitor: Any?
   var statusItem: NSStatusItem?
+  var eventTap: CFMachPort?
+  var eventTapSource: CFRunLoopSource?
+  var hotKeyRef: EventHotKeyRef?
+  var hotKeyHandler: EventHandlerRef?
+  var registeredHotKeyCode: UInt32 = UInt32(kVK_F2)
+  var lastActiveApp: NSRunningApplication?
+  private lazy var logFileURL: URL = {
+    let libraryDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
+    let logsDir = libraryDir?.appendingPathComponent("Logs")
+    if let logsDir = logsDir {
+      try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
+      return logsDir.appendingPathComponent("voicetype.log")
+    }
+    return URL(fileURLWithPath: "/tmp/voicetype.log")
+  }()
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     // 关闭主窗口不退出应用，让录音 overlay 可以独立存在
@@ -80,13 +95,28 @@ class AppDelegate: FlutterAppDelegate {
           NSWorkspace.shared.open(url)
         }
         result(nil)
+      case "registerHotkey":
+        if let args = call.arguments as? [String: Any],
+           let keyCode = args["keyCode"] as? Int {
+          let modifiers = args["modifiers"] as? Int ?? 0
+          let ok = self?.registerHotkey(
+            keyCode: UInt32(keyCode),
+            modifiers: UInt32(modifiers)
+          ) ?? false
+          result(ok)
+        } else {
+          result(false)
+        }
+      case "unregisterHotkey":
+        self?.unregisterHotkey()
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
       }
     }
 
     ensureAccessibilityPermission()
-    NSLog("[hotkey] accessibility trusted: %d", AXIsProcessTrusted())
+    log("[hotkey] accessibility trusted: \(AXIsProcessTrusted())")
 
     // 注册全局快捷键监听（即使主窗口不在前台也能触发）
     setupGlobalHotkey(controller: controller)
@@ -129,6 +159,21 @@ class AppDelegate: FlutterAppDelegate {
     _ = AXIsProcessTrustedWithOptions(options)
   }
 
+  func log(_ message: String) {
+    NSLog("%@", message)
+    let formatter = ISO8601DateFormatter()
+    let line = "[\(formatter.string(from: Date()))] \(message)\n"
+    guard let data = line.data(using: .utf8) else { return }
+    if !FileManager.default.fileExists(atPath: logFileURL.path) {
+      FileManager.default.createFile(atPath: logFileURL.path, contents: nil)
+    }
+    if let handle = try? FileHandle(forWritingTo: logFileURL) {
+      handle.seekToEndOfFile()
+      handle.write(data)
+      try? handle.close()
+    }
+  }
+
   @objc func showMainWindowFromStatusItem() {
     showMainWindow()
   }
@@ -138,13 +183,24 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   func setupGlobalHotkey(controller: FlutterViewController) {
-    // 全局快捷键监听 - 即使 app 不在前台也能触发
+    if setupCarbonHotkey() {
+      log("[hotkey] using Carbon hotkey")
+      return
+    }
+
+    if setupEventTap() {
+      log("[hotkey] using CGEventTap")
+      return
+    }
+
+    // 兜底：NSEvent 全局/本地监听
     globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+      self?.captureActiveApplication()
       if self?.methodChannel == nil {
-        NSLog("[hotkey] global event but methodChannel is nil")
+        self?.log("[hotkey] global event but methodChannel is nil")
         return
       }
-      NSLog("[hotkey] global keyCode=%d type=%@ repeat=%d", event.keyCode, event.type == .keyDown ? "down" : "up", event.isARepeat)
+      self?.log("[hotkey] global keyCode=\(event.keyCode) type=\(event.type == .keyDown ? "down" : "up") repeat=\(event.isARepeat)")
       self?.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
         "keyCode": event.keyCode,
         "type": event.type == .keyDown ? "down" : "up",
@@ -152,13 +208,13 @@ class AppDelegate: FlutterAppDelegate {
       ])
     }
 
-    // 本地快捷键监听 - app 在前台时
     localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+      self?.captureActiveApplication()
       if self?.methodChannel == nil {
-        NSLog("[hotkey] local event but methodChannel is nil")
+        self?.log("[hotkey] local event but methodChannel is nil")
         return event
       }
-      NSLog("[hotkey] local keyCode=%d type=%@ repeat=%d", event.keyCode, event.type == .keyDown ? "down" : "up", event.isARepeat)
+      self?.log("[hotkey] local keyCode=\(event.keyCode) type=\(event.type == .keyDown ? "down" : "up") repeat=\(event.isARepeat)")
       self?.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
         "keyCode": event.keyCode,
         "type": event.type == .keyDown ? "down" : "up",
@@ -166,6 +222,156 @@ class AppDelegate: FlutterAppDelegate {
       ])
       return event
     }
+  }
+
+  func setupCarbonHotkey() -> Bool {
+    if hotKeyHandler == nil {
+      let eventTypes = [
+        EventTypeSpec(
+          eventClass: OSType(kEventClassKeyboard),
+          eventKind: UInt32(kEventHotKeyPressed)
+        ),
+        EventTypeSpec(
+          eventClass: OSType(kEventClassKeyboard),
+          eventKind: UInt32(kEventHotKeyReleased)
+        ),
+      ]
+
+      let refcon = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+      let status = InstallEventHandler(
+        GetEventDispatcherTarget(),
+        { _, event, userData in
+          guard let userData = userData else {
+            return noErr
+          }
+          let delegate = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
+          delegate.captureActiveApplication()
+          let kind = GetEventKind(event)
+          let type = kind == UInt32(kEventHotKeyPressed) ? "down" : "up"
+
+          delegate.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
+            "keyCode": delegate.registeredHotKeyCode,
+            "type": type,
+            "isRepeat": false,
+          ])
+          return noErr
+        },
+        eventTypes.count,
+        eventTypes,
+        refcon,
+        &hotKeyHandler
+      )
+
+      if status != noErr {
+        log("[hotkey] failed to install Carbon handler: \(status)")
+        return false
+      }
+    }
+
+    return registerHotkey(keyCode: registeredHotKeyCode, modifiers: 0)
+  }
+
+  @discardableResult
+  func registerHotkey(keyCode: UInt32, modifiers: UInt32) -> Bool {
+    registeredHotKeyCode = keyCode
+    if let hotKeyRef = hotKeyRef {
+      UnregisterEventHotKey(hotKeyRef)
+      self.hotKeyRef = nil
+    }
+
+    let hotKeyID = EventHotKeyID(signature: fourCharCode("VTYP"), id: 1)
+    let status = RegisterEventHotKey(
+      keyCode,
+      modifiers,
+      hotKeyID,
+      GetEventDispatcherTarget(),
+      0,
+      &hotKeyRef
+    )
+
+    if status != noErr {
+      log("[hotkey] failed to register Carbon hotkey: \(status)")
+      return false
+    }
+
+    return true
+  }
+
+  func unregisterHotkey() {
+    if let hotKeyRef = hotKeyRef {
+      UnregisterEventHotKey(hotKeyRef)
+      self.hotKeyRef = nil
+    }
+  }
+
+  func fourCharCode(_ string: String) -> OSType {
+    var result: OSType = 0
+    for char in string.utf8 {
+      result = (result << 8) + OSType(char)
+    }
+    return result
+  }
+
+  @discardableResult
+  func setupEventTap() -> Bool {
+    if eventTap != nil {
+      return true
+    }
+
+    let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
+    let callback: CGEventTapCallBack = { _, type, event, refcon in
+      guard let refcon = refcon else {
+        return Unmanaged.passUnretained(event)
+      }
+
+      let delegate = Unmanaged<AppDelegate>.fromOpaque(refcon).takeUnretainedValue()
+
+      if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        if let tap = delegate.eventTap {
+          CGEvent.tapEnable(tap: tap, enable: true)
+        }
+        return Unmanaged.passUnretained(event)
+      }
+
+      if type != .keyDown && type != .keyUp {
+        return Unmanaged.passUnretained(event)
+      }
+
+      guard delegate.methodChannel != nil else {
+        return Unmanaged.passUnretained(event)
+      }
+
+      delegate.captureActiveApplication()
+      let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+      let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+      delegate.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
+        "keyCode": keyCode,
+        "type": type == .keyDown ? "down" : "up",
+        "isRepeat": isRepeat,
+      ])
+
+      return Unmanaged.passUnretained(event)
+    }
+
+    let refcon = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+    guard let tap = CGEvent.tapCreate(
+      tap: .cgSessionEventTap,
+      place: .headInsertEventTap,
+      options: .listenOnly,
+      eventsOfInterest: CGEventMask(mask),
+      callback: callback,
+      userInfo: refcon
+    ) else {
+      log("[hotkey] failed to create CGEventTap")
+      return false
+    }
+
+    let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+    CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+    CGEvent.tapEnable(tap: tap, enable: true)
+    eventTap = tap
+    eventTapSource = source
+    return true
   }
 
   func showOverlay(args: [String: Any]) {
@@ -206,16 +412,83 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   func insertTextAtCursor(_ text: String) {
+    if insertTextViaAccessibility(text) {
+      log("[insert] success via accessibility")
+      return
+    }
+    log("[insert] accessibility insert failed, fallback to paste")
     let pasteboard = NSPasteboard.general
     let previousString = pasteboard.string(forType: .string)
     pasteboard.clearContents()
     pasteboard.setString(text, forType: .string)
-    sendPasteShortcut()
+    if let targetApp = lastActiveApp,
+       targetApp.bundleIdentifier != Bundle.main.bundleIdentifier {
+      targetApp.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
+    }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+      self.sendPasteShortcut()
+    }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
       pasteboard.clearContents()
       if let prev = previousString {
         pasteboard.setString(prev, forType: .string)
+      }
+    }
+  }
+
+  func insertTextViaAccessibility(_ text: String) -> Bool {
+    guard AXIsProcessTrusted() else {
+      log("[insert] accessibility not trusted")
+      return false
+    }
+
+    let systemWide = AXUIElementCreateSystemWide()
+    var focusedElement: AnyObject?
+    let focusedResult = AXUIElementCopyAttributeValue(
+      systemWide,
+      kAXFocusedUIElementAttribute as CFString,
+      &focusedElement
+    )
+    if focusedResult != .success {
+      log("[insert] no focused element, status=\(focusedResult.rawValue)")
+      return false
+    }
+
+    guard let target = focusedElement else {
+      log("[insert] focused element is nil")
+      return false
+    }
+
+    let insertResult = AXUIElementSetAttributeValue(
+      target as! AXUIElement,
+      kAXSelectedTextAttribute as CFString,
+      text as CFTypeRef
+    )
+
+    if insertResult == .success {
+      return true
+    }
+
+    let valueResult = AXUIElementSetAttributeValue(
+      target as! AXUIElement,
+      kAXValueAttribute as CFString,
+      text as CFTypeRef
+    )
+
+    if valueResult == .success {
+      return true
+    }
+
+    log("[insert] AX insert failed selected=\(insertResult.rawValue) value=\(valueResult.rawValue)")
+    return false
+  }
+
+  func captureActiveApplication() {
+    if let frontmost = NSWorkspace.shared.frontmostApplication {
+      if frontmost.bundleIdentifier != Bundle.main.bundleIdentifier {
+        lastActiveApp = frontmost
       }
     }
   }
