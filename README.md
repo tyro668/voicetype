@@ -36,6 +36,13 @@ powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 |端点URL|https://open.bigmodel.cn/api/paas/v4|
 |模型名称|GLM-ASR-2512|
 
+也可以使用阿里云 DashScope 的语音模型 (兼容 OpenAI 接口模式)
+
+|属性名|属性值|
+|-----|-----|
+|端点URL|https://dashscope.aliyuncs.com/compatible-mode/v1|
+|模型名称|qwen3-asr-flash|
+
 ## 配置文本模型（可选）
 
 可以使用任意兼容OpenAI接口的服务

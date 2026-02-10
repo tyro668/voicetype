@@ -82,6 +82,19 @@ class SttProviderConfig {
       ],
     ),
     SttProviderConfig(
+      type: SttProviderType.cloud,
+      name: '阿里云',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      apiKey: '',
+      model: 'qwen3-asr-flash',
+      availableModels: [
+        SttModel(
+          id: 'qwen3-asr-flash',
+          description: '千问3-ASR-Flash (OpenAI 兼容 + DashScope 同步)',
+        ),
+      ],
+    ),
+    SttProviderConfig(
       type: SttProviderType.whisper,
       name: '本地 Whisper',
       baseUrl: 'http://localhost:8080/v1',
