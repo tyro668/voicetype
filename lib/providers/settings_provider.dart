@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_enhance_config.dart';
+import '../models/ai_vendor_preset.dart';
 import '../models/provider_config.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -14,7 +15,13 @@ class SettingsProvider extends ChangeNotifier {
   static const _aiEnhanceDefaultModelsKey = 'ai_enhance_default_models';
   static const _aiEnhanceUseCustomPromptKey = 'ai_enhance_use_custom_prompt';
 
-  SttProviderConfig _config = SttProviderConfig.presets.first;
+  List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
+    SttProviderConfig.fallbackPresets,
+  );
+  List<AiVendorPreset> _aiPresets = List<AiVendorPreset>.from(
+    AiVendorPreset.fallbackPresets,
+  );
+  SttProviderConfig _config = SttProviderConfig.fallbackPresets.first;
   List<SttProviderConfig> _customProviders = [];
 
   // 快捷键配置
@@ -31,6 +38,8 @@ class SettingsProvider extends ChangeNotifier {
   String _aiEnhanceDefaultPrompt = AiEnhanceConfig.defaultPrompt;
 
   SttProviderConfig get config => _config;
+  List<SttProviderConfig> get sttPresets => _sttPresets;
+  List<AiVendorPreset> get aiPresets => _aiPresets;
   LogicalKeyboardKey get hotkey => _hotkey;
   ActivationMode get activationMode => _activationMode;
   bool get aiEnhanceEnabled => _aiEnhanceEnabled;
@@ -44,7 +53,7 @@ class SettingsProvider extends ChangeNotifier {
       _aiEnhanceDefaultModels[baseUrl];
 
   List<SttProviderConfig> get allProviders => [
-    ...SttProviderConfig.presets,
+    ..._sttPresets,
     ..._customProviders,
   ];
 
@@ -53,9 +62,7 @@ class SettingsProvider extends ChangeNotifier {
   /// 获取当前选中服务商的 preset（带 availableModels）
   SttProviderConfig? get currentPreset {
     try {
-      return SttProviderConfig.presets.firstWhere(
-        (p) => p.name == _config.name,
-      );
+      return _sttPresets.firstWhere((p) => p.name == _config.name);
     } catch (_) {
       return null;
     }
@@ -63,6 +70,8 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
+
+    await _loadPresetsFromAssets();
 
     // 加载服务商配置
     final configJson = prefs.getString(_configKey);
@@ -134,6 +143,29 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  Future<void> _loadPresetsFromAssets() async {
+    try {
+      final raw = await rootBundle.loadString('assets/presets/models.json');
+      final jsonMap = json.decode(raw) as Map<String, dynamic>;
+      final stt = jsonMap['stt'] as List<dynamic>?;
+      final ai = jsonMap['ai'] as List<dynamic>?;
+      if (stt != null) {
+        final parsed = SttProviderConfig.fromPresetJsonList(stt);
+        if (parsed.isNotEmpty) {
+          _sttPresets = parsed;
+        }
+      }
+      if (ai != null) {
+        final parsed = AiVendorPreset.fromPresetJsonList(ai);
+        if (parsed.isNotEmpty) {
+          _aiPresets = parsed;
+        }
+      }
+    } catch (e) {
+      debugPrint('[settings] failed to load presets: $e');
+    }
   }
 
   Future<void> setConfig(SttProviderConfig config) async {

@@ -9,6 +9,9 @@ class SttModel {
   final String description;
 
   const SttModel({required this.id, required this.description});
+
+  factory SttModel.fromJson(Map<String, dynamic> json) =>
+      SttModel(id: json['id'] ?? '', description: json['description'] ?? '');
 }
 
 class SttProviderConfig {
@@ -65,8 +68,8 @@ class SttProviderConfig {
     apiKeyUrl: apiKeyUrl ?? this.apiKeyUrl,
   );
 
-  /// 预设的云端服务商
-  static const presets = [
+  /// 预设的云端服务商 (fallback)
+  static const fallbackPresets = [
     SttProviderConfig(
       type: SttProviderType.cloud,
       name: 'Z.ai',
@@ -105,4 +108,40 @@ class SttProviderConfig {
       ],
     ),
   ];
+
+  static List<SttProviderConfig> fromPresetJsonList(List<dynamic> items) {
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (item) => SttProviderConfig(
+            type: _parseProviderType(item['type']?.toString()),
+            name: item['name'] ?? '',
+            baseUrl: item['baseUrl'] ?? '',
+            apiKey: '',
+            model: item['defaultModel'] ?? '',
+            apiKeyUrl: item['apiKeyUrl'],
+            availableModels: (item['models'] as List<dynamic>? ?? [])
+                .whereType<Map<String, dynamic>>()
+                .map(SttModel.fromJson)
+                .toList(),
+          ),
+        )
+        .where(
+          (preset) =>
+              preset.name.isNotEmpty &&
+              preset.baseUrl.isNotEmpty &&
+              preset.model.isNotEmpty,
+        )
+        .toList();
+  }
+
+  static SttProviderType _parseProviderType(String? value) {
+    switch (value) {
+      case 'whisper':
+        return SttProviderType.whisper;
+      case 'cloud':
+      default:
+        return SttProviderType.cloud;
+    }
+  }
 }

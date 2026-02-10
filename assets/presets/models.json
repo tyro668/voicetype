@@ -1,0 +1,84 @@
+{
+  "stt": [
+    {
+      "type": "cloud",
+      "name": "Z.ai",
+      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+      "apiKeyUrl": "https://open.bigmodel.cn/usercenter/apikeys",
+      "defaultModel": "GLM-ASR-2512",
+      "models": [
+        {
+          "id": "GLM-ASR-2512",
+          "description": "Z.ai speech-to-text (supports wav/mp3, <=30s)"
+        }
+      ]
+    },
+    {
+      "type": "cloud",
+      "name": "阿里云",
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "defaultModel": "qwen3-asr-flash",
+      "models": [
+        {
+          "id": "qwen3-asr-flash",
+          "description": "千问3-ASR-Flash (OpenAI 兼容 + DashScope 同步)"
+        }
+      ]
+    },
+    {
+      "type": "whisper",
+      "name": "本地 Whisper",
+      "baseUrl": "http://localhost:8080/v1",
+      "defaultModel": "whisper-1",
+      "models": [
+        {
+          "id": "whisper-1",
+          "description": "本地 Whisper 模型 (需先启动本地服务)"
+        }
+      ]
+    }
+  ],
+  "ai": [
+    {
+      "name": "Z.ai",
+      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+      "defaultModel": "GLM-4.7-FlashX",
+      "models": [
+        {
+          "id": "GLM-4.7",
+          "description": "GLM-4.7"
+        },
+        {
+          "id": "GLM-4.7-FlashX",
+          "description": "GLM-4.7-FlashX"
+        }
+      ]
+    },
+    {
+      "name": "DeepSeek",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "defaultModel": "deepseek-chat",
+      "models": [
+        {
+          "id": "deepseek-chat",
+          "description": "DeepSeek 默认模型"
+        }
+      ]
+    },
+    {
+      "name": "阿里云",
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "defaultModel": "qwen-plus",
+      "models": [
+        {
+          "id": "qwen-plus",
+          "description": "千问 Plus"
+        },
+        {
+          "id": "qwen-max",
+          "description": "千问 Max"
+        }
+      ]
+    }
+  ]
+}

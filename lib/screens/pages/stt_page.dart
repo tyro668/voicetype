@@ -18,20 +18,22 @@ class _SttPageState extends State<SttPage> with SingleTickerProviderStateMixin {
   final _customBaseUrlController = TextEditingController();
   final _customApiKeyController = TextEditingController();
   final _customModelController = TextEditingController();
-
-  List<SttProviderConfig> get _presets => SttProviderConfig.presets;
+  List<SttProviderConfig> _presets = const [];
+  int _presetCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _presets.length + 1, vsync: this);
+    final settings = context.read<SettingsProvider>();
+    _presets = settings.sttPresets;
+    _presetCount = _presets.length;
+    _tabController = TabController(length: _presetCount + 1, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settings = context.read<SettingsProvider>();
       final idx = _presets.indexWhere((p) => p.name == settings.config.name);
       if (idx >= 0) {
         _tabController.animateTo(idx);
       } else {
-        _tabController.animateTo(_presets.length);
+        _tabController.animateTo(_presetCount);
       }
       _apiKeyController.text = settings.config.apiKey;
       _syncCustomControllers(settings);
@@ -43,7 +45,7 @@ class _SttPageState extends State<SttPage> with SingleTickerProviderStateMixin {
     if (!_tabController.indexIsChanging) {
       final settings = context.read<SettingsProvider>();
       final idx = _tabController.index;
-      if (idx < _presets.length) {
+      if (idx < _presetCount) {
         settings.selectProvider(_presets[idx]);
         _apiKeyController.text = settings.config.apiKey;
       } else {
@@ -51,6 +53,30 @@ class _SttPageState extends State<SttPage> with SingleTickerProviderStateMixin {
       }
       setState(() {});
     }
+  }
+
+  void _refreshPresets(SettingsProvider settings) {
+    if (_presetCount == settings.sttPresets.length) {
+      _presets = settings.sttPresets;
+      return;
+    }
+
+    _presets = settings.sttPresets;
+    _presetCount = _presets.length;
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    _tabController = TabController(length: _presetCount + 1, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final idx = _presets.indexWhere((p) => p.name == settings.config.name);
+      if (idx >= 0) {
+        _tabController.animateTo(idx);
+      } else {
+        _tabController.animateTo(_presetCount);
+      }
+      setState(() {});
+    });
   }
 
   void _syncCustomControllers(SettingsProvider settings) {
@@ -93,6 +119,7 @@ class _SttPageState extends State<SttPage> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    _refreshPresets(settings);
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
@@ -114,7 +141,7 @@ class _SttPageState extends State<SttPage> with SingleTickerProviderStateMixin {
           const SizedBox(height: 24),
           _buildProviderTabs(settings),
           const SizedBox(height: 24),
-          if (_tabController.index < _presets.length)
+          if (_tabController.index < _presetCount)
             _buildProviderContent(settings)
           else
             _buildCustomContent(settings),
@@ -375,7 +402,7 @@ class _SttPageState extends State<SttPage> with SingleTickerProviderStateMixin {
                   Icon(Icons.check, size: 16, color: Color(0xFF6C63FF)),
                   SizedBox(width: 4),
                   Text(
-                    'Selected',
+                    '已选择',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF6C63FF),

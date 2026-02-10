@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/ai_vendor_preset.dart';
 import '../../providers/settings_provider.dart';
 
 class AiModelPage extends StatefulWidget {
@@ -15,30 +16,18 @@ class _AiModelPageState extends State<AiModelPage>
   final _aiBaseUrlController = TextEditingController();
   final _aiApiKeyController = TextEditingController();
   final _aiModelController = TextEditingController();
-
-  static const _vendorPresets = [
-    _AiVendorPreset(
-      label: 'Z.ai',
-      baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-      model: 'glm-4-flash',
-    ),
-    _AiVendorPreset(
-      label: 'DeepSeek',
-      baseUrl: 'https://api.deepseek.com/v1',
-      model: 'deepseek-chat',
-    ),
-  ];
-  int get _customTabIndex => _vendorPresets.length;
+  List<AiVendorPreset> _presets = const [];
+  int _presetCount = 0;
+  int get _customTabIndex => _presetCount;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: _vendorPresets.length + 1,
-      vsync: this,
-    );
+    final settings = context.read<SettingsProvider>();
+    _presets = settings.aiPresets;
+    _presetCount = _presets.length;
+    _tabController = TabController(length: _presetCount + 1, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settings = context.read<SettingsProvider>();
       _syncFromSettings(settings);
     });
     _tabController.addListener(_onTabChanged);
@@ -59,11 +48,30 @@ class _AiModelPageState extends State<AiModelPage>
     _aiApiKeyController.text = current.apiKey;
     _aiModelController.text = current.model;
 
-    final presetIndex = _vendorPresets.indexWhere(
-      (p) => p.baseUrl == current.baseUrl,
+    final modelPresetIndex = _presets.indexWhere(
+      (p) => p.models.any((m) => m.id == current.model),
     );
+    final presetIndex = modelPresetIndex >= 0
+        ? modelPresetIndex
+        : _presets.indexWhere((p) => p.baseUrl == current.baseUrl);
     if (!applyPreset) {
       if (presetIndex >= 0) {
+        final preset = _presets[presetIndex];
+        final modelIds = preset.models.map((m) => m.id).toSet();
+        final savedDefault = settings.aiEnhanceDefaultModelFor(preset.baseUrl);
+        final resolvedDefault = modelIds.contains(savedDefault)
+            ? savedDefault
+            : preset.defaultModelId;
+        if (preset.baseUrl != current.baseUrl ||
+            !modelIds.contains(current.model)) {
+          final updated = current.copyWith(
+            baseUrl: preset.baseUrl,
+            model: resolvedDefault,
+          );
+          settings.setAiEnhanceConfig(updated);
+          _aiBaseUrlController.text = updated.baseUrl;
+          _aiModelController.text = updated.model;
+        }
         _tabController.animateTo(presetIndex);
       } else {
         _tabController.animateTo(_customTabIndex);
@@ -71,13 +79,18 @@ class _AiModelPageState extends State<AiModelPage>
       return;
     }
 
-    if (_tabController.index < _vendorPresets.length) {
-      final preset = _vendorPresets[_tabController.index];
-      if (preset.baseUrl != current.baseUrl) {
-        final defaultModel = settings.aiEnhanceDefaultModelFor(preset.baseUrl);
+    if (_tabController.index < _presetCount) {
+      final preset = _presets[_tabController.index];
+      final modelIds = preset.models.map((m) => m.id).toSet();
+      final savedDefault = settings.aiEnhanceDefaultModelFor(preset.baseUrl);
+      final resolvedDefault = modelIds.contains(savedDefault)
+          ? savedDefault
+          : preset.defaultModelId;
+      if (preset.baseUrl != current.baseUrl ||
+          !modelIds.contains(current.model)) {
         final updated = current.copyWith(
           baseUrl: preset.baseUrl,
-          model: defaultModel ?? preset.model,
+          model: resolvedDefault,
         );
         settings.setAiEnhanceConfig(updated);
         _aiBaseUrlController.text = updated.baseUrl;
@@ -96,9 +109,45 @@ class _AiModelPageState extends State<AiModelPage>
     super.dispose();
   }
 
+  void _refreshPresets(SettingsProvider settings) {
+    if (_presetCount == settings.aiPresets.length) {
+      _presets = settings.aiPresets;
+      return;
+    }
+
+    _presets = settings.aiPresets;
+    _presetCount = _presets.length;
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    _tabController = TabController(length: _presetCount + 1, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncFromSettings(settings);
+      setState(() {});
+    });
+  }
+
+  int _resolvePresetIndex(SettingsProvider settings) {
+    final current = settings.aiEnhanceConfig;
+    final modelMatch = _presets.indexWhere(
+      (p) => p.models.any((m) => m.id == current.model),
+    );
+    if (modelMatch >= 0) return modelMatch;
+    return _presets.indexWhere((p) => p.baseUrl == current.baseUrl);
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    _refreshPresets(settings);
+    final resolvedIndex = _resolvePresetIndex(settings);
+    if (resolvedIndex >= 0 && resolvedIndex != _tabController.index) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _tabController.animateTo(resolvedIndex);
+      });
+    }
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
@@ -135,8 +184,8 @@ class _AiModelPageState extends State<AiModelPage>
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
-                    child: _tabController.index < _vendorPresets.length
-                        ? _buildPresetContent(settings)
+                    child: resolvedIndex >= 0 && resolvedIndex < _presetCount
+                        ? _buildPresetContent(settings, resolvedIndex)
                         : _buildCustomContent(settings),
                   ),
                 ),
@@ -212,14 +261,14 @@ class _AiModelPageState extends State<AiModelPage>
         tabAlignment: TabAlignment.start,
         dividerColor: Colors.grey.shade200,
         tabs: [
-          ..._vendorPresets.map(
+          ..._presets.map(
             (p) => Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.language, size: 16),
                   const SizedBox(width: 6),
-                  Text(p.label),
+                  Text(p.name),
                 ],
               ),
             ),
@@ -240,23 +289,15 @@ class _AiModelPageState extends State<AiModelPage>
     );
   }
 
-  Widget _buildPresetContent(SettingsProvider settings) {
-    final preset = _vendorPresets[_tabController.index];
+  Widget _buildPresetContent(SettingsProvider settings, int presetIndex) {
+    final preset = _presets[presetIndex];
     final currentModel = settings.aiEnhanceConfig.baseUrl == preset.baseUrl
         ? settings.aiEnhanceConfig.model
-        : preset.model;
+        : preset.defaultModelId;
     final defaultModel = settings.aiEnhanceDefaultModelFor(preset.baseUrl);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabeledField(
-          label: '端点 URL',
-          controller: _aiBaseUrlController,
-          hintText: preset.baseUrl,
-          onChanged: (_) {},
-          readOnly: true,
-        ),
-        const SizedBox(height: 12),
         _buildLabeledField(
           label: 'API Key',
           controller: _aiApiKeyController,
@@ -264,12 +305,25 @@ class _AiModelPageState extends State<AiModelPage>
           obscureText: true,
           onChanged: settings.setAiEnhanceApiKey,
         ),
+        const SizedBox(height: 16),
+        const Text(
+          '选择模型',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
         const SizedBox(height: 12),
-        _buildLabeledField(
-          label: '模型名称',
-          controller: _aiModelController,
-          hintText: preset.model,
-          onChanged: settings.setAiEnhanceModel,
+        ...preset.models.map(
+          (m) => _buildModelTile(
+            m,
+            selected: currentModel == m.id,
+            onTap: () {
+              settings.setAiEnhanceModel(m.id);
+              _aiModelController.text = m.id;
+            },
+          ),
         ),
         const SizedBox(height: 12),
         Row(
@@ -282,7 +336,7 @@ class _AiModelPageState extends State<AiModelPage>
             OutlinedButton(
               onPressed: () => settings.setAiEnhanceDefaultModel(
                 preset.baseUrl,
-                _aiModelController.text.trim(),
+                currentModel,
               ),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: Colors.grey.shade300),
@@ -419,16 +473,73 @@ class _AiModelPageState extends State<AiModelPage>
       ],
     );
   }
-}
 
-class _AiVendorPreset {
-  final String label;
-  final String baseUrl;
-  final String model;
-
-  const _AiVendorPreset({
-    required this.label,
-    required this.baseUrl,
-    required this.model,
-  });
+  Widget _buildModelTile(
+    AiModel model, {
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? const Color(0xFF6C63FF) : Colors.grey.shade200,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.language,
+              size: 18,
+              color: selected ? const Color(0xFF6C63FF) : Colors.grey.shade400,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    model.id,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.black87 : Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    model.description,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, size: 16, color: Color(0xFF6C63FF)),
+                  SizedBox(width: 4),
+                  Text(
+                    '已选择',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6C63FF),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

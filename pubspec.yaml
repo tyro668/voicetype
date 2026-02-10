@@ -67,6 +67,7 @@ flutter:
 
   assets:
     - assets/prompts/default_prompt.md
+    - assets/presets/models.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
