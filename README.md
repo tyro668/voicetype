@@ -13,6 +13,20 @@ flutter run  -d macos
 ```
 flutter build macos
 ```
+
+## 一键构建脚本
+
+macOS (DMG):
+
+```
+./scripts/build-macos.sh
+```
+
+Windows (EXE):
+
+```
+powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
+```
 ## 配置语音模型
 
 推荐使用GLM的语音模型
