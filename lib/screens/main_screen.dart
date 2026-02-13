@@ -14,6 +14,7 @@ import 'pages/about_page.dart';
 
 /// macOS keyCode 到 Flutter LogicalKeyboardKey 的映射
 const _macKeyCodeMap = <int, LogicalKeyboardKey>{
+  63: LogicalKeyboardKey.fn,
   120: LogicalKeyboardKey.f2,
   99: LogicalKeyboardKey.f3,
   118: LogicalKeyboardKey.f4,
@@ -153,8 +154,6 @@ class _MainScreenState extends State<MainScreen> {
     return null;
   }
 
-  /// 处理来自原生层的全局快捷键事件（唯一的快捷键入口）
-  /// 不再使用 Flutter KeyboardListener，避免前台时重复触发
   void _handleGlobalKeyEvent(int keyCode, String type, bool isRepeat) {
     if (isRepeat) return;
     if (_processing) return;
@@ -163,25 +162,21 @@ class _MainScreenState extends State<MainScreen> {
     final recording = context.read<RecordingProvider>();
 
     final key = _macKeyCodeMap[keyCode];
-    if (key == null || key != settings.hotkey) return;
-
-    debugPrint(
-      '[hotkey] matched key=${settings.hotkey.keyLabel} mode=${settings.activationMode} type=$type state=${recording.state} processing=$_processing',
-    );
+    if (key == null) return;
+    if (key != settings.hotkey) return;
 
     if (settings.activationMode == ActivationMode.tapToTalk) {
       if (type == 'down') {
         _processing = true;
-        debugPrint('[hotkey] tapToTalk down');
         if (recording.state == RecordingState.recording) {
           recording
               .stopAndTranscribe(
                 settings.config,
                 aiEnhanceEnabled: settings.aiEnhanceEnabled,
                 aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+                minRecordingSeconds: settings.minRecordingSeconds,
               )
               .whenComplete(() {
-                debugPrint('[hotkey] stop complete');
                 _processing = false;
               });
         } else {
@@ -190,38 +185,32 @@ class _MainScreenState extends State<MainScreen> {
             _processing = false;
             return;
           }
-          // idle 或 transcribing 都允许开始新录音
           recording.startRecording().whenComplete(() {
-            debugPrint('[hotkey] start complete');
             _processing = false;
           });
         }
       }
     } else {
-      // Push to Talk 模式
       if (type == 'down' && recording.state != RecordingState.recording) {
         _processing = true;
-        debugPrint('[hotkey] pushToTalk down');
         if (!_hasValidSttModel(settings)) {
           _promptSttConfig();
           _processing = false;
           return;
         }
         recording.startRecording().whenComplete(() {
-          debugPrint('[hotkey] start complete');
           _processing = false;
         });
       } else if (type == 'up' && recording.state == RecordingState.recording) {
         _processing = true;
-        debugPrint('[hotkey] pushToTalk up');
         recording
             .stopAndTranscribe(
               settings.config,
               aiEnhanceEnabled: settings.aiEnhanceEnabled,
               aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+              minRecordingSeconds: settings.minRecordingSeconds,
             )
             .whenComplete(() {
-              debugPrint('[hotkey] stop complete');
               _processing = false;
             });
       }

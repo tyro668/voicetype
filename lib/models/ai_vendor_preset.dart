@@ -34,6 +34,7 @@ class AiVendorPreset {
       models: [
         AiModel(id: 'qwen-plus', description: '千问 Plus'),
         AiModel(id: 'qwen-max', description: '千问 Max'),
+        AiModel(id: 'qwen-turbo', description: '千问 Turbo'),
       ],
     ),
   ];

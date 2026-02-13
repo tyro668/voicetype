@@ -99,12 +99,15 @@ class AppDelegate: FlutterAppDelegate {
         if let args = call.arguments as? [String: Any],
            let keyCode = args["keyCode"] as? Int {
           let modifiers = args["modifiers"] as? Int ?? 0
+          self?.log("[hotkey] method registerHotkey keyCode=\(keyCode) modifiers=\(modifiers)")
           let ok = self?.registerHotkey(
             keyCode: UInt32(keyCode),
             modifiers: UInt32(modifiers)
           ) ?? false
+          self?.log("[hotkey] method registerHotkey result ok=\(ok)")
           result(ok)
         } else {
+          self?.log("[hotkey] method registerHotkey invalid args=\(String(describing: call.arguments))")
           result(false)
         }
       case "unregisterHotkey":
@@ -185,43 +188,85 @@ class AppDelegate: FlutterAppDelegate {
   func setupGlobalHotkey(controller: FlutterViewController) {
     if setupCarbonHotkey() {
       log("[hotkey] using Carbon hotkey")
-      return
+    } else if setupEventTap() {
+      log("[hotkey] using CGEventTap")
     }
 
-    if setupEventTap() {
-      log("[hotkey] using CGEventTap")
+    setupNSEventFallbackMonitors()
+  }
+
+  func setupNSEventFallbackMonitors() {
+    if globalMonitor != nil && localMonitor != nil {
       return
     }
 
     // 兜底：NSEvent 全局/本地监听
-    globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+    globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [weak self] event in
+      if self?.hotKeyRef != nil {
+        return
+      }
       self?.captureActiveApplication()
       if self?.methodChannel == nil {
         self?.log("[hotkey] global event but methodChannel is nil")
         return
       }
-      self?.log("[hotkey] global keyCode=\(event.keyCode) type=\(event.type == .keyDown ? "down" : "up") repeat=\(event.isARepeat)")
+
+      let eventType: String
+      if event.type == .keyDown {
+        eventType = "down"
+      } else if event.type == .keyUp {
+        eventType = "up"
+      } else if event.type == .flagsChanged && UInt32(event.keyCode) == self?.registeredHotKeyCode {
+        eventType = event.modifierFlags.contains(.function) ? "down" : "up"
+        self?.log(
+          "[hotkey] global flagsChanged keyCode=\(event.keyCode) function=\(event.modifierFlags.contains(.function)) rawFlags=\(event.modifierFlags.rawValue)",
+        )
+      } else {
+        return
+      }
+
+      self?.log("[hotkey] global keyCode=\(event.keyCode) type=\(eventType) repeat=\(event.isARepeat)")
       self?.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
         "keyCode": event.keyCode,
-        "type": event.type == .keyDown ? "down" : "up",
-        "isRepeat": event.isARepeat,
+        "type": eventType,
+        "isRepeat": event.type == .flagsChanged ? false : event.isARepeat,
       ])
     }
 
-    localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+    localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [weak self] event in
+      if self?.hotKeyRef != nil {
+        return event
+      }
       self?.captureActiveApplication()
       if self?.methodChannel == nil {
         self?.log("[hotkey] local event but methodChannel is nil")
         return event
       }
-      self?.log("[hotkey] local keyCode=\(event.keyCode) type=\(event.type == .keyDown ? "down" : "up") repeat=\(event.isARepeat)")
+
+      let eventType: String
+      if event.type == .keyDown {
+        eventType = "down"
+      } else if event.type == .keyUp {
+        eventType = "up"
+      } else if event.type == .flagsChanged && UInt32(event.keyCode) == self?.registeredHotKeyCode {
+        eventType = event.modifierFlags.contains(.function) ? "down" : "up"
+        self?.log(
+          "[hotkey] local flagsChanged keyCode=\(event.keyCode) function=\(event.modifierFlags.contains(.function)) rawFlags=\(event.modifierFlags.rawValue)",
+        )
+      } else {
+        return event
+      }
+
+      self?.log("[hotkey] local keyCode=\(event.keyCode) type=\(eventType) repeat=\(event.isARepeat)")
       self?.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
         "keyCode": event.keyCode,
-        "type": event.type == .keyDown ? "down" : "up",
-        "isRepeat": event.isARepeat,
+        "type": eventType,
+        "isRepeat": event.type == .flagsChanged ? false : event.isARepeat,
       ])
       return event
     }
+
+    log("[hotkey] NSEvent fallback monitors enabled")
   }
 
   func setupCarbonHotkey() -> Bool {
@@ -274,6 +319,26 @@ class AppDelegate: FlutterAppDelegate {
   @discardableResult
   func registerHotkey(keyCode: UInt32, modifiers: UInt32) -> Bool {
     registeredHotKeyCode = keyCode
+
+    // Fn 键不走 Carbon：直接使用 EventTap + NSEvent 兜底
+    if keyCode == UInt32(kVK_Function) {
+      if let hotKeyRef = hotKeyRef {
+        UnregisterEventHotKey(hotKeyRef)
+        self.hotKeyRef = nil
+      }
+
+      let tapOK = setupEventTap()
+      setupNSEventFallbackMonitors()
+      if tapOK {
+        log("[hotkey] fn key uses CGEventTap path")
+      } else {
+        log("[hotkey] fn key CGEventTap unavailable, relying on NSEvent fallback")
+      }
+
+      let monitorOK = (globalMonitor != nil || localMonitor != nil)
+      return tapOK || monitorOK
+    }
+
     if let hotKeyRef = hotKeyRef {
       UnregisterEventHotKey(hotKeyRef)
       self.hotKeyRef = nil
@@ -291,9 +356,19 @@ class AppDelegate: FlutterAppDelegate {
 
     if status != noErr {
       log("[hotkey] failed to register Carbon hotkey: \(status)")
-      return false
+      // Fn 等按键无法通过 Carbon 注册时，回退到 CGEventTap
+      let fallbackOK = setupEventTap()
+      setupNSEventFallbackMonitors()
+      if fallbackOK {
+        log("[hotkey] fallback to CGEventTap for keyCode=\(keyCode)")
+      } else {
+        log("[hotkey] fallback to CGEventTap failed for keyCode=\(keyCode)")
+      }
+      let monitorOK = (globalMonitor != nil || localMonitor != nil)
+      return fallbackOK || monitorOK
     }
 
+    log("[hotkey] registered Carbon hotkey keyCode=\(keyCode) modifiers=\(modifiers)")
     return true
   }
 
@@ -318,7 +393,10 @@ class AppDelegate: FlutterAppDelegate {
       return true
     }
 
-    let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
+    let mask =
+      (1 << CGEventType.keyDown.rawValue) |
+      (1 << CGEventType.keyUp.rawValue) |
+      (1 << CGEventType.flagsChanged.rawValue)
     let callback: CGEventTapCallBack = { _, type, event, refcon in
       guard let refcon = refcon else {
         return Unmanaged.passUnretained(event)
@@ -333,21 +411,41 @@ class AppDelegate: FlutterAppDelegate {
         return Unmanaged.passUnretained(event)
       }
 
-      if type != .keyDown && type != .keyUp {
+      guard delegate.methodChannel != nil else {
         return Unmanaged.passUnretained(event)
       }
 
-      guard delegate.methodChannel != nil else {
+      // Carbon 热键可用时，不再通过 EventTap 转发，避免重复触发
+      if delegate.hotKeyRef != nil {
         return Unmanaged.passUnretained(event)
       }
 
       delegate.captureActiveApplication()
       let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
       let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+      let eventType: String
+      if type == .keyDown {
+        eventType = "down"
+      } else if type == .keyUp {
+        eventType = "up"
+      } else if type == .flagsChanged && UInt32(keyCode) == delegate.registeredHotKeyCode {
+        let fnPressed = event.flags.contains(.maskSecondaryFn)
+        delegate.log(
+          "[hotkey] eventTap flagsChanged keyCode=\(keyCode) maskSecondaryFn=\(fnPressed) rawFlags=\(event.flags.rawValue)",
+        )
+        eventType = fnPressed ? "down" : "up"
+      } else {
+        return Unmanaged.passUnretained(event)
+      }
+
+      delegate.log(
+        "[hotkey] eventTap dispatch keyCode=\(keyCode) type=\(eventType) repeat=\(type == .flagsChanged ? false : isRepeat)",
+      )
+
       delegate.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: [
         "keyCode": keyCode,
-        "type": type == .keyDown ? "down" : "up",
-        "isRepeat": isRepeat,
+        "type": eventType,
+        "isRepeat": type == .flagsChanged ? false : isRepeat,
       ])
 
       return Unmanaged.passUnretained(event)

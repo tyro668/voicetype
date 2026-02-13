@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/provider_config.dart';
 
@@ -232,7 +231,6 @@ class SttService {
         return fallbackResponse ?? false;
       }
       final uri = Uri.parse('${config.baseUrl}/models');
-      debugPrint('[stt] check url=$uri');
       final response = await http
           .get(
             uri,
@@ -241,12 +239,8 @@ class SttService {
                 : null,
           )
           .timeout(const Duration(seconds: 5));
-      debugPrint(
-        '[stt] check status=${response.statusCode} body=${response.body}',
-      );
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[stt] check failed: $e');
       return false;
     }
   }
@@ -255,21 +249,16 @@ class SttService {
     Uri uri,
     Map<String, String>? headers,
   ) async {
-    debugPrint('[stt] dashscope check url=$uri');
     try {
       final response = await http
           .get(uri, headers: headers)
           .timeout(const Duration(seconds: 15));
-      debugPrint(
-        '[stt] dashscope check status=${response.statusCode} body=${response.body}',
-      );
       return response.statusCode == 200 ||
           response.statusCode == 401 ||
           response.statusCode == 403 ||
           response.statusCode == 404 ||
           response.statusCode == 405;
-    } on TimeoutException catch (e) {
-      debugPrint('[stt] dashscope check timeout: $e');
+    } on TimeoutException {
       return null;
     }
   }

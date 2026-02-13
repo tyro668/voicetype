@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_enhance_config.dart';
+import '../models/ai_model_entry.dart';
 import '../models/ai_vendor_preset.dart';
 import '../models/provider_config.dart';
+import '../models/stt_model_entry.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const _configKey = 'stt_provider_config';
@@ -14,6 +16,9 @@ class SettingsProvider extends ChangeNotifier {
   static const _aiEnhanceConfigKey = 'ai_enhance_config';
   static const _aiEnhanceDefaultModelsKey = 'ai_enhance_default_models';
   static const _aiEnhanceUseCustomPromptKey = 'ai_enhance_use_custom_prompt';
+  static const _minRecordingSecondsKey = 'min_recording_seconds';
+  static const _aiModelEntriesKey = 'ai_model_entries';
+  static const _sttModelEntriesKey = 'stt_model_entries';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -24,8 +29,10 @@ class SettingsProvider extends ChangeNotifier {
   SttProviderConfig _config = SttProviderConfig.fallbackPresets.first;
   List<SttProviderConfig> _customProviders = [];
 
+  static const LogicalKeyboardKey defaultHotkey = LogicalKeyboardKey.fn;
+
   // 快捷键配置
-  LogicalKeyboardKey _hotkey = LogicalKeyboardKey.f2;
+  LogicalKeyboardKey _hotkey = defaultHotkey;
   ActivationMode _activationMode = ActivationMode.tapToTalk;
 
   /// 每个服务商独立存储的 API Key（按 name 索引）
@@ -36,6 +43,9 @@ class SettingsProvider extends ChangeNotifier {
   final Map<String, String> _aiEnhanceDefaultModels = {};
   bool _aiEnhanceUseCustomPrompt = true;
   String _aiEnhanceDefaultPrompt = AiEnhanceConfig.defaultPrompt;
+  int _minRecordingSeconds = 3;
+  List<AiModelEntry> _aiModelEntries = [];
+  List<SttModelEntry> _sttModelEntries = [];
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -46,9 +56,40 @@ class SettingsProvider extends ChangeNotifier {
   AiEnhanceConfig get aiEnhanceConfig => _aiEnhanceConfig;
   bool get aiEnhanceUseCustomPrompt => _aiEnhanceUseCustomPrompt;
   String get aiEnhanceDefaultPrompt => _aiEnhanceDefaultPrompt;
-  AiEnhanceConfig get effectiveAiEnhanceConfig => _aiEnhanceUseCustomPrompt
-      ? _aiEnhanceConfig
-      : _aiEnhanceConfig.copyWith(prompt: _aiEnhanceDefaultPrompt);
+  int get minRecordingSeconds => _minRecordingSeconds;
+  List<AiModelEntry> get aiModelEntries => List.unmodifiable(_aiModelEntries);
+  AiModelEntry? get activeAiModelEntry {
+    try {
+      return _aiModelEntries.firstWhere((e) => e.enabled);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<SttModelEntry> get sttModelEntries =>
+      List.unmodifiable(_sttModelEntries);
+  SttModelEntry? get activeSttModelEntry {
+    try {
+      return _sttModelEntries.firstWhere((e) => e.enabled);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  AiEnhanceConfig get effectiveAiEnhanceConfig {
+    final active = activeAiModelEntry;
+    final base = active != null
+        ? _aiEnhanceConfig.copyWith(
+            baseUrl: active.baseUrl,
+            apiKey: active.apiKey,
+            model: active.model,
+          )
+        : _aiEnhanceConfig;
+    return _aiEnhanceUseCustomPrompt
+        ? base
+        : base.copyWith(prompt: _aiEnhanceDefaultPrompt);
+  }
+
   String? aiEnhanceDefaultModelFor(String baseUrl) =>
       _aiEnhanceDefaultModels[baseUrl];
 
@@ -119,6 +160,11 @@ class SettingsProvider extends ChangeNotifier {
       _aiEnhanceUseCustomPrompt = useCustomPrompt;
     }
 
+    final minSec = prefs.getInt(_minRecordingSecondsKey);
+    if (minSec != null) {
+      _minRecordingSeconds = minSec;
+    }
+
     try {
       final prompt = await rootBundle.loadString(
         'assets/prompts/default_prompt.md',
@@ -139,6 +185,41 @@ class SettingsProvider extends ChangeNotifier {
     if (defaultModelsJson != null) {
       _aiEnhanceDefaultModels.addAll(
         Map<String, String>.from(json.decode(defaultModelsJson)),
+      );
+    }
+
+    // 加载文本模型条目列表
+    final entriesJson = prefs.getString(_aiModelEntriesKey);
+    if (entriesJson != null) {
+      try {
+        _aiModelEntries = AiModelEntry.listFromJson(entriesJson);
+      } catch (_) {}
+    }
+    // 如果有激活条目，同步到 aiEnhanceConfig
+    final active = activeAiModelEntry;
+    if (active != null) {
+      _aiEnhanceConfig = _aiEnhanceConfig.copyWith(
+        baseUrl: active.baseUrl,
+        apiKey: active.apiKey,
+        model: active.model,
+      );
+    }
+
+    // 加载语音模型条目列表
+    final sttEntriesJson = prefs.getString(_sttModelEntriesKey);
+    if (sttEntriesJson != null) {
+      try {
+        _sttModelEntries = SttModelEntry.listFromJson(sttEntriesJson);
+      } catch (_) {}
+    }
+    // 如果有激活的语音模型条目，同步到 config
+    final activeStt = activeSttModelEntry;
+    if (activeStt != null) {
+      _config = _config.copyWith(
+        name: activeStt.vendorName,
+        baseUrl: activeStt.baseUrl,
+        apiKey: activeStt.apiKey,
+        model: activeStt.model,
       );
     }
 
@@ -164,7 +245,7 @@ class SettingsProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('[settings] failed to load presets: $e');
+      // ignore
     }
   }
 
@@ -203,11 +284,17 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 设置快捷键
   Future<void> setHotkey(LogicalKeyboardKey key) async {
     _hotkey = key;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_hotkeyKey, key.keyId);
+    notifyListeners();
+  }
+
+  Future<void> resetHotkey() async {
+    _hotkey = defaultHotkey;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_hotkeyKey);
     notifyListeners();
   }
 
@@ -230,6 +317,13 @@ class SettingsProvider extends ChangeNotifier {
     _aiEnhanceUseCustomPrompt = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_aiEnhanceUseCustomPromptKey, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setMinRecordingSeconds(int seconds) async {
+    _minRecordingSeconds = seconds.clamp(1, 30);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_minRecordingSecondsKey, _minRecordingSeconds);
     notifyListeners();
   }
 
@@ -268,6 +362,142 @@ class SettingsProvider extends ChangeNotifier {
       json.encode(_aiEnhanceDefaultModels),
     );
     notifyListeners();
+  }
+
+  // ===== 文本模型条目管理 =====
+
+  Future<void> _saveAiModelEntries() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _aiModelEntriesKey,
+      AiModelEntry.listToJson(_aiModelEntries),
+    );
+  }
+
+  Future<void> addAiModelEntry(AiModelEntry entry) async {
+    // 如果是第一个条目，自动启用
+    final shouldEnable = _aiModelEntries.isEmpty;
+    final newEntry = shouldEnable ? entry.copyWith(enabled: true) : entry;
+    if (shouldEnable) {
+      // 禁用其他
+      _aiModelEntries = _aiModelEntries
+          .map((e) => e.copyWith(enabled: false))
+          .toList();
+    }
+    _aiModelEntries.add(newEntry);
+    await _saveAiModelEntries();
+    _syncAiConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  Future<void> removeAiModelEntry(String id) async {
+    _aiModelEntries.removeWhere((e) => e.id == id);
+    await _saveAiModelEntries();
+    _syncAiConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  Future<void> enableAiModelEntry(String id) async {
+    _aiModelEntries = _aiModelEntries.map((e) {
+      return e.copyWith(enabled: e.id == id);
+    }).toList();
+    await _saveAiModelEntries();
+    _syncAiConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  Future<void> updateAiModelEntry(AiModelEntry updated) async {
+    _aiModelEntries = _aiModelEntries.map((e) {
+      return e.id == updated.id ? updated.copyWith(enabled: e.enabled) : e;
+    }).toList();
+    await _saveAiModelEntries();
+    _syncAiConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  void _syncAiConfigFromActiveEntry() {
+    final active = activeAiModelEntry;
+    if (active != null) {
+      _aiEnhanceConfig = _aiEnhanceConfig.copyWith(
+        baseUrl: active.baseUrl,
+        apiKey: active.apiKey,
+        model: active.model,
+      );
+      // 同时持久化 aiEnhanceConfig
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString(
+          _aiEnhanceConfigKey,
+          json.encode(_aiEnhanceConfig.toJson()),
+        );
+      });
+    }
+  }
+
+  // ===== 语音模型条目管理 =====
+
+  Future<void> _saveSttModelEntries() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _sttModelEntriesKey,
+      SttModelEntry.listToJson(_sttModelEntries),
+    );
+  }
+
+  Future<void> addSttModelEntry(SttModelEntry entry) async {
+    // 如果是第一个条目，自动启用
+    final shouldEnable = _sttModelEntries.isEmpty;
+    final newEntry = shouldEnable ? entry.copyWith(enabled: true) : entry;
+    if (shouldEnable) {
+      // 禁用其他
+      _sttModelEntries = _sttModelEntries
+          .map((e) => e.copyWith(enabled: false))
+          .toList();
+    }
+    _sttModelEntries.add(newEntry);
+    await _saveSttModelEntries();
+    _syncSttConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  Future<void> removeSttModelEntry(String id) async {
+    _sttModelEntries.removeWhere((e) => e.id == id);
+    await _saveSttModelEntries();
+    _syncSttConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  Future<void> enableSttModelEntry(String id) async {
+    _sttModelEntries = _sttModelEntries.map((e) {
+      return e.copyWith(enabled: e.id == id);
+    }).toList();
+    await _saveSttModelEntries();
+    _syncSttConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  Future<void> updateSttModelEntry(SttModelEntry updated) async {
+    _sttModelEntries = _sttModelEntries.map((e) {
+      return e.id == updated.id ? updated.copyWith(enabled: e.enabled) : e;
+    }).toList();
+    await _saveSttModelEntries();
+    _syncSttConfigFromActiveEntry();
+    notifyListeners();
+  }
+
+  void _syncSttConfigFromActiveEntry() {
+    final active = activeSttModelEntry;
+    if (active != null) {
+      _config = _config.copyWith(
+        name: active.vendorName,
+        baseUrl: active.baseUrl,
+        apiKey: active.apiKey,
+        model: active.model,
+      );
+      // 同时持久化 config
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString(_configKey, json.encode(_config.toJson()));
+      });
+    }
   }
 
   Future<void> addCustomProvider(SttProviderConfig provider) async {

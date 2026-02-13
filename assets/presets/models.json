@@ -77,6 +77,10 @@
         {
           "id": "qwen-max",
           "description": "千问 Max"
+        },
+        {
+          "id": "qwen-turbo",
+          "description": "千问 Turbo"
         }
       ]
     }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// 与原生 macOS overlay 窗口通信的服务
@@ -15,7 +14,6 @@ class OverlayService {
         final keyCode = args['keyCode'] as int;
         final type = args['type'] as String;
         final isRepeat = args['isRepeat'] as bool;
-        debugPrint('[hotkey] keyCode=$keyCode type=$type repeat=$isRepeat');
         onGlobalKeyEvent?.call(keyCode, type, isRepeat);
       }
     });
@@ -84,16 +82,19 @@ class OverlayService {
     await _channel.invokeMethod('openAccessibilityPrivacy');
   }
 
-  /// 注册全局快捷键（macOS Carbon HotKey）
   static Future<bool> registerHotkey({
     required int keyCode,
     int modifiers = 0,
   }) async {
-    final result = await _channel.invokeMethod<bool>('registerHotkey', {
-      'keyCode': keyCode,
-      'modifiers': modifiers,
-    });
-    return result ?? false;
+    try {
+      final result = await _channel.invokeMethod<bool>('registerHotkey', {
+        'keyCode': keyCode,
+        'modifiers': modifiers,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// 取消全局快捷键注册

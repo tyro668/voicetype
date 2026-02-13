@@ -26,7 +26,6 @@ class RecordingProvider extends ChangeNotifier {
   Timer? _durationTimer;
   Timer? _healthTimer;
   StreamSubscription<double>? _amplitudeSub;
-  double _lastAmplitude = 0.0;
   final List<Transcription> _history = [];
 
   RecordingProvider() {
@@ -54,18 +53,15 @@ class RecordingProvider extends ChangeNotifier {
 
   Future<void> startRecording() async {
     try {
-      debugPrint('[recording] startRecording requested');
       _error = '';
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
       if (await _recorder.isRecording()) {
-        debugPrint('[recording] recorder still active, resetting');
         await _recorder.reset();
       }
       final hasPermission = await _recorder.hasPermission();
       if (!hasPermission) {
         _error = '需要麦克风权限才能录音';
-        debugPrint('[recording] mic permission denied');
         notifyListeners();
         return;
       }
@@ -77,10 +73,8 @@ class RecordingProvider extends ChangeNotifier {
       );
 
       try {
-        debugPrint('[recording] startWithTimeout');
         await _recorder.startWithTimeout(const Duration(seconds: 2));
       } catch (_) {
-        debugPrint('[recording] start failed, resetting and retrying');
         await _recorder.reset();
         await _recorder.startWithTimeout(const Duration(seconds: 2));
       }
@@ -95,7 +89,6 @@ class RecordingProvider extends ChangeNotifier {
       );
 
       _amplitudeSub = _recorder.amplitudeStream.listen((level) {
-        _lastAmplitude = level;
         OverlayService.updateOverlay(
           state: 'recording',
           duration: _durationStr,
@@ -105,11 +98,8 @@ class RecordingProvider extends ChangeNotifier {
 
       _healthTimer?.cancel();
       _healthTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
-        final isRec = await _recorder.isRecording();
-        final size = await _recorder.currentFileSize();
-        debugPrint(
-          '[recording] health recording=$isRec fileSize=${size ?? -1} amp=${_lastAmplitude.toStringAsFixed(2)}',
-        );
+        await _recorder.isRecording();
+        await _recorder.currentFileSize();
       });
 
       _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -117,11 +107,9 @@ class RecordingProvider extends ChangeNotifier {
         notifyListeners();
       });
 
-      debugPrint('[recording] started');
       notifyListeners();
     } catch (e) {
       _error = '录音启动失败: $e';
-      debugPrint('[recording] start failed: $e');
       _state = RecordingState.idle;
       OverlayService.hideOverlay();
       notifyListeners();
@@ -132,9 +120,9 @@ class RecordingProvider extends ChangeNotifier {
     SttProviderConfig config, {
     bool aiEnhanceEnabled = false,
     AiEnhanceConfig? aiEnhanceConfig,
+    int minRecordingSeconds = 3,
   }) async {
     try {
-      debugPrint('[recording] stop requested');
       _durationTimer?.cancel();
       _durationTimer = null;
       _healthTimer?.cancel();
@@ -143,12 +131,20 @@ class RecordingProvider extends ChangeNotifier {
       _amplitudeSub = null;
 
       final duration = _recordingDuration;
-      // 转写中提示，直到任务完成再关闭 overlay
+
+      // 录音时长不足，忽略本次输入
+      if (duration.inSeconds < minRecordingSeconds) {
+        _state = RecordingState.idle;
+        OverlayService.hideOverlay();
+        _recorder.stop().then((_) => _recorder.reset());
+        notifyListeners();
+        return;
+      }
+
       OverlayService.showOverlay(state: 'transcribing');
       _state = RecordingState.idle;
       notifyListeners();
 
-      // 后台执行 stop + 转录，避免阻塞快捷键
       unawaited(
         _stopAndTranscribeInBackground(
           config,
@@ -159,7 +155,6 @@ class RecordingProvider extends ChangeNotifier {
       );
     } catch (e) {
       _error = '停止录音失败: $e';
-      debugPrint('[recording] stop failed: $e');
       _state = RecordingState.idle;
       OverlayService.hideOverlay();
       _amplitudeSub?.cancel();
@@ -175,11 +170,7 @@ class RecordingProvider extends ChangeNotifier {
     required AiEnhanceConfig? aiEnhanceConfig,
   }) async {
     try {
-      debugPrint('[recording] stopInBackground');
       final stopFuture = _recorder.stop();
-      stopFuture.then(
-        (value) => debugPrint('[recording] stop future completed: $value'),
-      );
       final fallbackPath = _recorder.currentPath;
 
       var path = await stopFuture.timeout(
@@ -188,7 +179,6 @@ class RecordingProvider extends ChangeNotifier {
       );
 
       if (path == null && fallbackPath != null) {
-        debugPrint('[recording] stop timeout, poll file');
         path = await _waitForFileReady(
           fallbackPath,
           const Duration(seconds: 20),
@@ -196,7 +186,6 @@ class RecordingProvider extends ChangeNotifier {
       }
 
       if (path == null) {
-        debugPrint('[recording] fallback missing, wait stop completion');
         path = await stopFuture.timeout(
           const Duration(seconds: 10),
           onTimeout: () => null,
@@ -205,14 +194,12 @@ class RecordingProvider extends ChangeNotifier {
 
       if (path == null) {
         _error = '录音文件获取失败';
-        debugPrint('[recording] stop failed, no fallback file');
         await _recorder.reset();
         OverlayService.hideOverlay();
         notifyListeners();
         return;
       }
 
-      debugPrint('[recording] stop ok, transcribing');
       _transcribeInBackground(
         path,
         config,
@@ -222,7 +209,6 @@ class RecordingProvider extends ChangeNotifier {
       );
     } catch (e) {
       _error = '停止录音失败: $e';
-      debugPrint('[recording] stop background failed: $e');
       await _recorder.reset();
       OverlayService.hideOverlay();
       notifyListeners();
@@ -245,7 +231,6 @@ class RecordingProvider extends ChangeNotifier {
     return null;
   }
 
-  /// 后台转录，不影响录音状态
   void _transcribeInBackground(
     String path,
     SttProviderConfig config,
@@ -254,21 +239,16 @@ class RecordingProvider extends ChangeNotifier {
     required AiEnhanceConfig? aiEnhanceConfig,
   }) async {
     try {
-      debugPrint('[recording] transcribe start: $path');
       final sttService = SttService(config);
       final rawText = await sttService.transcribe(path);
-      debugPrint('[recording] transcribe raw length=${rawText.length}');
       var finalText = rawText;
 
       if (aiEnhanceEnabled && aiEnhanceConfig != null) {
         try {
           OverlayService.showOverlay(state: 'enhancing');
-          debugPrint('[recording] ai enhance start');
           final enhancer = AiEnhanceService(aiEnhanceConfig);
           finalText = await enhancer.enhance(rawText);
-          debugPrint('[recording] ai enhance length=${finalText.length}');
         } catch (e) {
-          debugPrint('[recording] ai enhance failed: $e');
           finalText = rawText;
         }
       }
@@ -289,29 +269,24 @@ class RecordingProvider extends ChangeNotifier {
         _history.insert(0, item);
         try {
           await _historyDb.insert(item);
-          debugPrint('[recording] history saved');
         } catch (e) {
-          debugPrint('[recording] history save failed: $e');
+          // ignore
         }
         try {
           await OverlayService.insertText(finalText);
-
           OverlayService.hideOverlay();
-          debugPrint('[recording] insert text ok');
         } catch (e) {
-          debugPrint('[recording] insert text failed: $e');
+          // ignore
         }
         OverlayService.hideOverlay();
       } else {
         _error = '转录结果为空';
-        debugPrint('[recording] transcribe empty result');
         await _showTranscribeFailedOverlay();
       }
 
       notifyListeners();
     } catch (e) {
       _error = '转录失败: $e';
-      debugPrint('[recording] transcribe failed: $e');
       await _showTranscribeFailedOverlay();
       notifyListeners();
     }
@@ -333,7 +308,7 @@ class RecordingProvider extends ChangeNotifier {
         ..addAll(items);
       notifyListeners();
     } catch (e) {
-      debugPrint('[recording] load history failed: $e');
+      // ignore
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:record/record.dart';
 import '../../models/provider_config.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/audio_recorder.dart';
+import '../../services/log_service.dart';
 import '../../services/overlay_service.dart';
 
 class GeneralPage extends StatefulWidget {
@@ -22,11 +24,18 @@ class _GeneralPageState extends State<GeneralPage> {
   bool _checkingMic = false;
   bool _checkingAccessibility = false;
 
+  // Log
+  String _logPath = '';
+  String _logDirPath = '';
+  int? _logFileSize;
+  bool _logFileExists = false;
+
   @override
   void initState() {
     super.initState();
     _loadPermissions();
     _loadInputDevices();
+    _loadLogInfo();
   }
 
   Future<void> _loadPermissions() async {
@@ -88,6 +97,56 @@ class _GeneralPageState extends State<GeneralPage> {
     }
   }
 
+  Future<void> _loadLogInfo() async {
+    final logPath = await LogService.logFilePath;
+    final logDirPath = await LogService.logDirectoryPath;
+    final fileSize = await LogService.getLogFileSize();
+    final fileExists = await LogService.logFileExists();
+    if (mounted) {
+      setState(() {
+        _logPath = logPath;
+        _logDirPath = logDirPath;
+        _logFileSize = fileSize;
+        _logFileExists = fileExists;
+      });
+    }
+  }
+
+  Future<void> _openLogDirectory() async {
+    try {
+      final result = await Process.run('open', [_logDirPath]);
+      if (result.exitCode != 0) {
+        _showError('无法打开文件夹: ${result.stderr}');
+      }
+    } catch (e) {
+      _showError('打开文件夹失败: $e');
+    }
+  }
+
+  Future<void> _copyLogPath() async {
+    await Clipboard.setData(ClipboardData(text: _logPath));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('日志路径已复制到剪贴板'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
@@ -96,9 +155,9 @@ class _GeneralPageState extends State<GeneralPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ===== Activation Mode =====
+          // ===== 激活模式 =====
           const Text(
-            'Activation Mode',
+            '激活模式',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -111,8 +170,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Center(
             child: Text(
               settings.activationMode == ActivationMode.tapToTalk
-                  ? 'Press hotkey to start recording, press again to stop'
-                  : 'Hold hotkey to record, release to stop',
+                  ? '按快捷键开始录音，再次按下停止录音'
+                  : '按住快捷键录音，松开停止录音',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ),
@@ -174,7 +233,222 @@ class _GeneralPageState extends State<GeneralPage> {
           _buildPreferBuiltIn(),
           const SizedBox(height: 12),
           _buildCurrentDevice(),
+          const SizedBox(height: 36),
+
+          // ===== 最短录音时长 =====
+          const Text(
+            '最短录音时长',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '录音时长低于此值时将自动忽略，避免误触产生无效输入。',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          _buildMinDuration(settings),
+          const SizedBox(height: 36),
+
+          // ===== 日志 =====
+          const Text(
+            '日志',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '查看和管理应用程序日志文件。',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          _buildLogSection(),
           const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMinDuration(SettingsProvider settings) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.timer_outlined, size: 20, color: Colors.grey.shade600),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              '忽略短于此时长的录音',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline, size: 20),
+            onPressed: settings.minRecordingSeconds > 1
+                ? () => settings.setMinRecordingSeconds(
+                    settings.minRecordingSeconds - 1,
+                  )
+                : null,
+            color: const Color(0xFF6C63FF),
+            splashRadius: 18,
+          ),
+          Text(
+            '${settings.minRecordingSeconds} 秒',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline, size: 20),
+            onPressed: settings.minRecordingSeconds < 30
+                ? () => settings.setMinRecordingSeconds(
+                    settings.minRecordingSeconds + 1,
+                  )
+                : null,
+            color: const Color(0xFF6C63FF),
+            splashRadius: 18,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.description_outlined,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '日志文件',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const Spacer(),
+              if (_logFileExists)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    LogService.formatFileSize(_logFileSize ?? 0),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '无日志文件',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SelectableText(
+                _logPath.isEmpty ? '加载中...' : _logPath,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  color: Colors.grey.shade800,
+                ),
+                maxLines: 1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _logPath.isNotEmpty ? _openLogDirectory : null,
+                  icon: const Icon(Icons.folder_open_outlined, size: 18),
+                  label: const Text('打开日志文件夹'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _logPath.isNotEmpty ? _copyLogPath : null,
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('复制路径'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                  side: BorderSide(color: Colors.grey.shade300),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -434,75 +708,89 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _listening = true);
-        _focusNode.requestFocus();
-      },
-      child: KeyboardListener(
-        focusNode: _focusNode,
-        onKeyEvent: _listening
-            ? (event) {
-                if (event is KeyDownEvent) {
-                  widget.settings.setHotkey(event.logicalKey);
-                  setState(() => _listening = false);
-                }
-              }
-            : null,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _listening
-                  ? const Color(0xFF6C63FF)
-                  : Colors.grey.shade200,
-              width: _listening ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F0F5),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  _listening ? '...' : widget.settings.hotkeyLabel,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _listening ? '请按下新的快捷键...' : '点击更改快捷键',
-                style: TextStyle(
-                  fontSize: 13,
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() => _listening = true);
+            _focusNode.requestFocus();
+          },
+          child: KeyboardListener(
+            focusNode: _focusNode,
+            onKeyEvent: _listening
+                ? (event) {
+                    if (event is KeyDownEvent) {
+                      widget.settings.setHotkey(event.logicalKey);
+                      setState(() => _listening = false);
+                    }
+                  }
+                : null,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
                   color: _listening
                       ? const Color(0xFF6C63FF)
-                      : Colors.grey.shade400,
+                      : Colors.grey.shade200,
+                  width: _listening ? 2 : 1,
                 ),
               ),
-            ],
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F0F5),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      _listening ? '...' : widget.settings.hotkeyLabel,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _listening ? '请按下新的快捷键...' : '点击更改快捷键',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _listening
+                          ? const Color(0xFF6C63FF)
+                          : Colors.grey.shade400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => widget.settings.resetHotkey(),
+            icon: const Icon(Icons.restore, size: 16),
+            label: const Text('恢复默认（Fn）'),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -519,8 +807,8 @@ class _ActivationModeSelector extends StatelessWidget {
         Expanded(
           child: _ModeCard(
             icon: Icons.touch_app_outlined,
-            title: 'Tap to Talk',
-            subtitle: 'Tap on, tap off',
+            title: '点击模式',
+            subtitle: '点击开始，点击停止',
             selected: settings.activationMode == ActivationMode.tapToTalk,
             onTap: () => settings.setActivationMode(ActivationMode.tapToTalk),
           ),
@@ -529,8 +817,8 @@ class _ActivationModeSelector extends StatelessWidget {
         Expanded(
           child: _ModeCard(
             icon: Icons.pan_tool_outlined,
-            title: 'Push to Talk',
-            subtitle: 'Hold to record',
+            title: '按住模式',
+            subtitle: '按住录音，松开停止',
             selected: settings.activationMode == ActivationMode.pushToTalk,
             onTap: () => settings.setActivationMode(ActivationMode.pushToTalk),
           ),
