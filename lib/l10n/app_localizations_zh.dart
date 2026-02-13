@@ -1,0 +1,362 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Chinese (`zh`).
+class AppLocalizationsZh extends AppLocalizations {
+  AppLocalizationsZh([String locale = 'zh']) : super(locale);
+
+  @override
+  String get appTitle => 'VoiceType';
+
+  @override
+  String get loading => '加载中...';
+
+  @override
+  String get generalSettings => '通用设置';
+
+  @override
+  String get voiceModelSettings => '语音模型';
+
+  @override
+  String get textModelSettings => '文本模型';
+
+  @override
+  String get promptWorkshop => '提示词工坊';
+
+  @override
+  String get history => '历史记录';
+
+  @override
+  String get logs => '日志';
+
+  @override
+  String get about => '关于';
+
+  @override
+  String get activationMode => '激活模式';
+
+  @override
+  String get tapToTalk => '点击模式';
+
+  @override
+  String get tapToTalkSubtitle => '点击开始，点击停止';
+
+  @override
+  String get tapToTalkDescription => '按快捷键开始录音，再次按下停止录音';
+
+  @override
+  String get pushToTalk => '按住模式';
+
+  @override
+  String get pushToTalkSubtitle => '按住录音，松开停止';
+
+  @override
+  String get pushToTalkDescription => '按住快捷键录音，松开停止录音';
+
+  @override
+  String get dictationHotkey => '听写快捷键';
+
+  @override
+  String get dictationHotkeyDescription => '配置用于开始和停止语音听写的按键。';
+
+  @override
+  String get pressKeyToSet => '按下要设置为快捷键的按键';
+
+  @override
+  String get clickToChangeHotkey => '点击更改快捷键';
+
+  @override
+  String get resetToDefault => '恢复默认';
+
+  @override
+  String get permissions => '权限设置';
+
+  @override
+  String get permissionsDescription => '管理系统权限以获取最佳性能功能。';
+
+  @override
+  String get microphonePermission => '麦克风权限';
+
+  @override
+  String get accessibilityPermission => '辅助功能权限';
+
+  @override
+  String get testPermission => '测试';
+
+  @override
+  String get permissionGranted => '已授权';
+
+  @override
+  String get permissionDenied => '未授权';
+
+  @override
+  String get permissionHint => '麦克风权限用于语音输入，辅助功能权限用于文本插入。';
+
+  @override
+  String get testMicrophonePermission => '测试麦克风权限';
+
+  @override
+  String get testAccessibilityPermission => '测试辅助功能权限';
+
+  @override
+  String get fixPermissionIssues => '修复权限问题';
+
+  @override
+  String get openSoundInput => '打开声音输入';
+
+  @override
+  String get openMicrophonePrivacy => '打开麦克风隐私';
+
+  @override
+  String get openAccessibilityPrivacy => '打开辅助功能隐私';
+
+  @override
+  String get microphoneInput => '麦克风输入';
+
+  @override
+  String get microphoneInputDescription =>
+      '选择用于听写的麦克风。启用「优先使用内置麦克风」可防止使用蓝牙耳机时音频中断。';
+
+  @override
+  String get preferBuiltInMicrophone => '优先使用内置麦克风';
+
+  @override
+  String get preferBuiltInMicrophoneSubtitle => '外置麦克风可能导致延迟或降低转录质量';
+
+  @override
+  String get currentDevice => '当前设备';
+
+  @override
+  String get unknownDevice => '未知设备';
+
+  @override
+  String get noMicrophoneDetected => '未检测到麦克风';
+
+  @override
+  String get using => '正在使用';
+
+  @override
+  String get minRecordingDuration => '最短录音时长';
+
+  @override
+  String get minRecordingDurationDescription => '录音时长低于此值时将自动忽略，避免误触产生无效输入。';
+
+  @override
+  String get ignoreShortRecordings => '忽略短于此时长的录音';
+
+  @override
+  String get seconds => '秒';
+
+  @override
+  String get language => '语言';
+
+  @override
+  String get languageDescription => '选择您偏好的界面语言。';
+
+  @override
+  String get interfaceLanguage => '界面语言';
+
+  @override
+  String get english => 'English';
+
+  @override
+  String get simplifiedChinese => '简体中文';
+
+  @override
+  String get logsSection => '日志';
+
+  @override
+  String get logsDescription => '查看和管理应用程序日志文件。';
+
+  @override
+  String get logFile => '日志文件';
+
+  @override
+  String get noLogFile => '无日志文件';
+
+  @override
+  String get openLogDirectory => '打开日志目录';
+
+  @override
+  String get copyLogPath => '复制日志路径';
+
+  @override
+  String get logPathCopied => '日志路径已复制到剪贴板';
+
+  @override
+  String get addModel => '添加模型';
+
+  @override
+  String get addVoiceModel => '添加语音模型';
+
+  @override
+  String get addTextModel => '添加文本模型';
+
+  @override
+  String get editModel => '编辑模型';
+
+  @override
+  String get editVoiceModel => '编辑语音模型';
+
+  @override
+  String get editTextModel => '编辑文本模型';
+
+  @override
+  String get deleteModel => '删除模型';
+
+  @override
+  String deleteModelConfirm(Object model, Object vendor) {
+    return '确定要删除 $vendor / $model 吗？';
+  }
+
+  @override
+  String confirmDeleteModel(String vendor, String model) {
+    return '确定要删除 $vendor / $model 吗？';
+  }
+
+  @override
+  String get vendor => '服务商';
+
+  @override
+  String get model => '模型';
+
+  @override
+  String get endpointUrl => '端点 URL';
+
+  @override
+  String get apiKey => 'API 密钥';
+
+  @override
+  String get selectVendor => '选择服务商';
+
+  @override
+  String get selectModel => '选择模型';
+
+  @override
+  String get custom => '自定义';
+
+  @override
+  String enterModelName(Object example) {
+    return '输入模型名称，如 $example';
+  }
+
+  @override
+  String get enterApiKey => '输入 API 密钥';
+
+  @override
+  String get saveChanges => '保存修改';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get delete => '删除';
+
+  @override
+  String get edit => '编辑';
+
+  @override
+  String get testConnection => '测试连接';
+
+  @override
+  String get testingConnection => '正在测试连接...';
+
+  @override
+  String get connectionSuccess => '连接成功 ✓';
+
+  @override
+  String get connectionFailed => '连接失败，请检查配置';
+
+  @override
+  String get inUse => '使用中';
+
+  @override
+  String get useThisModel => '使用此模型';
+
+  @override
+  String get currentlyInUse => '当前正在使用';
+
+  @override
+  String get noModelsAdded => '暂未添加模型';
+
+  @override
+  String get addVoiceModelHint => '点击下方按钮添加一个语音识别模型';
+
+  @override
+  String get addTextModelHint => '点击下方按钮添加一个大语言模型';
+
+  @override
+  String get enableTextEnhancement => '启用文本增强';
+
+  @override
+  String get textEnhancementDescription => '使用 AI 增强和修正转录的文本。';
+
+  @override
+  String get prompt => '提示词';
+
+  @override
+  String get promptDescription => '自定义 AI 文本增强的行为。';
+
+  @override
+  String get defaultPrompt => '默认提示词';
+
+  @override
+  String get customPrompt => '自定义提示词';
+
+  @override
+  String get useCustomPrompt => '使用自定义提示词';
+
+  @override
+  String get agentName => '助手名称';
+
+  @override
+  String get enterAgentName => '输入助手名称';
+
+  @override
+  String get historySection => '历史记录';
+
+  @override
+  String get noHistory => '暂无转写历史';
+
+  @override
+  String get clearHistory => '清空历史';
+
+  @override
+  String get clearHistoryConfirm => '确定要清空所有历史记录吗？';
+
+  @override
+  String get copy => '复制';
+
+  @override
+  String get copied => '已复制';
+
+  @override
+  String get deleteHistoryItem => '删除';
+
+  @override
+  String get searchHistory => '搜索历史记录...';
+
+  @override
+  String get aboutSection => '关于';
+
+  @override
+  String get appDescription => 'VoiceType - 智能语音输入工具';
+
+  @override
+  String get version => '版本';
+
+  @override
+  String get checkForUpdates => '检查更新';
+
+  @override
+  String get openSourceLicenses => '开源许可证';
+
+  @override
+  String get required => '必填';
+
+  @override
+  String get optional => '选填';
+}

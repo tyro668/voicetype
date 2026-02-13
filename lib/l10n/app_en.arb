@@ -1,0 +1,147 @@
+{
+  "@@locale": "en",
+  "appTitle": "VoiceType",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+
+  "loading": "Loading...",
+
+  "generalSettings": "General",
+  "voiceModelSettings": "Voice Model",
+  "textModelSettings": "Text Model",
+  "promptWorkshop": "Prompt Workshop",
+  "history": "History",
+  "logs": "Logs",
+  "about": "About",
+
+  "activationMode": "Activation Mode",
+  "tapToTalk": "Tap Mode",
+  "tapToTalkSubtitle": "Tap to start, tap to stop",
+  "tapToTalkDescription": "Press hotkey to start recording, press again to stop",
+  "pushToTalk": "Hold Mode",
+  "pushToTalkSubtitle": "Hold to record, release to stop",
+  "pushToTalkDescription": "Hold hotkey to record, release to stop",
+
+  "dictationHotkey": "Dictation Hotkey",
+  "dictationHotkeyDescription": "Configure the hotkey for starting and stopping voice dictation.",
+  "pressKeyToSet": "Press a key to set as hotkey",
+  "clickToChangeHotkey": "Click to change hotkey",
+  "resetToDefault": "Reset to Default",
+
+  "permissions": "Permissions",
+  "permissionsDescription": "Manage system permissions for optimal performance.",
+  "microphonePermission": "Microphone Permission",
+  "accessibilityPermission": "Accessibility Permission",
+  "testPermission": "Test",
+  "permissionGranted": "Granted",
+  "permissionDenied": "Denied",
+  "permissionHint": "Microphone permission is required for voice input. Accessibility permission is needed for text insertion.",
+  "testMicrophonePermission": "Test Microphone Permission",
+  "testAccessibilityPermission": "Test Accessibility Permission",
+  "fixPermissionIssues": "Fix Permission Issues",
+  "openSoundInput": "Open Sound Input",
+  "openMicrophonePrivacy": "Open Microphone Privacy",
+  "openAccessibilityPrivacy": "Open Accessibility Privacy",
+
+  "microphoneInput": "Microphone Input",
+  "microphoneInputDescription": "Select the microphone for dictation. Enable 'Prefer Built-in Microphone' to prevent audio interruptions when using Bluetooth headphones.",
+  "preferBuiltInMicrophone": "Prefer Built-in Microphone",
+  "preferBuiltInMicrophoneSubtitle": "External microphones may cause latency or reduce transcription quality",
+  "currentDevice": "Current Device",
+  "unknownDevice": "Unknown Device",
+  "noMicrophoneDetected": "No microphone detected",
+  "using": "Using",
+
+  "minRecordingDuration": "Minimum Recording Duration",
+  "minRecordingDurationDescription": "Recordings shorter than this duration will be automatically ignored to avoid accidental triggers.",
+  "ignoreShortRecordings": "Ignore recordings shorter than",
+  "seconds": "seconds",
+
+  "language": "Language",
+  "languageDescription": "Select your preferred interface language.",
+  "interfaceLanguage": "Interface Language",
+  "english": "English",
+  "simplifiedChinese": "简体中文",
+
+  "logsSection": "Logs",
+  "logsDescription": "View and manage application log files.",
+  "logFile": "Log File",
+  "noLogFile": "No Log File",
+  "openLogDirectory": "Open Log Directory",
+  "copyLogPath": "Copy Log Path",
+  "logPathCopied": "Log path copied to clipboard",
+
+  "addModel": "Add Model",
+  "addVoiceModel": "Add Voice Model",
+  "addTextModel": "Add Text Model",
+  "editModel": "Edit Model",
+  "editVoiceModel": "Edit Voice Model",
+  "editTextModel": "Edit Text Model",
+  "deleteModel": "Delete Model",
+  "deleteModelConfirm": "Are you sure you want to delete {vendor} / {model}?",
+  "confirmDeleteModel": "Are you sure you want to delete {vendor} / {model}?",
+  "@confirmDeleteModel": {
+    "description": "Confirmation message for deleting a model",
+    "placeholders": {
+      "vendor": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "vendor": "Vendor",
+  "model": "Model",
+  "endpointUrl": "Endpoint URL",
+  "apiKey": "API Key",
+  "selectVendor": "Select Vendor",
+  "selectModel": "Select Model",
+  "custom": "Custom",
+  "enterModelName": "Enter model name, e.g., {example}",
+  "enterApiKey": "Enter API Key",
+  "saveChanges": "Save Changes",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "testConnection": "Test Connection",
+  "testingConnection": "Testing connection...",
+  "connectionSuccess": "Connection successful ✓",
+  "connectionFailed": "Connection failed, please check configuration",
+  "inUse": "In Use",
+  "useThisModel": "Use This Model",
+  "currentlyInUse": "Currently in use",
+  "noModelsAdded": "No models added yet",
+  "addVoiceModelHint": "Click the button below to add a speech recognition model",
+  "addTextModelHint": "Click the button below to add a large language model",
+
+  "enableTextEnhancement": "Enable Text Enhancement",
+  "textEnhancementDescription": "Use AI to enhance and correct transcribed text.",
+
+  "prompt": "Prompt",
+  "promptDescription": "Customize the AI behavior for text enhancement.",
+  "defaultPrompt": "Default Prompt",
+  "customPrompt": "Custom Prompt",
+  "useCustomPrompt": "Use Custom Prompt",
+  "agentName": "Agent Name",
+  "enterAgentName": "Enter agent name",
+
+  "historySection": "History",
+  "noHistory": "No transcription history",
+  "clearHistory": "Clear History",
+  "clearHistoryConfirm": "Are you sure you want to clear all history?",
+  "copy": "Copy",
+  "copied": "Copied",
+  "deleteHistoryItem": "Delete",
+  "searchHistory": "Search history...",
+
+  "aboutSection": "About",
+  "appDescription": "VoiceType - Intelligent Voice Input Tool",
+  "version": "Version",
+  "checkForUpdates": "Check for Updates",
+  "openSourceLicenses": "Open Source Licenses",
+
+  "required": "Required",
+  "optional": "Optional"
+}

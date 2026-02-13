@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_enhance_config.dart';
@@ -19,6 +20,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _minRecordingSecondsKey = 'min_recording_seconds';
   static const _aiModelEntriesKey = 'ai_model_entries';
   static const _sttModelEntriesKey = 'stt_model_entries';
+  static const _localeKey = 'locale';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -46,6 +48,7 @@ class SettingsProvider extends ChangeNotifier {
   int _minRecordingSeconds = 3;
   List<AiModelEntry> _aiModelEntries = [];
   List<SttModelEntry> _sttModelEntries = [];
+  Locale _locale = const Locale('zh');
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -75,6 +78,8 @@ class SettingsProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  Locale get locale => _locale;
 
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
@@ -221,6 +226,12 @@ class SettingsProvider extends ChangeNotifier {
         apiKey: activeStt.apiKey,
         model: activeStt.model,
       );
+    }
+
+    // 加载语言设置
+    final localeStr = prefs.getString(_localeKey);
+    if (localeStr != null) {
+      _locale = Locale(localeStr);
     }
 
     notifyListeners();
@@ -525,5 +536,13 @@ class SettingsProvider extends ChangeNotifier {
     return _hotkey.keyLabel.isNotEmpty
         ? _hotkey.keyLabel
         : _hotkey.debugName ?? 'Unknown';
+  }
+
+  /// 设置语言
+  Future<void> setLocale(Locale locale) async {
+    _locale = locale;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localeKey, locale.languageCode);
+    notifyListeners();
   }
 }

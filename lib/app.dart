@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'l10n/app_localizations.dart';
 import 'providers/recording_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/main_screen.dart';
@@ -14,15 +16,30 @@ class VoiceTypeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsProvider()..load()),
         ChangeNotifierProvider(create: (_) => RecordingProvider()),
       ],
-      child: MaterialApp(
-        title: 'VoiceType',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          brightness: Brightness.light,
-          colorSchemeSeed: const Color(0xFF6C63FF),
-          useMaterial3: true,
-        ),
-        home: const MainScreen(),
+      child: Consumer<SettingsProvider>(
+        builder: (context, settings, child) {
+          return MaterialApp(
+            title: 'VoiceType',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              brightness: Brightness.light,
+              colorSchemeSeed: const Color(0xFF6C63FF),
+              useMaterial3: true,
+            ),
+            locale: settings.locale,
+            supportedLocales: const [
+              Locale('en'),
+              Locale('zh'),
+            ],
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const MainScreen(),
+          );
+        },
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/ai_enhance_config.dart';
 import '../../models/ai_model_entry.dart';
 import '../../models/ai_vendor_preset.dart';
@@ -14,6 +15,7 @@ class AiModelPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final entries = settings.aiModelEntries;
+    final l10n = AppLocalizations.of(context)!;
 
     return Align(
       alignment: Alignment.topCenter,
@@ -22,14 +24,14 @@ class AiModelPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildEnableSection(settings),
+            _buildEnableSection(settings, l10n),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _showAddDialog(context, settings),
+                onPressed: () => _showAddDialog(context, settings, l10n),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('添加模型'),
+                label: Text(l10n.addTextModel),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.black87,
                   side: BorderSide(color: Colors.grey.shade300),
@@ -42,10 +44,10 @@ class AiModelPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (entries.isEmpty)
-              _buildEmptyState(context)
+              _buildEmptyState(context, l10n)
             else
               ...entries.map(
-                (entry) => _buildEntryCard(context, settings, entry),
+                (entry) => _buildEntryCard(context, settings, entry, l10n),
               ),
             const SizedBox(height: 40),
           ],
@@ -54,7 +56,7 @@ class AiModelPage extends StatelessWidget {
     );
   }
 
-  Widget _buildEnableSection(SettingsProvider settings) {
+  Widget _buildEnableSection(SettingsProvider settings, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -64,9 +66,9 @@ class AiModelPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text(
-            '启用文本增强',
-            style: TextStyle(
+          Text(
+            l10n.enableTextEnhancement,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
@@ -83,7 +85,7 @@ class AiModelPage extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40),
@@ -101,12 +103,12 @@ class AiModelPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '暂未添加文本模型',
+            l10n.noModelsAdded,
             style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 4),
           Text(
-            '点击下方按钮添加一个大语言模型',
+            l10n.addTextModelHint,
             style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           ),
         ],
@@ -118,6 +120,7 @@ class AiModelPage extends StatelessWidget {
     BuildContext context,
     SettingsProvider settings,
     AiModelEntry entry,
+    AppLocalizations l10n,
   ) {
     final isActive = entry.enabled;
     return Container(
@@ -158,9 +161,9 @@ class AiModelPage extends StatelessWidget {
                           color: const Color(0xFFEDE7F6),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
-                          '使用中',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.inUse,
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF6C63FF),
                             fontWeight: FontWeight.w500,
@@ -185,16 +188,16 @@ class AiModelPage extends StatelessWidget {
           // 测试连接
           IconButton(
             icon: const Icon(Icons.wifi_tethering, size: 18),
-            tooltip: '测试连接',
+            tooltip: l10n.testConnection,
             color: Colors.grey.shade500,
-            onPressed: () => _testConnection(context, entry),
+            onPressed: () => _testConnection(context, entry, l10n),
           ),
           // 编辑
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
-            tooltip: '编辑',
+            tooltip: l10n.edit,
             color: Colors.grey.shade500,
-            onPressed: () => _showEditDialog(context, settings, entry),
+            onPressed: () => _showEditDialog(context, settings, entry, l10n),
           ),
           // 启用/切换
           IconButton(
@@ -203,7 +206,7 @@ class AiModelPage extends StatelessWidget {
               size: 18,
               color: isActive ? Colors.green : Colors.grey.shade400,
             ),
-            tooltip: isActive ? '当前正在使用' : '使用此模型',
+            tooltip: isActive ? l10n.currentlyInUse : l10n.useThisModel,
             onPressed: isActive
                 ? null
                 : () => settings.enableAiModelEntry(entry.id),
@@ -211,21 +214,25 @@ class AiModelPage extends StatelessWidget {
           // 删除
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 18),
-            tooltip: '删除',
+            tooltip: l10n.delete,
             color: Colors.red.shade300,
-            onPressed: () => _confirmDelete(context, settings, entry),
+            onPressed: () => _confirmDelete(context, settings, entry, l10n),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _testConnection(BuildContext context, AiModelEntry entry) async {
+  Future<void> _testConnection(
+    BuildContext context,
+    AiModelEntry entry,
+    AppLocalizations l10n,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text('正在测试连接...'),
-        duration: Duration(seconds: 20),
+      SnackBar(
+        content: Text(l10n.testingConnection),
+        duration: const Duration(seconds: 20),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -243,17 +250,19 @@ class AiModelPage extends StatelessWidget {
       agentName: AiEnhanceConfig.defaultAgentName,
     );
     bool ok = false;
-    String message = '连接失败，请检查 API Key 和网络';
+    String message = l10n.connectionFailed;
     try {
       final result = await AiEnhanceService(
         config,
       ).checkAvailabilityDetailed().timeout(const Duration(seconds: 25));
       ok = result.ok;
-      message = ok ? '连接成功 ✓' : '连接失败：${result.message}';
+      message = ok
+          ? l10n.connectionSuccess
+          : '${l10n.connectionFailed}: ${result.message}';
       debugPrint('测试连接结果: $message');
     } catch (e, stackTrace) {
       ok = false;
-      message = '连接失败：${e.toString()}';
+      message = '${l10n.connectionFailed}: ${e.toString()}';
       debugPrint('测试连接异常: $e');
       debugPrint('堆栈: $stackTrace');
     }
@@ -274,16 +283,17 @@ class AiModelPage extends StatelessWidget {
     BuildContext context,
     SettingsProvider settings,
     AiModelEntry entry,
+    AppLocalizations l10n,
   ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除模型'),
-        content: Text('确定要删除 ${entry.vendorName} / ${entry.model} 吗？'),
+        title: Text(l10n.deleteModel),
+        content: Text(l10n.confirmDeleteModel(entry.vendorName, entry.model)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -291,19 +301,24 @@ class AiModelPage extends StatelessWidget {
               Navigator.pop(ctx);
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('删除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
     );
   }
 
-  void _showAddDialog(BuildContext context, SettingsProvider settings) {
+  void _showAddDialog(
+    BuildContext context,
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => _AddModelDialog(
         presets: settings.aiPresets,
         onAdd: (entry) => settings.addAiModelEntry(entry),
+        l10n: l10n,
       ),
     );
   }
@@ -312,6 +327,7 @@ class AiModelPage extends StatelessWidget {
     BuildContext context,
     SettingsProvider settings,
     AiModelEntry entry,
+    AppLocalizations l10n,
   ) {
     showDialog(
       context: context,
@@ -319,6 +335,7 @@ class AiModelPage extends StatelessWidget {
         entry: entry,
         presets: settings.aiPresets,
         onSave: (updated) => settings.updateAiModelEntry(updated),
+        l10n: l10n,
       ),
     );
   }
@@ -328,8 +345,13 @@ class AiModelPage extends StatelessWidget {
 class _AddModelDialog extends StatefulWidget {
   final List<AiVendorPreset> presets;
   final ValueChanged<AiModelEntry> onAdd;
+  final AppLocalizations l10n;
 
-  const _AddModelDialog({required this.presets, required this.onAdd});
+  const _AddModelDialog({
+    required this.presets,
+    required this.onAdd,
+    required this.l10n,
+  });
 
   @override
   State<_AddModelDialog> createState() => _AddModelDialogState();
@@ -355,6 +377,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = widget.l10n;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ConstrainedBox(
@@ -367,9 +390,9 @@ class _AddModelDialogState extends State<_AddModelDialog> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    '添加模型',
-                    style: TextStyle(
+                  Text(
+                    l10n.addTextModel,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
@@ -386,24 +409,24 @@ class _AddModelDialogState extends State<_AddModelDialog> {
               ),
               const SizedBox(height: 14),
 
-              _buildLabel('服务商', required: true),
+              _buildLabel(l10n.vendor, required: true),
               const SizedBox(height: 6),
-              _buildVendorDropdown(),
+              _buildVendorDropdown(l10n),
               const SizedBox(height: 12),
 
-              _buildLabel('模型', required: true),
+              _buildLabel(l10n.model, required: true),
               const SizedBox(height: 6),
               if (_isCustom)
                 _buildTextField(
                   controller: _customModelController,
-                  hintText: '输入模型名称，如 gpt-4o-mini',
+                  hintText: l10n.enterModelName('gpt-4o-mini'),
                 )
               else
-                _buildModelDropdown(),
+                _buildModelDropdown(l10n),
               const SizedBox(height: 12),
 
               if (_isCustom) ...[
-                _buildLabel('端点 URL', required: true),
+                _buildLabel(l10n.endpointUrl, required: true),
                 const SizedBox(height: 6),
                 _buildTextField(
                   controller: _customBaseUrlController,
@@ -412,11 +435,11 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                 const SizedBox(height: 12),
               ],
 
-              _buildLabel('API 密钥', required: true),
+              _buildLabel(l10n.apiKey, required: true),
               const SizedBox(height: 6),
               _buildTextField(
                 controller: _apiKeyController,
-                hintText: '输入 API 密钥',
+                hintText: l10n.enterApiKey,
                 obscureText: true,
               ),
 
@@ -437,7 +460,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('添加模型', style: TextStyle(fontSize: 14)),
+                  child: Text(
+                    l10n.addModel,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ],
@@ -499,12 +525,12 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     );
   }
 
-  Widget _buildVendorDropdown() {
+  Widget _buildVendorDropdown(AppLocalizations l10n) {
     final items = <DropdownMenuItem<String>>[
       ..._vendorOptions.map(
         (p) => DropdownMenuItem(value: p.name, child: Text(p.name)),
       ),
-      const DropdownMenuItem(value: '__custom__', child: Text('自定义')),
+      DropdownMenuItem(value: '__custom__', child: Text(l10n.custom)),
     ];
 
     String? currentValue;
@@ -526,7 +552,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         child: DropdownButton<String>(
           value: currentValue,
           isExpanded: true,
-          hint: const Text('选择模型服务商', style: TextStyle(fontSize: 14)),
+          hint: Text(l10n.selectVendor, style: const TextStyle(fontSize: 14)),
           style: const TextStyle(fontSize: 14, color: Colors.black87),
           items: items,
           onChanged: (value) {
@@ -549,7 +575,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     );
   }
 
-  Widget _buildModelDropdown() {
+  Widget _buildModelDropdown(AppLocalizations l10n) {
     final models = _selectedVendor?.models ?? [];
     return Container(
       width: double.infinity,
@@ -563,7 +589,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         child: DropdownButton<String>(
           value: _selectedModel?.id,
           isExpanded: true,
-          hint: const Text('选择模型', style: TextStyle(fontSize: 14)),
+          hint: Text(l10n.selectModel, style: const TextStyle(fontSize: 14)),
           style: const TextStyle(fontSize: 14, color: Colors.black87),
           items: models
               .map((m) => DropdownMenuItem(value: m.id, child: Text(m.id)))
@@ -611,11 +637,13 @@ class _EditModelDialog extends StatefulWidget {
   final AiModelEntry entry;
   final List<AiVendorPreset> presets;
   final ValueChanged<AiModelEntry> onSave;
+  final AppLocalizations l10n;
 
   const _EditModelDialog({
     required this.entry,
     required this.presets,
     required this.onSave,
+    required this.l10n,
   });
 
   @override
@@ -649,6 +677,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = widget.l10n;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ConstrainedBox(
@@ -661,9 +690,9 @@ class _EditModelDialogState extends State<_EditModelDialog> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    '编辑模型',
-                    style: TextStyle(
+                  Text(
+                    l10n.editTextModel,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
@@ -680,7 +709,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
               ),
               const SizedBox(height: 14),
 
-              _buildLabel('服务商'),
+              _buildLabel(l10n.vendor),
               const SizedBox(height: 6),
               Container(
                 width: double.infinity,
@@ -700,13 +729,16 @@ class _EditModelDialogState extends State<_EditModelDialog> {
               ),
               const SizedBox(height: 12),
 
-              _buildLabel('模型'),
+              _buildLabel(l10n.model),
               const SizedBox(height: 6),
-              _buildTextField(controller: _modelController, hintText: '模型名称'),
+              _buildTextField(
+                controller: _modelController,
+                hintText: l10n.model,
+              ),
               const SizedBox(height: 12),
 
               if (_isCustom) ...[
-                _buildLabel('端点 URL'),
+                _buildLabel(l10n.endpointUrl),
                 const SizedBox(height: 6),
                 _buildTextField(
                   controller: _baseUrlController,
@@ -715,11 +747,11 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                 const SizedBox(height: 12),
               ],
 
-              _buildLabel('API 密钥'),
+              _buildLabel(l10n.apiKey),
               const SizedBox(height: 6),
               _buildTextField(
                 controller: _apiKeyController,
-                hintText: '输入 API 密钥',
+                hintText: l10n.enterApiKey,
                 obscureText: true,
               ),
 
@@ -740,7 +772,10 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('保存', style: TextStyle(fontSize: 14)),
+                  child: Text(
+                    l10n.saveChanges,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ],

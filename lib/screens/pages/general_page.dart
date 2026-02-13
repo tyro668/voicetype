@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/provider_config.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/audio_recorder.dart';
@@ -150,37 +151,38 @@ class _GeneralPageState extends State<GeneralPage> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ===== 激活模式 =====
-          const Text(
-            '激活模式',
-            style: TextStyle(
+          Text(
+            l10n.activationMode,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
           const SizedBox(height: 12),
-          _ActivationModeSelector(settings: settings),
+          _ActivationModeSelector(settings: settings, l10n: l10n),
           const SizedBox(height: 8),
           Center(
             child: Text(
               settings.activationMode == ActivationMode.tapToTalk
-                  ? '按快捷键开始录音，再次按下停止录音'
-                  : '按住快捷键录音，松开停止录音',
+                  ? l10n.tapToTalkDescription
+                  : l10n.pushToTalkDescription,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ),
           const SizedBox(height: 32),
 
           // ===== 听写快捷键 =====
-          const Text(
-            '听写快捷键',
-            style: TextStyle(
+          Text(
+            l10n.dictationHotkey,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -188,17 +190,17 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '配置用于开始和停止语音听写的按键。',
+            l10n.dictationHotkeyDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          _HotkeyCapture(settings: settings),
+          _HotkeyCapture(settings: settings, l10n: l10n),
           const SizedBox(height: 36),
 
           // ===== 权限设置 =====
-          const Text(
-            '权限设置',
-            style: TextStyle(
+          Text(
+            l10n.permissions,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -206,19 +208,19 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '管理系统权限以获取最佳性能功能。',
+            l10n.permissionsDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          _buildPermissionButtons(),
+          _buildPermissionButtons(l10n),
           const SizedBox(height: 12),
-          _buildPermissionHint(),
+          _buildPermissionHint(l10n),
           const SizedBox(height: 36),
 
           // ===== 麦克风输入 =====
-          const Text(
-            '麦克风输入',
-            style: TextStyle(
+          Text(
+            l10n.microphoneInput,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -226,19 +228,19 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '选择用于听写的麦克风。启用"优先使用内置麦克风"可防止使用蓝牙耳机时音频中断。',
+            l10n.microphoneInputDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          _buildPreferBuiltIn(),
+          _buildPreferBuiltIn(l10n),
           const SizedBox(height: 12),
-          _buildCurrentDevice(),
+          _buildCurrentDevice(l10n),
           const SizedBox(height: 36),
 
           // ===== 最短录音时长 =====
-          const Text(
-            '最短录音时长',
-            style: TextStyle(
+          Text(
+            l10n.minRecordingDuration,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -246,17 +248,35 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '录音时长低于此值时将自动忽略，避免误触产生无效输入。',
+            l10n.minRecordingDurationDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          _buildMinDuration(settings),
+          _buildMinDuration(settings, l10n),
+          const SizedBox(height: 36),
+
+          // ===== 语言设置 =====
+          Text(
+            l10n.language,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.languageDescription,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          _buildLanguageSelector(settings, l10n),
           const SizedBox(height: 36),
 
           // ===== 日志 =====
-          const Text(
-            '日志',
-            style: TextStyle(
+          Text(
+            l10n.logs,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -264,18 +284,18 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '查看和管理应用程序日志文件。',
+            l10n.logsDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          _buildLogSection(),
+          _buildLogSection(l10n),
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildMinDuration(SettingsProvider settings) {
+  Widget _buildMinDuration(SettingsProvider settings, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -287,10 +307,10 @@ class _GeneralPageState extends State<GeneralPage> {
         children: [
           Icon(Icons.timer_outlined, size: 20, color: Colors.grey.shade600),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
-              '忽略短于此时长的录音',
-              style: TextStyle(
+              l10n.ignoreShortRecordings,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -308,7 +328,7 @@ class _GeneralPageState extends State<GeneralPage> {
             splashRadius: 18,
           ),
           Text(
-            '${settings.minRecordingSeconds} 秒',
+            '${settings.minRecordingSeconds} ${l10n.seconds}',
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -330,7 +350,70 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildLogSection() {
+  Widget _buildLanguageSelector(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.language_outlined, size: 20, color: Colors.grey.shade600),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              l10n.interfaceLanguage,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          SegmentedButton<Locale>(
+            segments: [
+              ButtonSegment(
+                value: const Locale('zh'),
+                label: Text(l10n.simplifiedChinese),
+              ),
+              ButtonSegment(
+                value: const Locale('en'),
+                label: Text(l10n.english),
+              ),
+            ],
+            selected: {settings.locale},
+            onSelectionChanged: (selected) {
+              if (selected.isNotEmpty) {
+                settings.setLocale(selected.first);
+              }
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFF6C63FF);
+                }
+                return Colors.transparent;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return Colors.black87;
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogSection(AppLocalizations l10n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -350,9 +433,9 @@ class _GeneralPageState extends State<GeneralPage> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Text(
-                '日志文件',
-                style: TextStyle(
+              Text(
+                l10n.logFile,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
@@ -388,7 +471,7 @@ class _GeneralPageState extends State<GeneralPage> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '无日志文件',
+                    l10n.noLogFile,
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ),
@@ -405,7 +488,7 @@ class _GeneralPageState extends State<GeneralPage> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SelectableText(
-                _logPath.isEmpty ? '加载中...' : _logPath,
+                _logPath.isEmpty ? l10n.loading : _logPath,
                 style: TextStyle(
                   fontSize: 13,
                   fontFamily: 'monospace',
@@ -454,13 +537,13 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildPermissionButtons() {
+  Widget _buildPermissionButtons(AppLocalizations l10n) {
     return Column(
       children: [
         // 测试麦克风权限
         _PermissionButton(
           icon: Icons.mic_outlined,
-          label: '测试麦克风权限',
+          label: l10n.testMicrophonePermission,
           status: _micPermission,
           loading: _checkingMic,
           onTap: _testMicPermission,
@@ -469,7 +552,7 @@ class _GeneralPageState extends State<GeneralPage> {
         // 测试辅助功能权限
         _PermissionButton(
           icon: Icons.accessibility_new_outlined,
-          label: '测试辅助功能权限',
+          label: l10n.testAccessibilityPermission,
           status: _accessibilityPermission,
           loading: _checkingAccessibility,
           onTap: _testAccessibilityPermission,
@@ -478,7 +561,7 @@ class _GeneralPageState extends State<GeneralPage> {
         // 修复权限问题
         _PermissionButton(
           icon: Icons.build_outlined,
-          label: '修复权限问题',
+          label: l10n.fixPermissionIssues,
           onTap: () async {
             await _testMicPermission();
             await _testAccessibilityPermission();
@@ -488,7 +571,7 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildPermissionHint() {
+  Widget _buildPermissionHint(AppLocalizations l10n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -501,7 +584,7 @@ class _GeneralPageState extends State<GeneralPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '如果麦克风提示未出现，请打开声音设置选择输入设备，然后重试。',
+            l10n.permissionHint,
             style: TextStyle(
               fontSize: 13,
               color: Colors.brown.shade700,
@@ -514,15 +597,15 @@ class _GeneralPageState extends State<GeneralPage> {
             runSpacing: 10,
             children: [
               _HintActionButton(
-                label: '打开声音输入',
+                label: l10n.openSoundInput,
                 onTap: OverlayService.openSoundInput,
               ),
               _HintActionButton(
-                label: '打开麦克风隐私',
+                label: l10n.openMicrophonePrivacy,
                 onTap: OverlayService.openMicrophonePrivacy,
               ),
               _HintActionButton(
-                label: '打开辅助功能隐私',
+                label: l10n.openAccessibilityPrivacy,
                 onTap: OverlayService.openAccessibilityPrivacy,
               ),
             ],
@@ -532,7 +615,7 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildPreferBuiltIn() {
+  Widget _buildPreferBuiltIn(AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -546,9 +629,9 @@ class _GeneralPageState extends State<GeneralPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '优先使用内置麦克风',
-                  style: TextStyle(
+                Text(
+                  l10n.preferBuiltInMicrophone,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
@@ -556,7 +639,7 @@ class _GeneralPageState extends State<GeneralPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '外置麦克风可能导致延迟或降低转录质量',
+                  l10n.preferBuiltInMicrophoneSubtitle,
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
               ],
@@ -572,8 +655,10 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildCurrentDevice() {
-    final name = _currentDeviceName.isNotEmpty ? _currentDeviceName : '未检测到麦克风';
+  Widget _buildCurrentDevice(AppLocalizations l10n) {
+    final name = _currentDeviceName.isNotEmpty
+        ? _currentDeviceName
+        : l10n.noMicrophoneDetected;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -587,7 +672,7 @@ class _GeneralPageState extends State<GeneralPage> {
           Icon(Icons.mic, size: 18, color: Colors.green.shade700),
           const SizedBox(width: 10),
           Text(
-            'Using: $name',
+            '${l10n.using}: $name',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -690,7 +775,8 @@ class _HintActionButton extends StatelessWidget {
 // ==================== 快捷键捕获组件 ====================
 class _HotkeyCapture extends StatefulWidget {
   final SettingsProvider settings;
-  const _HotkeyCapture({required this.settings});
+  final AppLocalizations l10n;
+  const _HotkeyCapture({required this.settings, required this.l10n});
 
   @override
   State<_HotkeyCapture> createState() => _HotkeyCaptureState();
@@ -767,7 +853,9 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _listening ? '请按下新的快捷键...' : '点击更改快捷键',
+                    _listening
+                        ? widget.l10n.pressKeyToSet
+                        : widget.l10n.clickToChangeHotkey,
                     style: TextStyle(
                       fontSize: 13,
                       color: _listening
@@ -798,7 +886,8 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
 // ==================== 激活模式选择器 ====================
 class _ActivationModeSelector extends StatelessWidget {
   final SettingsProvider settings;
-  const _ActivationModeSelector({required this.settings});
+  final AppLocalizations l10n;
+  const _ActivationModeSelector({required this.settings, required this.l10n});
 
   @override
   Widget build(BuildContext context) {
@@ -807,8 +896,8 @@ class _ActivationModeSelector extends StatelessWidget {
         Expanded(
           child: _ModeCard(
             icon: Icons.touch_app_outlined,
-            title: '点击模式',
-            subtitle: '点击开始，点击停止',
+            title: l10n.tapToTalk,
+            subtitle: l10n.tapToTalkSubtitle,
             selected: settings.activationMode == ActivationMode.tapToTalk,
             onTap: () => settings.setActivationMode(ActivationMode.tapToTalk),
           ),
@@ -817,8 +906,8 @@ class _ActivationModeSelector extends StatelessWidget {
         Expanded(
           child: _ModeCard(
             icon: Icons.pan_tool_outlined,
-            title: '按住模式',
-            subtitle: '按住录音，松开停止',
+            title: l10n.pushToTalk,
+            subtitle: l10n.pushToTalkSubtitle,
             selected: settings.activationMode == ActivationMode.pushToTalk,
             onTap: () => settings.setActivationMode(ActivationMode.pushToTalk),
           ),

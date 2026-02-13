@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/provider_config.dart';
 import '../providers/recording_provider.dart';
 import '../providers/settings_provider.dart';
@@ -45,13 +46,13 @@ class _MainScreenState extends State<MainScreen> {
   late VoidCallback _settingsListener;
   bool _didShowAccessibilityGuide = false;
 
-  static const _navItems = [
-    _NavItem(icon: Icons.settings_outlined, label: '通用'),
-    _NavItem(icon: Icons.mic_outlined, label: '语音模型'),
-    _NavItem(icon: Icons.psychology_outlined, label: '文本模型'),
-    _NavItem(icon: Icons.auto_fix_high_outlined, label: '智能体'),
-    _NavItem(icon: Icons.history_outlined, label: '历史记录'),
-    _NavItem(icon: Icons.info_outline, label: '关于'),
+  List<_NavItem> _getNavItems(AppLocalizations l10n) => [
+    _NavItem(icon: Icons.settings_outlined, label: l10n.generalSettings),
+    _NavItem(icon: Icons.mic_outlined, label: l10n.voiceModelSettings),
+    _NavItem(icon: Icons.psychology_outlined, label: l10n.textModelSettings),
+    _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.promptWorkshop),
+    _NavItem(icon: Icons.history_outlined, label: l10n.history),
+    _NavItem(icon: Icons.info_outline, label: l10n.about),
   ];
 
   @override
@@ -231,6 +232,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildSidebar() {
+    final l10n = AppLocalizations.of(context)!;
+    final navItems = _getNavItems(l10n);
     return Container(
       width: 200,
       decoration: BoxDecoration(
@@ -259,8 +262,8 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            ...List.generate(_navItems.length, (i) {
-              final item = _navItems[i];
+            ...List.generate(navItems.length, (i) {
+              final item = navItems[i];
               final selected = _selectedNav == i;
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
