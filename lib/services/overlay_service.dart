@@ -82,6 +82,23 @@ class OverlayService {
     await _channel.invokeMethod('openAccessibilityPrivacy');
   }
 
+  /// 打开输入监控隐私设置
+  static Future<void> openInputMonitoringPrivacy() async {
+    await _channel.invokeMethod('openInputMonitoringPrivacy');
+  }
+
+  /// 检查输入监控权限（macOS 10.15+）
+  static Future<bool> checkInputMonitoring() async {
+    final result = await _channel.invokeMethod<bool>('checkInputMonitoring');
+    return result ?? false;
+  }
+
+  /// 请求输入监控权限（弹出系统提示）
+  static Future<bool> requestInputMonitoring() async {
+    final result = await _channel.invokeMethod<bool>('requestInputMonitoring');
+    return result ?? false;
+  }
+
   static Future<bool> registerHotkey({
     required int keyCode,
     int modifiers = 0,

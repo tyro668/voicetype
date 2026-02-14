@@ -410,12 +410,6 @@ abstract class AppLocalizations {
   /// **'简体中文'**
   String get simplifiedChinese;
 
-  /// No description provided for @logsSection.
-  ///
-  /// In en, this message translates to:
-  /// **'Logs'**
-  String get logsSection;
-
   /// No description provided for @logsDescription.
   ///
   /// In en, this message translates to:
@@ -443,7 +437,7 @@ abstract class AppLocalizations {
   /// No description provided for @copyLogPath.
   ///
   /// In en, this message translates to:
-  /// **'Copy Log Path'**
+  /// **'Copy Path'**
   String get copyLogPath;
 
   /// No description provided for @logPathCopied.
@@ -451,6 +445,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log path copied to clipboard'**
   String get logPathCopied;
+
+  /// No description provided for @tip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get tip;
+
+  /// No description provided for @logsTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Log files contain application runtime records for troubleshooting. If the app encounters issues, you can provide this log file to developers for analysis.'**
+  String get logsTip;
 
   /// No description provided for @addModel.
   ///
@@ -698,6 +704,120 @@ abstract class AppLocalizations {
   /// **'Enter agent name'**
   String get enterAgentName;
 
+  /// No description provided for @current.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get current;
+
+  /// No description provided for @test.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get test;
+
+  /// No description provided for @currentSystemPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Current System Prompt'**
+  String get currentSystemPrompt;
+
+  /// No description provided for @customPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Prompt'**
+  String get customPromptTitle;
+
+  /// No description provided for @enableCustomPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Custom Prompt'**
+  String get enableCustomPrompt;
+
+  /// No description provided for @customPromptEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled: Text enhancement will use custom prompt below'**
+  String get customPromptEnabled;
+
+  /// No description provided for @customPromptDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled: Text enhancement will use system default prompt'**
+  String get customPromptDisabled;
+
+  /// No description provided for @agentNamePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Use {agentName} as placeholder for agent name'**
+  String agentNamePlaceholder(Object agentName);
+
+  /// No description provided for @systemPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'System Prompt'**
+  String get systemPrompt;
+
+  /// No description provided for @saveAgentConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Agent Configuration'**
+  String get saveAgentConfig;
+
+  /// No description provided for @restoreDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Default'**
+  String get restoreDefault;
+
+  /// No description provided for @testYourAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Your Agent'**
+  String get testYourAgent;
+
+  /// No description provided for @testAgentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Test with current text model and agent prompt.'**
+  String get testAgentDescription;
+
+  /// No description provided for @testInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Input'**
+  String get testInput;
+
+  /// No description provided for @enterTestText.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter text to polish...'**
+  String get enterTestText;
+
+  /// No description provided for @running.
+  ///
+  /// In en, this message translates to:
+  /// **'Running...'**
+  String get running;
+
+  /// No description provided for @runTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Test'**
+  String get runTest;
+
+  /// No description provided for @outputResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Output Result'**
+  String get outputResult;
+
+  /// No description provided for @outputWillAppearHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Output will appear here'**
+  String get outputWillAppearHere;
+
   /// No description provided for @historySection.
   ///
   /// In en, this message translates to:
@@ -710,6 +830,12 @@ abstract class AppLocalizations {
   /// **'No transcription history'**
   String get noHistory;
 
+  /// No description provided for @historyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use hotkey to start recording, transcription results will appear here'**
+  String get historyHint;
+
   /// No description provided for @clearHistory.
   ///
   /// In en, this message translates to:
@@ -719,8 +845,20 @@ abstract class AppLocalizations {
   /// No description provided for @clearHistoryConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to clear all history?'**
+  /// **'Are you sure you want to clear all history? This action cannot be undone.'**
   String get clearHistoryConfirm;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get clearAll;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
 
   /// No description provided for @copy.
   ///
@@ -733,6 +871,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copied'**
   String get copied;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get copiedToClipboard;
 
   /// No description provided for @deleteHistoryItem.
   ///
@@ -755,7 +899,7 @@ abstract class AppLocalizations {
   /// No description provided for @appDescription.
   ///
   /// In en, this message translates to:
-  /// **'VoiceType - Intelligent Voice Input Tool'**
+  /// **'A voice input tool that supports multiple cloud LLMs and local Whisper models, converting speech to text quickly.'**
   String get appDescription;
 
   /// No description provided for @version.

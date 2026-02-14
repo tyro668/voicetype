@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/ai_enhance_config.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/ai_enhance_service.dart';
@@ -59,14 +60,15 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '智能体',
-            style: TextStyle(
+          Text(
+            l10n.promptWorkshop,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -74,24 +76,24 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
           ),
           const SizedBox(height: 6),
           Text(
-            '配置智能体名称与提示词，用于控制文本增强的格式与风格。',
+            l10n.promptDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          _buildTabs(),
+          _buildTabs(l10n),
           const SizedBox(height: 16),
           if (_tabController.index == 0)
-            _buildCurrentTab()
+            _buildCurrentTab(l10n)
           else if (_tabController.index == 1)
-            _buildCustomTab(settings)
+            _buildCustomTab(settings, l10n)
           else
-            _buildTestTab(settings),
+            _buildTestTab(settings, l10n),
         ],
       ),
     );
   }
 
-  Widget _buildTabs() {
+  Widget _buildTabs(AppLocalizations l10n) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -106,24 +108,24 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
         indicatorWeight: 2,
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontSize: 14),
-        tabs: const [
-          Tab(text: '当前'),
-          Tab(text: '自定义'),
-          Tab(text: '测试'),
+        tabs: [
+          Tab(text: l10n.current),
+          Tab(text: l10n.custom),
+          Tab(text: l10n.test),
         ],
         onTap: (_) => setState(() {}),
       ),
     );
   }
 
-  Widget _buildCurrentTab() {
+  Widget _buildCurrentTab(AppLocalizations l10n) {
     return _buildCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '当前系统智能体提示词',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          Text(
+            l10n.currentSystemPrompt,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           _buildCodeBlock(_defaultPrompt),
@@ -132,22 +134,25 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     );
   }
 
-  Widget _buildCustomTab(SettingsProvider settings) {
+  Widget _buildCustomTab(SettingsProvider settings, AppLocalizations l10n) {
     final useCustomPrompt = settings.aiEnhanceUseCustomPrompt;
     return _buildCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '自定义智能体提示词',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          Text(
+            l10n.customPromptTitle,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text(
-                '启用自定义提示词',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              Text(
+                l10n.enableCustomPrompt,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const Spacer(),
               Switch(
@@ -157,24 +162,26 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
             ],
           ),
           Text(
-            useCustomPrompt ? '已启用：文本整理将使用下方自定义提示词' : '已关闭：文本整理将使用系统默认提示词',
+            useCustomPrompt
+                ? l10n.customPromptEnabled
+                : l10n.customPromptDisabled,
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Text(
-            '使用 {agentName} 作为智能体名称占位符。',
+            l10n.agentNamePlaceholder('{agentName}'),
             style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
           ),
           const SizedBox(height: 12),
           _buildLabeledField(
-            label: '智能体名称',
+            label: l10n.agentName,
             controller: _agentNameController,
             hintText: AiEnhanceConfig.defaultAgentName,
             onChanged: settings.setAiEnhanceAgentName,
           ),
           const SizedBox(height: 12),
           _buildLabeledField(
-            label: '系统提示词',
+            label: l10n.systemPrompt,
             controller: _promptController,
             hintText: AiEnhanceConfig.defaultPrompt,
             maxLines: 10,
@@ -186,7 +193,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
               ElevatedButton.icon(
                 onPressed: () => _savePrompt(settings),
                 icon: const Icon(Icons.save, size: 16),
-                label: const Text('保存智能体配置'),
+                label: Text(l10n.saveAgentConfig),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black87,
                   foregroundColor: Colors.white,
@@ -198,7 +205,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
               const SizedBox(width: 12),
               OutlinedButton(
                 onPressed: () => _resetPrompt(settings),
-                child: const Text('恢复默认'),
+                child: Text(l10n.restoreDefault),
               ),
             ],
           ),
@@ -207,25 +214,25 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     );
   }
 
-  Widget _buildTestTab(SettingsProvider settings) {
+  Widget _buildTestTab(SettingsProvider settings, AppLocalizations l10n) {
     return _buildCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '测试您的智能体',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          Text(
+            l10n.testYourAgent,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            '使用当前文本模型与智能体提示词进行测试。',
+            l10n.testAgentDescription,
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 12),
           _buildLabeledField(
-            label: '测试输入',
+            label: l10n.testInput,
             controller: _testInputController,
-            hintText: '输入一段需要润色的文本...',
+            hintText: l10n.enterTestText,
             maxLines: 5,
             onChanged: (_) {},
           ),
@@ -235,7 +242,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
             child: ElevatedButton.icon(
               onPressed: _testing ? null : () => _runTest(settings),
               icon: const Icon(Icons.play_arrow, size: 16),
-              label: Text(_testing ? '运行中...' : '运行测试'),
+              label: Text(_testing ? l10n.running : l10n.runTest),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black87,
                 foregroundColor: Colors.white,
@@ -254,9 +261,9 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
           ],
           const SizedBox(height: 12),
           _buildLabeledField(
-            label: '输出结果',
+            label: l10n.outputResult,
             controller: _testOutputController,
-            hintText: '输出结果将显示在这里',
+            hintText: l10n.outputWillAppearHere,
             maxLines: 5,
             onChanged: (_) {},
             readOnly: true,

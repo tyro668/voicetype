@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '关于 VoiceType',
-            style: TextStyle(
+          Text(
+            l10n.about,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -42,13 +44,12 @@ class AboutPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('Version 1.0.0',
+                Text('${l10n.version} 1.0.0',
                     style: TextStyle(
                         fontSize: 13, color: Colors.grey.shade500)),
                 const SizedBox(height: 12),
                 Text(
-                  '一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，'
-                  '将语音快速转换为文字。',
+                  l10n.appDescription,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade700,

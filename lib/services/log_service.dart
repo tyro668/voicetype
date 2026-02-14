@@ -4,13 +4,22 @@ import 'package:path_provider/path_provider.dart';
 
 class LogService {
   static Future<String> get logDirectoryPath async {
+    if (Platform.isMacOS) {
+      final libraryDir = await getLibraryDirectory();
+      final logsDir = Directory(path.join(libraryDir.path, 'Logs'));
+      if (!await logsDir.exists()) {
+        await logsDir.create(recursive: true);
+      }
+      return logsDir.path;
+    }
+
     final dir = await getApplicationSupportDirectory();
     return dir.path;
   }
 
   static Future<String> get logFilePath async {
     final dir = await logDirectoryPath;
-    return path.join(dir, 'app.log');
+    return path.join(dir, 'voicetype.log');
   }
 
   static Future<bool> logFileExists() async {

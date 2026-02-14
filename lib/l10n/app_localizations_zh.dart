@@ -166,9 +166,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get simplifiedChinese => '简体中文';
 
   @override
-  String get logsSection => '日志';
-
-  @override
   String get logsDescription => '查看和管理应用程序日志文件。';
 
   @override
@@ -178,13 +175,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noLogFile => '无日志文件';
 
   @override
-  String get openLogDirectory => '打开日志目录';
+  String get openLogDirectory => '打开日志文件夹';
 
   @override
-  String get copyLogPath => '复制日志路径';
+  String get copyLogPath => '复制路径';
 
   @override
   String get logPathCopied => '日志路径已复制到剪贴板';
+
+  @override
+  String get tip => '提示';
+
+  @override
+  String get logsTip => '日志文件包含应用程序的运行记录，可用于排查问题。如果应用出现异常，可以将此日志文件提供给开发者进行分析。';
 
   @override
   String get addModel => '添加模型';
@@ -316,22 +319,93 @@ class AppLocalizationsZh extends AppLocalizations {
   String get enterAgentName => '输入助手名称';
 
   @override
+  String get current => '当前';
+
+  @override
+  String get test => '测试';
+
+  @override
+  String get currentSystemPrompt => '当前系统智能体提示词';
+
+  @override
+  String get customPromptTitle => '自定义智能体提示词';
+
+  @override
+  String get enableCustomPrompt => '启用自定义提示词';
+
+  @override
+  String get customPromptEnabled => '已启用：文本整理将使用下方自定义提示词';
+
+  @override
+  String get customPromptDisabled => '已关闭：文本整理将使用系统默认提示词';
+
+  @override
+  String agentNamePlaceholder(Object agentName) {
+    return '使用 $agentName 作为智能体名称占位符';
+  }
+
+  @override
+  String get systemPrompt => '系统提示词';
+
+  @override
+  String get saveAgentConfig => '保存智能体配置';
+
+  @override
+  String get restoreDefault => '恢复默认';
+
+  @override
+  String get testYourAgent => '测试您的智能体';
+
+  @override
+  String get testAgentDescription => '使用当前文本模型与智能体提示词进行测试。';
+
+  @override
+  String get testInput => '测试输入';
+
+  @override
+  String get enterTestText => '输入一段需要润色的文本...';
+
+  @override
+  String get running => '运行中...';
+
+  @override
+  String get runTest => '运行测试';
+
+  @override
+  String get outputResult => '输出结果';
+
+  @override
+  String get outputWillAppearHere => '输出结果将显示在这里';
+
+  @override
   String get historySection => '历史记录';
 
   @override
   String get noHistory => '暂无转写历史';
 
   @override
-  String get clearHistory => '清空历史';
+  String get historyHint => '使用快捷键开始录音，转录结果将显示在这里';
 
   @override
-  String get clearHistoryConfirm => '确定要清空所有历史记录吗？';
+  String get clearHistory => '清空历史记录';
+
+  @override
+  String get clearHistoryConfirm => '确定要删除所有历史记录吗？此操作不可撤销。';
+
+  @override
+  String get clearAll => '清空全部';
+
+  @override
+  String get clear => '清空';
 
   @override
   String get copy => '复制';
 
   @override
   String get copied => '已复制';
+
+  @override
+  String get copiedToClipboard => '已复制到剪贴板';
 
   @override
   String get deleteHistoryItem => '删除';
@@ -343,7 +417,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutSection => '关于';
 
   @override
-  String get appDescription => 'VoiceType - 智能语音输入工具';
+  String get appDescription => '一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，将语音快速转换为文字。';
 
   @override
   String get version => '版本';

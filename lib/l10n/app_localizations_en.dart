@@ -172,9 +172,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get simplifiedChinese => '简体中文';
 
   @override
-  String get logsSection => 'Logs';
-
-  @override
   String get logsDescription => 'View and manage application log files.';
 
   @override
@@ -187,10 +184,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openLogDirectory => 'Open Log Directory';
 
   @override
-  String get copyLogPath => 'Copy Log Path';
+  String get copyLogPath => 'Copy Path';
 
   @override
   String get logPathCopied => 'Log path copied to clipboard';
+
+  @override
+  String get tip => 'Tip';
+
+  @override
+  String get logsTip =>
+      'Log files contain application runtime records for troubleshooting. If the app encounters issues, you can provide this log file to developers for analysis.';
 
   @override
   String get addModel => 'Add Model';
@@ -327,23 +331,98 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enterAgentName => 'Enter agent name';
 
   @override
+  String get current => 'Current';
+
+  @override
+  String get test => 'Test';
+
+  @override
+  String get currentSystemPrompt => 'Current System Prompt';
+
+  @override
+  String get customPromptTitle => 'Custom Prompt';
+
+  @override
+  String get enableCustomPrompt => 'Enable Custom Prompt';
+
+  @override
+  String get customPromptEnabled =>
+      'Enabled: Text enhancement will use custom prompt below';
+
+  @override
+  String get customPromptDisabled =>
+      'Disabled: Text enhancement will use system default prompt';
+
+  @override
+  String agentNamePlaceholder(Object agentName) {
+    return 'Use $agentName as placeholder for agent name';
+  }
+
+  @override
+  String get systemPrompt => 'System Prompt';
+
+  @override
+  String get saveAgentConfig => 'Save Agent Configuration';
+
+  @override
+  String get restoreDefault => 'Restore Default';
+
+  @override
+  String get testYourAgent => 'Test Your Agent';
+
+  @override
+  String get testAgentDescription =>
+      'Test with current text model and agent prompt.';
+
+  @override
+  String get testInput => 'Test Input';
+
+  @override
+  String get enterTestText => 'Enter text to polish...';
+
+  @override
+  String get running => 'Running...';
+
+  @override
+  String get runTest => 'Run Test';
+
+  @override
+  String get outputResult => 'Output Result';
+
+  @override
+  String get outputWillAppearHere => 'Output will appear here';
+
+  @override
   String get historySection => 'History';
 
   @override
   String get noHistory => 'No transcription history';
 
   @override
+  String get historyHint =>
+      'Use hotkey to start recording, transcription results will appear here';
+
+  @override
   String get clearHistory => 'Clear History';
 
   @override
   String get clearHistoryConfirm =>
-      'Are you sure you want to clear all history?';
+      'Are you sure you want to clear all history? This action cannot be undone.';
+
+  @override
+  String get clearAll => 'Clear All';
+
+  @override
+  String get clear => 'Clear';
 
   @override
   String get copy => 'Copy';
 
   @override
   String get copied => 'Copied';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
 
   @override
   String get deleteHistoryItem => 'Delete';
@@ -355,7 +434,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutSection => 'About';
 
   @override
-  String get appDescription => 'VoiceType - Intelligent Voice Input Tool';
+  String get appDescription =>
+      'A voice input tool that supports multiple cloud LLMs and local Whisper models, converting speech to text quickly.';
 
   @override
   String get version => 'Version';

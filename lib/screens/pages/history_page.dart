@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/recording_provider.dart';
 
 class HistoryPage extends StatelessWidget {
@@ -11,6 +12,7 @@ class HistoryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final recording = context.watch<RecordingProvider>();
     final history = recording.history;
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
@@ -20,12 +22,15 @@ class HistoryPage extends StatelessWidget {
           // 标题栏
           Row(
             children: [
-              Icon(Icons.description_outlined,
-                  size: 24, color: Colors.grey.shade700),
+              Icon(
+                Icons.description_outlined,
+                size: 24,
+                color: Colors.grey.shade700,
+              ),
               const SizedBox(width: 8),
-              const Text(
-                '历史记录',
-                style: TextStyle(
+              Text(
+                l10n.history,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -34,10 +39,9 @@ class HistoryPage extends StatelessWidget {
               const Spacer(),
               if (history.isNotEmpty)
                 IconButton(
-                  icon: Icon(Icons.delete_outline,
-                      color: Colors.grey.shade400),
-                  tooltip: '清空全部',
-                  onPressed: () => _confirmClearAll(context, recording),
+                  icon: Icon(Icons.delete_outline, color: Colors.grey.shade400),
+                  tooltip: l10n.clearAll,
+                  onPressed: () => _confirmClearAll(context, recording, l10n),
                 ),
             ],
           ),
@@ -45,15 +49,15 @@ class HistoryPage extends StatelessWidget {
           // 列表
           Expanded(
             child: history.isEmpty
-                ? _buildEmpty()
-                : _buildList(context, recording, history),
+                ? _buildEmpty(l10n)
+                : _buildList(context, recording, history, l10n),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -61,12 +65,12 @@ class HistoryPage extends StatelessWidget {
           Icon(Icons.history, size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 12),
           Text(
-            '暂无历史记录',
+            l10n.noHistory,
             style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 4),
           Text(
-            '使用快捷键开始录音，转录结果将显示在这里',
+            l10n.historyHint,
             style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           ),
         ],
@@ -74,8 +78,12 @@ class HistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildList(BuildContext context, RecordingProvider recording,
-      List history) {
+  Widget _buildList(
+    BuildContext context,
+    RecordingProvider recording,
+    List history,
+    AppLocalizations l10n,
+  ) {
     return ListView.builder(
       itemCount: history.length,
       itemBuilder: (context, index) {
@@ -99,7 +107,9 @@ class HistoryPage extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF0F0F5),
                       borderRadius: BorderRadius.circular(4),
@@ -116,22 +126,19 @@ class HistoryPage extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     dateStr,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
                   ),
                   const Spacer(),
                   // 复制按钮
                   _ActionIcon(
                     icon: Icons.copy_outlined,
-                    tooltip: '复制',
+                    tooltip: l10n.copy,
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: item.text));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('已复制到剪贴板'),
-                          duration: Duration(seconds: 1),
+                        SnackBar(
+                          content: Text(l10n.copiedToClipboard),
+                          duration: const Duration(seconds: 1),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -141,7 +148,7 @@ class HistoryPage extends StatelessWidget {
                   // 删除按钮
                   _ActionIcon(
                     icon: Icons.delete_outline,
-                    tooltip: '删除',
+                    tooltip: l10n.delete,
                     color: Colors.red.shade300,
                     onTap: () => recording.removeHistory(index),
                   ),
@@ -165,24 +172,27 @@ class HistoryPage extends StatelessWidget {
   }
 
   void _confirmClearAll(
-      BuildContext context, RecordingProvider recording) {
+    BuildContext context,
+    RecordingProvider recording,
+    AppLocalizations l10n,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('清空历史记录'),
-        content: const Text('确定要删除所有历史记录吗？此操作不可撤销。'),
+        title: Text(l10n.clearHistory),
+        content: Text(l10n.clearHistoryConfirm),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
           FilledButton(
             onPressed: () {
               recording.clearAllHistory();
               Navigator.pop(ctx);
             },
-            style: FilledButton.styleFrom(
-                backgroundColor: Colors.redAccent),
-            child: const Text('清空'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text(l10n.clear),
           ),
         ],
       ),

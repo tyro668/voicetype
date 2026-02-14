@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/log_service.dart';
 
 class LogsPage extends StatefulWidget {
@@ -49,12 +50,12 @@ class _LogsPageState extends State<LogsPage> {
     }
   }
 
-  Future<void> _copyPathToClipboard() async {
+  Future<void> _copyPathToClipboard(AppLocalizations l10n) async {
     await Clipboard.setData(ClipboardData(text: _logPath));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('日志路径已复制到剪贴板'),
+        SnackBar(
+          content: Text(l10n.logPathCopied),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -75,14 +76,15 @@ class _LogsPageState extends State<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '日志',
-            style: TextStyle(
+          Text(
+            l10n.logs,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -90,7 +92,7 @@ class _LogsPageState extends State<LogsPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '查看和管理应用程序日志文件。',
+            l10n.logsDescription,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
@@ -114,9 +116,9 @@ class _LogsPageState extends State<LogsPage> {
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      '日志文件',
-                      style: TextStyle(
+                    Text(
+                      l10n.logFile,
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
@@ -152,7 +154,7 @@ class _LogsPageState extends State<LogsPage> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '无日志文件',
+                          l10n.noLogFile,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -171,7 +173,7 @@ class _LogsPageState extends State<LogsPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: SelectableText(
-                    _logPath.isEmpty ? '加载中...' : _logPath,
+                    _logPath.isEmpty ? l10n.loading : _logPath,
                     style: TextStyle(
                       fontSize: 13,
                       fontFamily: 'monospace',
@@ -185,9 +187,11 @@ class _LogsPageState extends State<LogsPage> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _logPath.isNotEmpty ? _openLogDirectory : null,
+                        onPressed: _logPath.isNotEmpty
+                            ? _openLogDirectory
+                            : null,
                         icon: const Icon(Icons.folder_open_outlined, size: 18),
-                        label: const Text('打开日志文件夹'),
+                        label: Text(l10n.openLogDirectory),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6C63FF),
                           foregroundColor: Colors.white,
@@ -200,9 +204,11 @@ class _LogsPageState extends State<LogsPage> {
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
-                      onPressed: _logPath.isNotEmpty ? _copyPathToClipboard : null,
+                      onPressed: _logPath.isNotEmpty
+                          ? () => _copyPathToClipboard(l10n)
+                          : null,
                       icon: const Icon(Icons.copy, size: 18),
-                      label: const Text('复制路径'),
+                      label: Text(l10n.copyLogPath),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey.shade700,
                         side: BorderSide(color: Colors.grey.shade300),
@@ -233,10 +239,14 @@ class _LogsPageState extends State<LogsPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, size: 16, color: Colors.brown.shade600),
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Colors.brown.shade600,
+                    ),
                     const SizedBox(width: 6),
                     Text(
-                      '提示',
+                      l10n.tip,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -247,8 +257,7 @@ class _LogsPageState extends State<LogsPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '日志文件包含应用程序的运行记录，可用于排查问题。'
-                  '如果应用出现异常，可以将此日志文件提供给开发者进行分析。',
+                  l10n.logsTip,
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.brown.shade700,

@@ -45,6 +45,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _processing = false;
   late VoidCallback _settingsListener;
   bool _didShowAccessibilityGuide = false;
+  bool _didShowInputMonitoringGuide = false;
 
   List<_NavItem> _getNavItems(AppLocalizations l10n) => [
     _NavItem(icon: Icons.settings_outlined, label: l10n.generalSettings),
@@ -64,13 +65,23 @@ class _MainScreenState extends State<MainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = context.read<SettingsProvider>();
       _settingsListener = () {
-        final keyCode = _macKeyCodeFor(settings.hotkey);
-        if (keyCode != null) {
-          OverlayService.registerHotkey(keyCode: keyCode);
-        }
+        _registerCurrentHotkey(settings);
+        _ensureInputMonitoringPermissionIfNeeded(settings.hotkey);
       };
       settings.addListener(_settingsListener);
       _settingsListener();
+    });
+  }
+
+  void _registerCurrentHotkey(SettingsProvider settings) {
+    final keyCode = _macKeyCodeFor(settings.hotkey);
+    if (keyCode == null) return;
+
+    OverlayService.registerHotkey(keyCode: keyCode).then((ok) {
+      if (!mounted || ok) return;
+      if (settings.hotkey == LogicalKeyboardKey.fn) {
+        _showInputMonitoringGuide();
+      }
     });
   }
 
@@ -88,6 +99,51 @@ class _MainScreenState extends State<MainScreen> {
         });
       }
     }
+  }
+
+  Future<void> _ensureInputMonitoringPermissionIfNeeded(
+    LogicalKeyboardKey hotkey,
+  ) async {
+    if (hotkey != LogicalKeyboardKey.fn) return;
+    final granted = await OverlayService.checkInputMonitoring();
+    if (granted) return;
+
+    await OverlayService.requestInputMonitoring();
+    final recheck = await OverlayService.checkInputMonitoring();
+    if (!recheck && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showInputMonitoringGuide();
+        }
+      });
+    }
+  }
+
+  void _showInputMonitoringGuide() {
+    if (_didShowInputMonitoringGuide) return;
+    _didShowInputMonitoringGuide = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('需要输入监控权限'),
+        content: const Text('Fn 全局快捷键需要在“系统设置 > 隐私与安全性 > 输入监控”中勾选 VoiceType。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('稍后'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              OverlayService.openInputMonitoringPrivacy();
+            },
+            child: const Text('打开设置'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAccessibilityGuide() {
