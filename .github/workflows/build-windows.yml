@@ -7,7 +7,7 @@ on:
   workflow_dispatch:    # 也支持手动触发
 
 env:
-  FLUTTER_VERSION: '3.32.2'   # 与本地开发环境保持一致
+  FLUTTER_VERSION: '3.41.2'   # 需匹配 Dart SDK ^3.10.8
 
 jobs:
   build-windows:
