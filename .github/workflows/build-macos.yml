@@ -46,16 +46,20 @@ jobs:
           "$FLUTTER_BIN/dart" --version
 
       - name: Flutter doctor
-        run: "$FLUTTER_BIN/flutter" doctor -v
+        run: |
+          "$FLUTTER_BIN/flutter" doctor -v
 
       - name: Get dependencies
-        run: "$FLUTTER_BIN/flutter" pub get
+        run: |
+          "$FLUTTER_BIN/flutter" pub get
 
       - name: Analyze
-        run: "$FLUTTER_BIN/flutter" analyze --no-fatal-infos
+        run: |
+          "$FLUTTER_BIN/flutter" analyze --no-fatal-infos
 
       - name: Build macOS Release
-        run: "$FLUTTER_BIN/flutter" build macos --release
+        run: |
+          "$FLUTTER_BIN/flutter" build macos --release
 
       - name: Extract version
         id: version
