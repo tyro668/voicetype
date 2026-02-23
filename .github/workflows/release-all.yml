@@ -1,16 +1,93 @@
-name: Build Windows Installer
+name: Build & Release (Windows + macOS)
 
 on:
-  workflow_dispatch:    # 手动构建（发布由 unified workflow 处理）
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.41.2'   # 需匹配 Dart SDK ^3.10.8
+  FLUTTER_VERSION: '3.41.2'
 
 jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (macOS)
+        run: |
+          set -euo pipefail
+          VERSION="${{ env.FLUTTER_VERSION }}"
+          ARCH="$(uname -m)"
+          if [[ "$ARCH" == "arm64" ]]; then
+            FLUTTER_ARCH="arm64"
+          else
+            FLUTTER_ARCH="x64"
+          fi
+
+          ZIP_URL="https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_${FLUTTER_ARCH}_${VERSION}-stable.zip"
+          ZIP_PATH="$RUNNER_TEMP/flutter.zip"
+          INSTALL_ROOT="$RUNNER_TEMP/flutter-sdk"
+
+          curl -L "$ZIP_URL" -o "$ZIP_PATH"
+          unzip -q "$ZIP_PATH" -d "$INSTALL_ROOT"
+
+          echo "FLUTTER_BIN=$INSTALL_ROOT/flutter/bin" >> "$GITHUB_ENV"
+          echo "$INSTALL_ROOT/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Flutter version
+        run: |
+          "$FLUTTER_BIN/flutter" --version
+          "$FLUTTER_BIN/dart" --version
+
+      - name: Get dependencies
+        run: |
+          "$FLUTTER_BIN/flutter" pub get
+
+      - name: Analyze
+        run: |
+          "$FLUTTER_BIN/flutter" analyze --no-fatal-infos
+
+      - name: Build macOS Release
+        run: |
+          "$FLUTTER_BIN/flutter" build macos --release
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -E '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          VERSION=${VERSION:-0.0.0}
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package DMG
+        id: package
+        run: |
+          APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
+          if [[ -z "$APP_PATH" ]]; then
+            echo "No .app found in build output." >&2
+            exit 1
+          fi
+
+          APP_NAME="$(basename "$APP_PATH" .app)"
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DMG_NAME="${APP_NAME}-macos-${VERSION}.dmg"
+
+          hdiutil create -volname "$APP_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "build/$DMG_NAME"
+
+          echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: build/${{ steps.package.outputs.DMG_NAME }}
+          retention-days: 7
+
   build-windows:
     runs-on: windows-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
@@ -38,11 +115,6 @@ jobs:
           & "$env:FLUTTER_BIN/flutter.bat" --version
           & "$env:FLUTTER_BIN/dart.bat" --version
 
-      - name: Flutter doctor
-        shell: pwsh
-        run: |
-          & "$env:FLUTTER_BIN/flutter.bat" doctor -v
-
       - name: Get dependencies
         shell: pwsh
         run: |
@@ -65,10 +137,10 @@ jobs:
           $match = Select-String -Path "pubspec.yaml" -Pattern '^version:\s*([^\s+]+)'
           $ver = if ($match.Matches.Count -gt 0) { $match.Matches[0].Groups[1].Value } else { "0.0.0" }
           echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
-          echo "Version: $ver"
 
       - name: Package release artifacts
         shell: pwsh
+        id: package
         run: |
           $releaseDir = Get-ChildItem "build\windows" -Recurse -Directory |
             Where-Object { $_.Name -eq 'Release' -and $_.FullName -match 'runner' } |
@@ -80,20 +152,36 @@ jobs:
           $zipName = "voicetype-windows-$version.zip"
           Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
           echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
-          echo "ZIP_PATH=build\$zipName" >> $env:GITHUB_OUTPUT
-          echo "Packaged: build\$zipName"
-        id: package
 
-      - name: Upload build artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: voicetype-windows-${{ steps.version.outputs.VERSION }}
+          name: release-windows
           path: build/${{ steps.package.outputs.ZIP_NAME }}
-          retention-days: 30
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-macos
+          path: release-assets
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release-assets
 
       - name: Check existing GitHub Release
         id: check_release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/github-script@v7
         with:
           script: |
@@ -115,12 +203,13 @@ jobs:
               }
             }
 
-      # 仅在 tag 推送时创建 GitHub Release
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') && steps.check_release.outputs.exists != 'true'
+      - name: Create GitHub Release (both assets)
+        if: steps.check_release.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: build/${{ steps.package.outputs.ZIP_NAME }}
+          files: |
+            release-assets/*.dmg
+            release-assets/*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
