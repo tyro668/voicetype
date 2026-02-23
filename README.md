@@ -4,14 +4,26 @@
 
 ## 启动调试
 
+### mac电脑
 ```
 flutter run  -d macos
 ```
 
+### windows电脑
+```
+flutter run  -d windows
+```
+
 ## 构建安装文件
 
+### mac版本
 ```
-flutter build macos
+flutter build macos --release
+```
+
+### windows版本
+```
+flutter build windows --release
 ```
 
 ## 一键构建脚本
