@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 
-/// 与原生 macOS overlay 窗口通信的服务
+/// 与原生 overlay 窗口通信的服务（支持 macOS 和 Windows）
 class OverlayService {
   static const _channel = MethodChannel('com.voicetype/overlay');
 

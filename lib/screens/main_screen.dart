@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +34,25 @@ const _macKeyCodeMap = <int, LogicalKeyboardKey>{
   36: LogicalKeyboardKey.enter,
   53: LogicalKeyboardKey.escape,
   48: LogicalKeyboardKey.tab,
+};
+
+/// Windows VK 虚拟键码 到 Flutter LogicalKeyboardKey 的映射
+const _winKeyCodeMap = <int, LogicalKeyboardKey>{
+  0x71: LogicalKeyboardKey.f2, // VK_F2
+  0x72: LogicalKeyboardKey.f3, // VK_F3
+  0x73: LogicalKeyboardKey.f4, // VK_F4
+  0x74: LogicalKeyboardKey.f5, // VK_F5
+  0x75: LogicalKeyboardKey.f6, // VK_F6
+  0x76: LogicalKeyboardKey.f7, // VK_F7
+  0x77: LogicalKeyboardKey.f8, // VK_F8
+  0x78: LogicalKeyboardKey.f9, // VK_F9
+  0x79: LogicalKeyboardKey.f10, // VK_F10
+  0x7A: LogicalKeyboardKey.f11, // VK_F11
+  0x7B: LogicalKeyboardKey.f12, // VK_F12
+  0x20: LogicalKeyboardKey.space, // VK_SPACE
+  0x0D: LogicalKeyboardKey.enter, // VK_RETURN
+  0x1B: LogicalKeyboardKey.escape, // VK_ESCAPE
+  0x09: LogicalKeyboardKey.tab, // VK_TAB
 };
 
 class MainScreen extends StatefulWidget {
@@ -82,18 +102,21 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _registerCurrentHotkey(SettingsProvider settings) {
-    final keyCode = _macKeyCodeFor(settings.hotkey);
+    final keyCode = _nativeKeyCodeFor(settings.hotkey);
     if (keyCode == null) return;
 
     OverlayService.registerHotkey(keyCode: keyCode).then((ok) {
       if (!mounted || ok) return;
-      if (settings.hotkey == LogicalKeyboardKey.fn) {
+      if (Platform.isMacOS && settings.hotkey == LogicalKeyboardKey.fn) {
         _showInputMonitoringGuide();
       }
     });
   }
 
   Future<void> _ensureAccessibilityPermission() async {
+    // Windows 不需要辅助功能权限检查
+    if (!Platform.isMacOS) return;
+
     final granted = await OverlayService.checkAccessibility();
     if (!granted) {
       await OverlayService.requestAccessibility();
@@ -112,6 +135,8 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _ensureInputMonitoringPermissionIfNeeded(
     LogicalKeyboardKey hotkey,
   ) async {
+    // 输入监控权限仅 macOS 需要
+    if (!Platform.isMacOS) return;
     if (hotkey != LogicalKeyboardKey.fn) return;
     final granted = await OverlayService.checkInputMonitoring();
     if (granted) return;
@@ -212,8 +237,12 @@ class _MainScreenState extends State<MainScreen> {
     super.dispose();
   }
 
-  int? _macKeyCodeFor(LogicalKeyboardKey key) {
-    for (final entry in _macKeyCodeMap.entries) {
+  /// 获取当前平台的 keyCode 映射表
+  Map<int, LogicalKeyboardKey> get _platformKeyCodeMap =>
+      Platform.isWindows ? _winKeyCodeMap : _macKeyCodeMap;
+
+  int? _nativeKeyCodeFor(LogicalKeyboardKey key) {
+    for (final entry in _platformKeyCodeMap.entries) {
       if (entry.value == key) {
         return entry.key;
       }
@@ -228,7 +257,7 @@ class _MainScreenState extends State<MainScreen> {
     final settings = context.read<SettingsProvider>();
     final recording = context.read<RecordingProvider>();
 
-    final key = _macKeyCodeMap[keyCode];
+    final key = _platformKeyCodeMap[keyCode];
     if (key == null) return;
     if (key != settings.hotkey) return;
 

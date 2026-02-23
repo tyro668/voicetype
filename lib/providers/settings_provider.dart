@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,7 +36,10 @@ class SettingsProvider extends ChangeNotifier {
   SttProviderConfig _config = SttProviderConfig.fallbackPresets.first;
   List<SttProviderConfig> _customProviders = [];
 
-  static const LogicalKeyboardKey defaultHotkey = LogicalKeyboardKey.fn;
+  /// 默认快捷键：macOS 使用 Fn，Windows 使用 F2
+  static final LogicalKeyboardKey defaultHotkey = Platform.isWindows
+      ? LogicalKeyboardKey.f2
+      : LogicalKeyboardKey.fn;
 
   // 快捷键配置
   LogicalKeyboardKey _hotkey = defaultHotkey;

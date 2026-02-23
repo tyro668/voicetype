@@ -958,7 +958,7 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
           child: TextButton.icon(
             onPressed: () => widget.settings.resetHotkey(),
             icon: const Icon(Icons.restore, size: 16),
-            label: const Text('恢复默认（Fn）'),
+            label: Text(Platform.isWindows ? '恢复默认（F2）' : '恢复默认（Fn）'),
             style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),
