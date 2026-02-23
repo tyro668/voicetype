@@ -24,7 +24,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get textModelSettings => '文本模型';
 
   @override
-  String get promptWorkshop => '提示词工坊';
+  String get promptWorkshop => '提示词设置';
 
   @override
   String get history => '历史记录';

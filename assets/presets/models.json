@@ -2,14 +2,14 @@
   "stt": [
     {
       "type": "cloud",
-      "name": "Z.ai",
+      "name": "Z.AI",
       "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
       "apiKeyUrl": "https://open.bigmodel.cn/usercenter/apikeys",
       "defaultModel": "GLM-ASR-2512",
       "models": [
         {
           "id": "GLM-ASR-2512",
-          "description": "Z.ai speech-to-text (supports wav/mp3, <=30s)"
+          "description": "Z.AI speech-to-text (supports wav/mp3, <=30s)"
         }
       ]
     },
@@ -40,7 +40,7 @@
   ],
   "ai": [
     {
-      "name": "Z.ai",
+      "name": "Z.AI",
       "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
       "defaultModel": "GLM-4.7-FlashX",
       "models": [

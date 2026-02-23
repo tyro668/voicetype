@@ -24,7 +24,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get textModelSettings => 'Text Model';
 
   @override
-  String get promptWorkshop => 'Prompt Workshop';
+  String get promptWorkshop => 'Prompt Settings';
 
   @override
   String get history => 'History';

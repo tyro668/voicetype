@@ -131,7 +131,7 @@ abstract class AppLocalizations {
   /// No description provided for @promptWorkshop.
   ///
   /// In en, this message translates to:
-  /// **'Prompt Workshop'**
+  /// **'Prompt Settings'**
   String get promptWorkshop;
 
   /// No description provided for @history.

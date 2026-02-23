@@ -15,7 +15,7 @@ class AiVendorPreset {
 
   static const fallbackPresets = [
     AiVendorPreset(
-      name: 'Z.ai',
+      name: 'Z.AI',
       baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
       models: [
         AiModel(id: 'GLM-4.7', description: 'GLM-4.7'),

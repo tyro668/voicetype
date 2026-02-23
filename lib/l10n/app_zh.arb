@@ -5,7 +5,7 @@
   "generalSettings": "通用设置",
   "voiceModelSettings": "语音模型",
   "textModelSettings": "文本模型",
-  "promptWorkshop": "提示词工坊",
+  "promptWorkshop": "提示词设置",
   "history": "历史记录",
   "logs": "日志",
   "about": "关于",

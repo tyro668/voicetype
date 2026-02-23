@@ -10,7 +10,7 @@
   "generalSettings": "General",
   "voiceModelSettings": "Voice Model",
   "textModelSettings": "Text Model",
-  "promptWorkshop": "Prompt Workshop",
+  "promptWorkshop": "Prompt Settings",
   "history": "History",
   "logs": "Logs",
   "about": "About",

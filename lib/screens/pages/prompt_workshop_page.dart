@@ -19,7 +19,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
 
   late TabController _tabController;
   final _promptController = TextEditingController();
-  final _agentNameController = TextEditingController();
   final _testInputController = TextEditingController();
   final _testOutputController = TextEditingController();
   String _defaultPrompt = AiEnhanceConfig.defaultPrompt;
@@ -33,7 +32,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = context.read<SettingsProvider>();
       _promptController.text = settings.aiEnhanceConfig.prompt;
-      _agentNameController.text = settings.aiEnhanceConfig.agentName;
     });
     _loadDefaultPrompt();
   }
@@ -53,7 +51,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
   void dispose() {
     _tabController.dispose();
     _promptController.dispose();
-    _agentNameController.dispose();
     _testInputController.dispose();
     _testOutputController.dispose();
     super.dispose();
@@ -169,33 +166,22 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
                 : l10n.customPromptDisabled,
             style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
           ),
-          const SizedBox(height: 8),
-          Text(
-            l10n.agentNamePlaceholder('{agentName}'),
-            style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
-          ),
-          const SizedBox(height: 12),
-          _buildLabeledField(
-            label: l10n.agentName,
-            controller: _agentNameController,
-            hintText: AiEnhanceConfig.defaultAgentName,
-            onChanged: settings.setAiEnhanceAgentName,
-          ),
           const SizedBox(height: 12),
           _buildLabeledField(
             label: l10n.systemPrompt,
             controller: _promptController,
             hintText: AiEnhanceConfig.defaultPrompt,
             maxLines: 10,
+            enabled: useCustomPrompt,
             onChanged: settings.setAiEnhancePrompt,
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               ElevatedButton.icon(
-                onPressed: () => _savePrompt(settings),
+                onPressed: useCustomPrompt ? () => _savePrompt(settings) : null,
                 icon: const Icon(Icons.save, size: 16),
-                label: Text(l10n.saveAgentConfig),
+                label: Text(l10n.saveChanges),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _cs.onSurface,
                   foregroundColor: _cs.onPrimary,
@@ -206,7 +192,9 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
               ),
               const SizedBox(width: 12),
               OutlinedButton(
-                onPressed: () => _resetPrompt(settings),
+                onPressed: useCustomPrompt
+                    ? () => _resetPrompt(settings)
+                    : null,
                 child: Text(l10n.restoreDefault),
               ),
             ],
@@ -301,7 +289,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
 
   void _savePrompt(SettingsProvider settings) {
     settings.setAiEnhancePrompt(_promptController.text);
-    settings.setAiEnhanceAgentName(_agentNameController.text);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('提示词已保存'),
@@ -313,9 +300,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
 
   void _resetPrompt(SettingsProvider settings) {
     settings.setAiEnhancePrompt(_defaultPrompt);
-    settings.setAiEnhanceAgentName(AiEnhanceConfig.defaultAgentName);
     _promptController.text = _defaultPrompt;
-    _agentNameController.text = AiEnhanceConfig.defaultAgentName;
   }
 
   Widget _buildCard({required Widget child}) {
@@ -354,6 +339,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     bool obscureText = false,
     int maxLines = 1,
     bool readOnly = false,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,6 +358,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
           obscureText: obscureText,
           maxLines: maxLines,
           readOnly: readOnly,
+          enabled: enabled,
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             hintText: hintText,
@@ -392,10 +379,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: _cs.primary,
-                width: 1.5,
-              ),
+              borderSide: BorderSide(color: _cs.primary, width: 1.5),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: _cs.outlineVariant),
             ),
           ),
           onChanged: onChanged,
