@@ -479,6 +479,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pleaseConfigureSttModel => '请先配置语音转换模型';
 
   @override
+  String get overlayStarting => '麦克风启动中';
+
+  @override
+  String get overlayRecording => '录音中';
+
+  @override
+  String get overlayTranscribing => '语音转换中';
+
+  @override
+  String get overlayEnhancing => '文字整理中';
+
+  @override
+  String get overlayTranscribeFailed => '语音转录失败';
+
+  @override
   String get theme => '外观';
 
   @override

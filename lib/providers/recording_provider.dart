@@ -28,6 +28,11 @@ class RecordingProvider extends ChangeNotifier {
   Timer? _healthTimer;
   StreamSubscription<double>? _amplitudeSub;
   final List<Transcription> _history = [];
+  String _startingLabel = 'Starting';
+  String _recordingLabel = 'Recording';
+  String _transcribingLabel = 'Transcribing';
+  String _enhancingLabel = 'Enhancing';
+  String _transcribeFailedLabel = 'Transcribe failed';
 
   RecordingProvider() {
     _loadHistory();
@@ -39,6 +44,20 @@ class RecordingProvider extends ChangeNotifier {
   Duration get recordingDuration => _recordingDuration;
   List<Transcription> get history => List.unmodifiable(_history);
   Stream<double> get amplitudeStream => _recorder.amplitudeStream;
+
+  void setOverlayStateLabels({
+    required String starting,
+    required String recording,
+    required String transcribing,
+    required String enhancing,
+    required String transcribeFailed,
+  }) {
+    _startingLabel = starting;
+    _recordingLabel = recording;
+    _transcribingLabel = transcribing;
+    _enhancingLabel = enhancing;
+    _transcribeFailedLabel = transcribeFailed;
+  }
 
   String get _durationStr {
     final m = _recordingDuration.inMinutes
@@ -71,6 +90,7 @@ class RecordingProvider extends ChangeNotifier {
         state: 'starting',
         duration: '00:00',
         level: 0.0,
+        stateLabel: _startingLabel,
       );
 
       try {
@@ -87,6 +107,7 @@ class RecordingProvider extends ChangeNotifier {
         state: 'recording',
         duration: '00:00',
         level: 0.0,
+        stateLabel: _recordingLabel,
       );
 
       _amplitudeSub = _recorder.amplitudeStream.listen((level) {
@@ -94,6 +115,7 @@ class RecordingProvider extends ChangeNotifier {
           state: 'recording',
           duration: _durationStr,
           level: level,
+          stateLabel: _recordingLabel,
         );
       });
 
@@ -142,7 +164,10 @@ class RecordingProvider extends ChangeNotifier {
         return;
       }
 
-      OverlayService.showOverlay(state: 'transcribing');
+      OverlayService.showOverlay(
+        state: 'transcribing',
+        stateLabel: _transcribingLabel,
+      );
       _state = RecordingState.idle;
       notifyListeners();
 
@@ -246,7 +271,10 @@ class RecordingProvider extends ChangeNotifier {
 
       if (aiEnhanceEnabled && aiEnhanceConfig != null) {
         try {
-          OverlayService.showOverlay(state: 'enhancing');
+          OverlayService.showOverlay(
+            state: 'enhancing',
+            stateLabel: _enhancingLabel,
+          );
           final enhancer = AiEnhanceService(aiEnhanceConfig);
           finalText = await enhancer.enhance(rawText);
         } catch (e) {
@@ -296,7 +324,10 @@ class RecordingProvider extends ChangeNotifier {
 
   Future<void> _showTranscribeFailedOverlay() async {
     try {
-      await OverlayService.showOverlay(state: 'transcribe_failed');
+      await OverlayService.showOverlay(
+        state: 'transcribe_failed',
+        stateLabel: _transcribeFailedLabel,
+      );
       await Future.delayed(const Duration(seconds: 3));
       await OverlayService.hideOverlay();
     } catch (_) {}

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +34,25 @@ const _macKeyCodeMap = <int, LogicalKeyboardKey>{
   36: LogicalKeyboardKey.enter,
   53: LogicalKeyboardKey.escape,
   48: LogicalKeyboardKey.tab,
+};
+
+/// Windows Virtual-Key 到 Flutter LogicalKeyboardKey 的映射
+const _windowsKeyCodeMap = <int, LogicalKeyboardKey>{
+  0x71: LogicalKeyboardKey.f2,
+  0x72: LogicalKeyboardKey.f3,
+  0x73: LogicalKeyboardKey.f4,
+  0x74: LogicalKeyboardKey.f5,
+  0x75: LogicalKeyboardKey.f6,
+  0x76: LogicalKeyboardKey.f7,
+  0x77: LogicalKeyboardKey.f8,
+  0x78: LogicalKeyboardKey.f9,
+  0x79: LogicalKeyboardKey.f10,
+  0x7A: LogicalKeyboardKey.f11,
+  0x7B: LogicalKeyboardKey.f12,
+  0x20: LogicalKeyboardKey.space,
+  0x0D: LogicalKeyboardKey.enter,
+  0x1B: LogicalKeyboardKey.escape,
+  0x09: LogicalKeyboardKey.tab,
 };
 
 class MainScreen extends StatefulWidget {
@@ -82,7 +102,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _registerCurrentHotkey(SettingsProvider settings) {
-    final keyCode = _macKeyCodeFor(settings.hotkey);
+    final keyCode = _platformKeyCodeFor(settings.hotkey);
     if (keyCode == null) return;
 
     OverlayService.registerHotkey(keyCode: keyCode).then((ok) {
@@ -94,6 +114,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _ensureAccessibilityPermission() async {
+    if (defaultTargetPlatform != TargetPlatform.macOS) return;
     final granted = await OverlayService.checkAccessibility();
     if (!granted) {
       await OverlayService.requestAccessibility();
@@ -112,6 +133,7 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _ensureInputMonitoringPermissionIfNeeded(
     LogicalKeyboardKey hotkey,
   ) async {
+    if (defaultTargetPlatform != TargetPlatform.macOS) return;
     if (hotkey != LogicalKeyboardKey.fn) return;
     final granted = await OverlayService.checkInputMonitoring();
     if (granted) return;
@@ -221,6 +243,29 @@ class _MainScreenState extends State<MainScreen> {
     return null;
   }
 
+  int? _windowsKeyCodeFor(LogicalKeyboardKey key) {
+    for (final entry in _windowsKeyCodeMap.entries) {
+      if (entry.value == key) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  int? _platformKeyCodeFor(LogicalKeyboardKey key) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return _windowsKeyCodeFor(key);
+    }
+    return _macKeyCodeFor(key);
+  }
+
+  LogicalKeyboardKey? _platformKeyFromCode(int keyCode) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return _windowsKeyCodeMap[keyCode];
+    }
+    return _macKeyCodeMap[keyCode];
+  }
+
   void _handleGlobalKeyEvent(int keyCode, String type, bool isRepeat) {
     if (isRepeat) return;
     if (_processing) return;
@@ -228,7 +273,7 @@ class _MainScreenState extends State<MainScreen> {
     final settings = context.read<SettingsProvider>();
     final recording = context.read<RecordingProvider>();
 
-    final key = _macKeyCodeMap[keyCode];
+    final key = _platformKeyFromCode(keyCode);
     if (key == null) return;
     if (key != settings.hotkey) return;
 
@@ -286,6 +331,15 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    context.read<RecordingProvider>().setOverlayStateLabels(
+      starting: l10n.overlayStarting,
+      recording: l10n.overlayRecording,
+      transcribing: l10n.overlayTranscribing,
+      enhancing: l10n.overlayEnhancing,
+      transcribeFailed: l10n.overlayTranscribeFailed,
+    );
+
     return Scaffold(
       backgroundColor: _cs.surfaceContainerLow,
       body: Row(

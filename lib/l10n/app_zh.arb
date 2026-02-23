@@ -182,6 +182,12 @@
   "openSettings": "打开设置",
   "pleaseConfigureSttModel": "请先配置语音转换模型",
 
+  "overlayStarting": "麦克风启动中",
+  "overlayRecording": "录音中",
+  "overlayTranscribing": "语音转换中",
+  "overlayEnhancing": "文字整理中",
+  "overlayTranscribeFailed": "语音转录失败",
+
   "theme": "外观",
   "themeDescription": "选择应用的外观主题。",
   "themeMode": "外观模式",

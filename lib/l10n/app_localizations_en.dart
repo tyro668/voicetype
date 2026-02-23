@@ -501,6 +501,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please configure a speech recognition model first';
 
   @override
+  String get overlayStarting => 'Mic starting';
+
+  @override
+  String get overlayRecording => 'Recording';
+
+  @override
+  String get overlayTranscribing => 'Transcribing';
+
+  @override
+  String get overlayEnhancing => 'Enhancing';
+
+  @override
+  String get overlayTranscribeFailed => 'Transcribe failed';
+
+  @override
   String get theme => 'Theme';
 
   @override

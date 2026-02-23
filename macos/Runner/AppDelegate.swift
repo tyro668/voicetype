@@ -647,8 +647,9 @@ class AppDelegate: FlutterAppDelegate {
       let state = args["state"] as? String ?? "recording"
       let duration = args["duration"] as? String ?? "00:00"
       let level = args["level"] as? Double ?? 0.0
+      let stateLabel = args["stateLabel"] as? String
 
-      self.overlayContentView?.update(state: state, duration: duration, level: level)
+      self.overlayContentView?.update(state: state, duration: duration, level: level, stateLabel: stateLabel)
       self.overlayPanel?.orderFront(nil)
       self.positionOverlay()
     }
@@ -665,7 +666,8 @@ class AppDelegate: FlutterAppDelegate {
       let state = args["state"] as? String ?? "recording"
       let duration = args["duration"] as? String ?? "00:00"
       let level = args["level"] as? Double ?? 0.0
-      self?.overlayContentView?.update(state: state, duration: duration, level: level)
+      let stateLabel = args["stateLabel"] as? String
+      self?.overlayContentView?.update(state: state, duration: duration, level: level, stateLabel: stateLabel)
     }
   }
 

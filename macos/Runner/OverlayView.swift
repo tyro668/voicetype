@@ -84,14 +84,34 @@ class OverlayView: NSView {
     startPulse()
   }
 
-  func update(state: String, duration: String, level: Double) {
+  private func defaultStatusText(for state: String) -> String {
+    if state == "starting" {
+      return "麦克风启动中"
+    }
+    if state == "recording" {
+      return "录音中"
+    }
+    if state == "transcribing" {
+      return "语音转换中"
+    }
+    if state == "enhancing" {
+      return "文字整理中"
+    }
+    if state == "transcribe_failed" {
+      return "语音转录失败"
+    }
+    return ""
+  }
+
+  func update(state: String, duration: String, level: Double, stateLabel: String? = nil) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
       self.durationLabel.stringValue = duration
       self.lastLevel = CGFloat(max(0.0, min(1.0, level)))
+      let label = stateLabel ?? self.defaultStatusText(for: state)
 
       if state == "starting" {
-        self.statusLabel.stringValue = "麦克风启动中"
+        self.statusLabel.stringValue = label
         self.dotView.layer?.backgroundColor = NSColor.systemYellow.cgColor
         self.dotView.isHidden = false
         self.durationLabel.isHidden = true
@@ -100,7 +120,7 @@ class OverlayView: NSView {
         self.stopSpinAnimation()
         self.stopPulse()
       } else if state == "recording" {
-        self.statusLabel.stringValue = "录音中"
+        self.statusLabel.stringValue = label
         self.dotView.layer?.backgroundColor = NSColor.systemRed.cgColor
         self.dotView.isHidden = false
         self.durationLabel.isHidden = false
@@ -110,7 +130,7 @@ class OverlayView: NSView {
         self.startPulse()
         self.updateBars(level: self.lastLevel)
       } else if state == "transcribing" {
-        self.statusLabel.stringValue = "语音转换中"
+        self.statusLabel.stringValue = label
         self.dotView.layer?.backgroundColor = NSColor(
           red: 0.42, green: 0.39, blue: 1.0, alpha: 1.0
         ).cgColor
@@ -122,7 +142,7 @@ class OverlayView: NSView {
         // 转录时显示波纹动画
         self.startWaveAnimation()
       } else if state == "enhancing" {
-        self.statusLabel.stringValue = "文字整理中"
+        self.statusLabel.stringValue = label
         self.dotView.layer?.backgroundColor = NSColor(
           red: 0.31, green: 0.78, blue: 0.62, alpha: 1.0
         ).cgColor
@@ -133,7 +153,7 @@ class OverlayView: NSView {
         self.stopSpinAnimation()
         self.startWaveAnimation()
       } else if state == "transcribe_failed" {
-        self.statusLabel.stringValue = "语音转录失败"
+        self.statusLabel.stringValue = label
         self.dotView.layer?.backgroundColor = NSColor.systemRed.cgColor
         self.dotView.isHidden = false
         self.durationLabel.isHidden = true

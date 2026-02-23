@@ -35,7 +35,12 @@ class SettingsProvider extends ChangeNotifier {
   SttProviderConfig _config = SttProviderConfig.fallbackPresets.first;
   List<SttProviderConfig> _customProviders = [];
 
-  static const LogicalKeyboardKey defaultHotkey = LogicalKeyboardKey.fn;
+  static LogicalKeyboardKey get defaultHotkey {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return LogicalKeyboardKey.f2;
+    }
+    return LogicalKeyboardKey.fn;
+  }
 
   // 快捷键配置
   LogicalKeyboardKey _hotkey = defaultHotkey;
@@ -173,6 +178,11 @@ class SettingsProvider extends ChangeNotifier {
     final hotkeyStr = await db.getSetting(_hotkeyKey);
     if (hotkeyStr != null) {
       _hotkey = LogicalKeyboardKey(int.parse(hotkeyStr));
+    }
+    if (defaultTargetPlatform == TargetPlatform.windows &&
+        _hotkey == LogicalKeyboardKey.fn) {
+      _hotkey = LogicalKeyboardKey.f2;
+      await _saveSetting(_hotkeyKey, _hotkey.keyId.toString());
     }
 
     // 加载激活模式

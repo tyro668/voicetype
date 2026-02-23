@@ -187,6 +187,12 @@
   "openSettings": "Open Settings",
   "pleaseConfigureSttModel": "Please configure a speech recognition model first",
 
+  "overlayStarting": "Mic starting",
+  "overlayRecording": "Recording",
+  "overlayTranscribing": "Transcribing",
+  "overlayEnhancing": "Enhancing",
+  "overlayTranscribeFailed": "Transcribe failed",
+
   "theme": "Theme",
   "themeDescription": "Choose the appearance theme for the application.",
   "themeMode": "Appearance",

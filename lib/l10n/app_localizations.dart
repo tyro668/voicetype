@@ -1016,6 +1016,36 @@ abstract class AppLocalizations {
   /// **'Please configure a speech recognition model first'**
   String get pleaseConfigureSttModel;
 
+  /// No description provided for @overlayStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Mic starting'**
+  String get overlayStarting;
+
+  /// No description provided for @overlayRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get overlayRecording;
+
+  /// No description provided for @overlayTranscribing.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing'**
+  String get overlayTranscribing;
+
+  /// No description provided for @overlayEnhancing.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhancing'**
+  String get overlayEnhancing;
+
+  /// No description provided for @overlayTranscribeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribe failed'**
+  String get overlayTranscribeFailed;
+
   /// No description provided for @theme.
   ///
   /// In en, this message translates to:
