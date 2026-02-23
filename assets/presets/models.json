@@ -51,6 +51,10 @@
         {
           "id": "GLM-4.7-FlashX",
           "description": "GLM-4.7-FlashX"
+        },
+        {
+          "id": "GLM-5",
+          "description": "GLM-5"
         }
       ]
     },
