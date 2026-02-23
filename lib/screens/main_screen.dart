@@ -12,6 +12,7 @@ import 'pages/ai_model_page.dart';
 import 'pages/prompt_workshop_page.dart';
 import 'pages/history_page.dart';
 import 'pages/network_settings_page.dart';
+import 'pages/dashboard_page.dart';
 import 'pages/about_page.dart';
 
 /// macOS keyCode 到 Flutter LogicalKeyboardKey 的映射
@@ -58,6 +59,7 @@ class _MainScreenState extends State<MainScreen> {
     _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.promptWorkshop),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
     _NavItem(icon: Icons.language_outlined, label: l10n.networkSettings),
+    _NavItem(icon: Icons.dashboard_outlined, label: l10n.dashboard),
     _NavItem(icon: Icons.info_outline, label: l10n.about),
   ];
 
@@ -388,7 +390,8 @@ class _MainScreenState extends State<MainScreen> {
       3 => const PromptWorkshopPage(),
       4 => const HistoryPage(),
       5 => const NetworkSettingsPage(),
-      6 => const AboutPage(),
+      6 => const DashboardPage(),
+      7 => const AboutPage(),
       _ => const SizedBox(),
     };
   }

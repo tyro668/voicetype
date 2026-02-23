@@ -1051,6 +1051,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get themeDark;
+
+  /// No description provided for @dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get dashboard;
+
+  /// No description provided for @totalTranscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Transcriptions'**
+  String get totalTranscriptions;
+
+  /// No description provided for @totalRecordingTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Recording Time'**
+  String get totalRecordingTime;
+
+  /// No description provided for @totalCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Characters'**
+  String get totalCharacters;
+
+  /// No description provided for @avgCharsPerSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Chars/Session'**
+  String get avgCharsPerSession;
+
+  /// No description provided for @avgRecordingDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Duration'**
+  String get avgRecordingDuration;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @thisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This Week'**
+  String get thisWeek;
+
+  /// No description provided for @thisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This Month'**
+  String get thisMonth;
+
+  /// No description provided for @transcriptionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcriptions'**
+  String get transcriptionCount;
+
+  /// No description provided for @recordingTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording Time'**
+  String get recordingTime;
+
+  /// No description provided for @characters.
+  ///
+  /// In en, this message translates to:
+  /// **'Characters'**
+  String get characters;
+
+  /// No description provided for @usageTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage Trend'**
+  String get usageTrend;
+
+  /// No description provided for @providerDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider Distribution'**
+  String get providerDistribution;
+
+  /// No description provided for @modelDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Model Distribution'**
+  String get modelDistribution;
+
+  /// No description provided for @currentStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Streak'**
+  String get currentStreak;
+
+  /// No description provided for @streakDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days'**
+  String streakDays(int count);
+
+  /// No description provided for @lastUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Used'**
+  String get lastUsed;
+
+  /// No description provided for @mostActiveDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Most Active Day'**
+  String get mostActiveDay;
+
+  /// No description provided for @charsPerMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'Chars/Minute'**
+  String get charsPerMinute;
+
+  /// No description provided for @efficiency.
+  ///
+  /// In en, this message translates to:
+  /// **'Efficiency'**
+  String get efficiency;
+
+  /// No description provided for @activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activity;
+
+  /// No description provided for @noDataYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No data yet. Start transcribing!'**
+  String get noDataYet;
+
+  /// No description provided for @day.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get day;
+
+  /// No description provided for @week.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get week;
+
+  /// No description provided for @month.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get month;
+
+  /// No description provided for @timeAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} ago'**
+  String timeAgo(String time);
+
+  /// No description provided for @minuteShort.
+  ///
+  /// In en, this message translates to:
+  /// **'m'**
+  String get minuteShort;
+
+  /// No description provided for @hourShort.
+  ///
+  /// In en, this message translates to:
+  /// **'h'**
+  String get hourShort;
+
+  /// No description provided for @secondShort.
+  ///
+  /// In en, this message translates to:
+  /// **'s'**
+  String get secondShort;
+
+  /// No description provided for @sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} sessions'**
+  String sessions(int count);
 }
 
 class _AppLocalizationsDelegate

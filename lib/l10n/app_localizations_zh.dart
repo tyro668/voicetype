@@ -495,4 +495,103 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get themeDark => '深色';
+
+  @override
+  String get dashboard => '仪表盘';
+
+  @override
+  String get totalTranscriptions => '总转录次数';
+
+  @override
+  String get totalRecordingTime => '总录音时长';
+
+  @override
+  String get totalCharacters => '总字数';
+
+  @override
+  String get avgCharsPerSession => '平均每次字数';
+
+  @override
+  String get avgRecordingDuration => '平均录音时长';
+
+  @override
+  String get today => '今日';
+
+  @override
+  String get thisWeek => '本周';
+
+  @override
+  String get thisMonth => '本月';
+
+  @override
+  String get transcriptionCount => '转录次数';
+
+  @override
+  String get recordingTime => '录音时长';
+
+  @override
+  String get characters => '字数';
+
+  @override
+  String get usageTrend => '使用趋势';
+
+  @override
+  String get providerDistribution => '服务商分布';
+
+  @override
+  String get modelDistribution => '模型分布';
+
+  @override
+  String get currentStreak => '连续使用天数';
+
+  @override
+  String streakDays(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get lastUsed => '最近使用';
+
+  @override
+  String get mostActiveDay => '最活跃的一天';
+
+  @override
+  String get charsPerMinute => '每分钟字数';
+
+  @override
+  String get efficiency => '效率';
+
+  @override
+  String get activity => '活跃度';
+
+  @override
+  String get noDataYet => '暂无数据，开始转录吧！';
+
+  @override
+  String get day => '日';
+
+  @override
+  String get week => '周';
+
+  @override
+  String get month => '月';
+
+  @override
+  String timeAgo(String time) {
+    return '$time前';
+  }
+
+  @override
+  String get minuteShort => '分';
+
+  @override
+  String get hourShort => '时';
+
+  @override
+  String get secondShort => '秒';
+
+  @override
+  String sessions(int count) {
+    return '$count 次';
+  }
 }

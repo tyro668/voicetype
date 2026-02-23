@@ -1,0 +1,269 @@
+import '../database/app_database.dart';
+import '../models/dashboard_stats.dart';
+
+/// 仪表盘统计计算服务。
+///
+/// 从数据库获取全部转录记录，在 Dart 层计算各维度统计指标。
+class DashboardService {
+  DashboardService._();
+  static final instance = DashboardService._();
+
+  final _db = AppDatabase.instance;
+
+  /// 计算完整的仪表盘统计数据。
+  Future<DashboardStats> computeStats({
+    TrendGranularity granularity = TrendGranularity.day,
+  }) async {
+    final all = await _db.getAllHistory();
+    if (all.isEmpty) return DashboardStats.empty;
+
+    // ── 核心汇总 ──
+    final totalCount = all.length;
+    int totalDurationMs = 0;
+    int totalCharCount = 0;
+    for (final t in all) {
+      totalDurationMs += t.duration.inMilliseconds;
+      totalCharCount += t.text.length;
+    }
+    final avgCharsPerSession = totalCount > 0
+        ? totalCharCount / totalCount
+        : 0.0;
+    final avgDurationMs = totalCount > 0 ? totalDurationMs / totalCount : 0.0;
+
+    // ── 效率 ──
+    final totalMinutes = totalDurationMs / 60000.0;
+    final avgCharsPerMinute = totalMinutes > 0
+        ? totalCharCount / totalMinutes
+        : 0.0;
+
+    // ── 今日 / 本周 / 本月 ──
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    // 本周一
+    final weekStart = todayStart.subtract(
+      Duration(days: todayStart.weekday - 1),
+    );
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    int todayCount = 0, todayDurationMs = 0, todayChars = 0;
+    int weekCount = 0, weekDurationMs = 0, weekChars = 0;
+    int monthCount = 0, monthDurationMs = 0, monthChars = 0;
+
+    // ── 分布 ──
+    final providerDist = <String, int>{};
+    final modelDist = <String, int>{};
+
+    // ── 按天分组（用于活跃度和趋势计算） ──
+    final dailyMap = <DateTime, _DailyAccumulator>{};
+
+    for (final t in all) {
+      final dayKey = DateTime(
+        t.createdAt.year,
+        t.createdAt.month,
+        t.createdAt.day,
+      );
+      final acc = dailyMap.putIfAbsent(dayKey, _DailyAccumulator.new);
+      acc.count++;
+      acc.durationMs += t.duration.inMilliseconds;
+      acc.charCount += t.text.length;
+
+      // 今日 / 本周 / 本月
+      if (!t.createdAt.isBefore(todayStart)) {
+        todayCount++;
+        todayDurationMs += t.duration.inMilliseconds;
+        todayChars += t.text.length;
+      }
+      if (!t.createdAt.isBefore(weekStart)) {
+        weekCount++;
+        weekDurationMs += t.duration.inMilliseconds;
+        weekChars += t.text.length;
+      }
+      if (!t.createdAt.isBefore(monthStart)) {
+        monthCount++;
+        monthDurationMs += t.duration.inMilliseconds;
+        monthChars += t.text.length;
+      }
+
+      // 分布
+      final pKey = t.provider.isEmpty ? 'Unknown' : t.provider;
+      providerDist[pKey] = (providerDist[pKey] ?? 0) + 1;
+      final mKey = t.model.isEmpty ? 'Unknown' : t.model;
+      modelDist[mKey] = (modelDist[mKey] ?? 0) + 1;
+    }
+
+    // ── 活跃度 ──
+    final lastTranscriptionAt = all.first.createdAt; // getAll 按 DESC 排序
+    final sortedDays = dailyMap.keys.toList()..sort();
+
+    // 最活跃的一天
+    DateTime? mostActiveDate;
+    int mostActiveDateCount = 0;
+    for (final entry in dailyMap.entries) {
+      if (entry.value.count > mostActiveDateCount) {
+        mostActiveDateCount = entry.value.count;
+        mostActiveDate = entry.key;
+      }
+    }
+
+    // 连续使用天数 streak（从今天或昨天往回数）
+    final currentStreak = _computeStreak(sortedDays, todayStart);
+
+    // ── 时间趋势 ──
+    final trendData = _buildTrendData(
+      dailyMap: dailyMap,
+      granularity: granularity,
+      now: now,
+    );
+
+    return DashboardStats(
+      totalCount: totalCount,
+      totalDurationMs: totalDurationMs,
+      totalCharCount: totalCharCount,
+      avgCharsPerSession: avgCharsPerSession,
+      avgDurationMs: avgDurationMs,
+      todayCount: todayCount,
+      todayDurationMs: todayDurationMs,
+      todayChars: todayChars,
+      weekCount: weekCount,
+      weekDurationMs: weekDurationMs,
+      weekChars: weekChars,
+      monthCount: monthCount,
+      monthDurationMs: monthDurationMs,
+      monthChars: monthChars,
+      currentStreak: currentStreak,
+      lastTranscriptionAt: lastTranscriptionAt,
+      mostActiveDate: mostActiveDate,
+      mostActiveDateCount: mostActiveDateCount,
+      avgCharsPerMinute: avgCharsPerMinute,
+      trendData: trendData,
+      trendGranularity: granularity,
+      providerDistribution: providerDist,
+      modelDistribution: modelDist,
+    );
+  }
+
+  // ── 连续天数 ──
+
+  int _computeStreak(List<DateTime> sortedDays, DateTime todayStart) {
+    if (sortedDays.isEmpty) return 0;
+
+    final daySet = sortedDays.toSet();
+    // 如果今天有数据从今天开始，否则从昨天开始
+    var checkDay = todayStart;
+    if (!daySet.contains(checkDay)) {
+      checkDay = checkDay.subtract(const Duration(days: 1));
+    }
+    int streak = 0;
+    while (daySet.contains(checkDay)) {
+      streak++;
+      checkDay = checkDay.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  // ── 趋势数据构建 ──
+
+  List<TrendDataPoint> _buildTrendData({
+    required Map<DateTime, _DailyAccumulator> dailyMap,
+    required TrendGranularity granularity,
+    required DateTime now,
+  }) {
+    switch (granularity) {
+      case TrendGranularity.day:
+        return _buildDailyTrend(dailyMap, now, periods: 14);
+      case TrendGranularity.week:
+        return _buildWeeklyTrend(dailyMap, now, periods: 12);
+      case TrendGranularity.month:
+        return _buildMonthlyTrend(dailyMap, now, periods: 6);
+    }
+  }
+
+  List<TrendDataPoint> _buildDailyTrend(
+    Map<DateTime, _DailyAccumulator> dailyMap,
+    DateTime now, {
+    required int periods,
+  }) {
+    final today = DateTime(now.year, now.month, now.day);
+    return List.generate(periods, (i) {
+      final day = today.subtract(Duration(days: periods - 1 - i));
+      final acc = dailyMap[day];
+      return TrendDataPoint(
+        date: day,
+        count: acc?.count ?? 0,
+        durationMs: acc?.durationMs ?? 0,
+        charCount: acc?.charCount ?? 0,
+      );
+    });
+  }
+
+  List<TrendDataPoint> _buildWeeklyTrend(
+    Map<DateTime, _DailyAccumulator> dailyMap,
+    DateTime now, {
+    required int periods,
+  }) {
+    final today = DateTime(now.year, now.month, now.day);
+    final thisWeekMonday = today.subtract(Duration(days: today.weekday - 1));
+
+    return List.generate(periods, (i) {
+      final weekStart = thisWeekMonday.subtract(
+        Duration(days: 7 * (periods - 1 - i)),
+      );
+      int count = 0, durationMs = 0, charCount = 0;
+      for (int d = 0; d < 7; d++) {
+        final day = weekStart.add(Duration(days: d));
+        final acc = dailyMap[day];
+        if (acc != null) {
+          count += acc.count;
+          durationMs += acc.durationMs;
+          charCount += acc.charCount;
+        }
+      }
+      return TrendDataPoint(
+        date: weekStart,
+        count: count,
+        durationMs: durationMs,
+        charCount: charCount,
+      );
+    });
+  }
+
+  List<TrendDataPoint> _buildMonthlyTrend(
+    Map<DateTime, _DailyAccumulator> dailyMap,
+    DateTime now, {
+    required int periods,
+  }) {
+    return List.generate(periods, (i) {
+      final offset = periods - 1 - i;
+      int year = now.year;
+      int month = now.month - offset;
+      while (month <= 0) {
+        month += 12;
+        year--;
+      }
+      final monthStart = DateTime(year, month, 1);
+      final nextMonth = DateTime(year, month + 1, 1);
+
+      int count = 0, durationMs = 0, charCount = 0;
+      for (final entry in dailyMap.entries) {
+        if (!entry.key.isBefore(monthStart) && entry.key.isBefore(nextMonth)) {
+          count += entry.value.count;
+          durationMs += entry.value.durationMs;
+          charCount += entry.value.charCount;
+        }
+      }
+      return TrendDataPoint(
+        date: monthStart,
+        count: count,
+        durationMs: durationMs,
+        charCount: charCount,
+      );
+    });
+  }
+}
+
+/// 每日累加器（内部使用）。
+class _DailyAccumulator {
+  int count = 0;
+  int durationMs = 0;
+  int charCount = 0;
+}

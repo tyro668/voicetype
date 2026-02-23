@@ -43,6 +43,7 @@ dependencies:
   sqflite_common_ffi: ^2.3.3
   floor: ^1.5.0
   sqflite: ^2.4.0
+  fl_chart: ^0.70.2
 
 dev_dependencies:
   flutter_test:

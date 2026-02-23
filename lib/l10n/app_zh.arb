@@ -187,5 +187,58 @@
   "themeMode": "外观模式",
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
-  "themeDark": "深色"
+  "themeDark": "深色",
+
+  "dashboard": "仪表盘",
+  "totalTranscriptions": "总转录次数",
+  "totalRecordingTime": "总录音时长",
+  "totalCharacters": "总字数",
+  "avgCharsPerSession": "平均每次字数",
+  "avgRecordingDuration": "平均录音时长",
+  "today": "今日",
+  "thisWeek": "本周",
+  "thisMonth": "本月",
+  "transcriptionCount": "转录次数",
+  "recordingTime": "录音时长",
+  "characters": "字数",
+  "usageTrend": "使用趋势",
+  "providerDistribution": "服务商分布",
+  "modelDistribution": "模型分布",
+  "currentStreak": "连续使用天数",
+  "streakDays": "{count} 天",
+  "@streakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lastUsed": "最近使用",
+  "mostActiveDay": "最活跃的一天",
+  "charsPerMinute": "每分钟字数",
+  "efficiency": "效率",
+  "activity": "活跃度",
+  "noDataYet": "暂无数据，开始转录吧！",
+  "day": "日",
+  "week": "周",
+  "month": "月",
+  "timeAgo": "{time}前",
+  "@timeAgo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "minuteShort": "分",
+  "hourShort": "时",
+  "secondShort": "秒",
+  "sessions": "{count} 次",
+  "@sessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

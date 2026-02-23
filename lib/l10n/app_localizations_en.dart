@@ -518,4 +518,103 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeDark => 'Dark';
+
+  @override
+  String get dashboard => 'Dashboard';
+
+  @override
+  String get totalTranscriptions => 'Total Transcriptions';
+
+  @override
+  String get totalRecordingTime => 'Total Recording Time';
+
+  @override
+  String get totalCharacters => 'Total Characters';
+
+  @override
+  String get avgCharsPerSession => 'Avg Chars/Session';
+
+  @override
+  String get avgRecordingDuration => 'Avg Duration';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get thisWeek => 'This Week';
+
+  @override
+  String get thisMonth => 'This Month';
+
+  @override
+  String get transcriptionCount => 'Transcriptions';
+
+  @override
+  String get recordingTime => 'Recording Time';
+
+  @override
+  String get characters => 'Characters';
+
+  @override
+  String get usageTrend => 'Usage Trend';
+
+  @override
+  String get providerDistribution => 'Provider Distribution';
+
+  @override
+  String get modelDistribution => 'Model Distribution';
+
+  @override
+  String get currentStreak => 'Current Streak';
+
+  @override
+  String streakDays(int count) {
+    return '$count days';
+  }
+
+  @override
+  String get lastUsed => 'Last Used';
+
+  @override
+  String get mostActiveDay => 'Most Active Day';
+
+  @override
+  String get charsPerMinute => 'Chars/Minute';
+
+  @override
+  String get efficiency => 'Efficiency';
+
+  @override
+  String get activity => 'Activity';
+
+  @override
+  String get noDataYet => 'No data yet. Start transcribing!';
+
+  @override
+  String get day => 'Day';
+
+  @override
+  String get week => 'Week';
+
+  @override
+  String get month => 'Month';
+
+  @override
+  String timeAgo(String time) {
+    return '$time ago';
+  }
+
+  @override
+  String get minuteShort => 'm';
+
+  @override
+  String get hourShort => 'h';
+
+  @override
+  String get secondShort => 's';
+
+  @override
+  String sessions(int count) {
+    return '$count sessions';
+  }
 }

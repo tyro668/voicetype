@@ -192,5 +192,58 @@
   "themeMode": "Appearance",
   "themeSystem": "System",
   "themeLight": "Light",
-  "themeDark": "Dark"
+  "themeDark": "Dark",
+
+  "dashboard": "Dashboard",
+  "totalTranscriptions": "Total Transcriptions",
+  "totalRecordingTime": "Total Recording Time",
+  "totalCharacters": "Total Characters",
+  "avgCharsPerSession": "Avg Chars/Session",
+  "avgRecordingDuration": "Avg Duration",
+  "today": "Today",
+  "thisWeek": "This Week",
+  "thisMonth": "This Month",
+  "transcriptionCount": "Transcriptions",
+  "recordingTime": "Recording Time",
+  "characters": "Characters",
+  "usageTrend": "Usage Trend",
+  "providerDistribution": "Provider Distribution",
+  "modelDistribution": "Model Distribution",
+  "currentStreak": "Current Streak",
+  "streakDays": "{count} days",
+  "@streakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lastUsed": "Last Used",
+  "mostActiveDay": "Most Active Day",
+  "charsPerMinute": "Chars/Minute",
+  "efficiency": "Efficiency",
+  "activity": "Activity",
+  "noDataYet": "No data yet. Start transcribing!",
+  "day": "Day",
+  "week": "Week",
+  "month": "Month",
+  "timeAgo": "{time} ago",
+  "@timeAgo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "minuteShort": "m",
+  "hourShort": "h",
+  "secondShort": "s",
+  "sessions": "{count} sessions",
+  "@sessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
