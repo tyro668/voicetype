@@ -17,11 +17,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: flutter-actions/setup-flutter@v4
-        with:
-          version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
+      - name: Setup Flutter (macOS)
+        run: |
+          set -euo pipefail
+          VERSION="${{ env.FLUTTER_VERSION }}"
+          ARCH="$(uname -m)"
+          if [[ "$ARCH" == "arm64" ]]; then
+            FLUTTER_ARCH="arm64"
+          else
+            FLUTTER_ARCH="x64"
+          fi
+          URL="https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_${FLUTTER_ARCH}_${VERSION}-stable.zip"
+          ZIP_PATH="$RUNNER_TEMP/flutter.zip"
+          INSTALL_ROOT="$RUNNER_TEMP/flutter-sdk"
+
+          curl -L "$URL" -o "$ZIP_PATH"
+          unzip -q "$ZIP_PATH" -d "$INSTALL_ROOT"
+
+          echo "$INSTALL_ROOT/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Flutter version
+        run: |
+          flutter --version
+          dart --version
 
       - name: Flutter doctor
         run: flutter doctor -v
