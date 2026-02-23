@@ -209,7 +209,7 @@ class SttPage extends StatelessWidget {
     messenger.showSnackBar(
       SnackBar(
         content: Text(l10n.testingConnection),
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 20),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -226,16 +226,30 @@ class SttPage extends StatelessWidget {
       model: entry.model,
     );
 
-    final stt = SttService(config);
-    final ok = await stt.checkAvailability();
+    bool ok = false;
+    String message = l10n.connectionFailed;
+    try {
+      final stt = SttService(config);
+      final result = await stt.checkAvailabilityDetailed().timeout(
+        const Duration(seconds: 25),
+      );
+      ok = result.ok;
+      message = ok
+          ? l10n.connectionSuccess
+          : '${l10n.connectionFailed}: ${result.message}';
+    } catch (e) {
+      ok = false;
+      message = '${l10n.connectionFailed}: ${e.toString()}';
+    }
 
     if (!context.mounted) return;
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(ok ? l10n.connectionSuccess : l10n.connectionFailed),
+        content: Text(message),
         backgroundColor: ok ? Colors.green : Colors.redAccent,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
       ),
     );
   }

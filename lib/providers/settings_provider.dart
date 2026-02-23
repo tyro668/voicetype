@@ -6,8 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/ai_model_entry.dart';
 import '../models/ai_vendor_preset.dart';
+import '../models/network_settings.dart';
 import '../models/provider_config.dart';
 import '../models/stt_model_entry.dart';
+import '../services/crypto_service.dart';
+import '../services/network_client_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const _configKey = 'stt_provider_config';
@@ -21,6 +24,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _aiModelEntriesKey = 'ai_model_entries';
   static const _sttModelEntriesKey = 'stt_model_entries';
   static const _localeKey = 'locale';
+  static const _networkProxyModeKey = 'network_proxy_mode';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -49,6 +53,7 @@ class SettingsProvider extends ChangeNotifier {
   List<AiModelEntry> _aiModelEntries = [];
   List<SttModelEntry> _sttModelEntries = [];
   Locale _locale = const Locale('zh');
+  NetworkProxyMode _networkProxyMode = NetworkProxyMode.none;
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -80,6 +85,7 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Locale get locale => _locale;
+  NetworkProxyMode get networkProxyMode => _networkProxyMode;
 
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
@@ -114,29 +120,81 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+  // ===== 加密辅助方法 =====
+
+  /// 解析 API Key：支持明文、单层加密、历史双层加密。
+  /// 如果最终仍是 ENC: 前缀，说明解密失败（如主密钥丢失），返回空字符串。
+  String _resolveApiKey(String raw) {
+    var value = raw.trim();
+    for (var i = 0; i < 3; i++) {
+      if (!value.startsWith('ENC:')) break;
+      final decrypted = CryptoService.instance.decryptText(value).trim();
+      if (decrypted == value) break;
+      value = decrypted;
+    }
+    if (value.startsWith('ENC:')) {
+      return '';
+    }
+    return value;
+  }
+
+  /// 加密 JSON Map 中的 apiKey 字段
+  Map<String, dynamic> _encryptApiKeyInJson(Map<String, dynamic> jsonMap) {
+    final copy = Map<String, dynamic>.from(jsonMap);
+    final apiKey = copy['apiKey'];
+    if (apiKey is String && apiKey.isNotEmpty) {
+      final resolved = _resolveApiKey(apiKey);
+      copy['apiKey'] = resolved.isEmpty
+          ? ''
+          : CryptoService.instance.encryptText(resolved);
+    }
+    return copy;
+  }
+
+  /// 解密 JSON Map 中的 apiKey 字段
+  Map<String, dynamic> _decryptApiKeyInJson(Map<String, dynamic> jsonMap) {
+    final copy = Map<String, dynamic>.from(jsonMap);
+    final apiKey = copy['apiKey'];
+    if (apiKey is String && apiKey.isNotEmpty) {
+      copy['apiKey'] = _resolveApiKey(apiKey);
+    }
+    return copy;
+  }
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // 初始化加密服务（必须在加载数据之前）
+    await CryptoService.initialize();
+
     await _loadPresetsFromAssets();
 
-    // 加载服务商配置
+    // 加载服务商配置（解密 apiKey）
     final configJson = prefs.getString(_configKey);
     if (configJson != null) {
-      _config = SttProviderConfig.fromJson(json.decode(configJson));
+      final decoded = json.decode(configJson) as Map<String, dynamic>;
+      _config = SttProviderConfig.fromJson(_decryptApiKeyInJson(decoded));
     }
 
-    // 加载自定义服务商
+    // 加载自定义服务商（解密 apiKey）
     final customJson = prefs.getString('custom_providers');
     if (customJson != null) {
       _customProviders = (json.decode(customJson) as List)
-          .map((e) => SttProviderConfig.fromJson(e))
+          .map(
+            (e) => SttProviderConfig.fromJson(
+              _decryptApiKeyInJson(e as Map<String, dynamic>),
+            ),
+          )
           .toList();
     }
 
-    // 加载 API Keys
+    // 加载 API Keys（解密值）
     final keysJson = prefs.getString('api_keys');
     if (keysJson != null) {
-      _apiKeys.addAll(Map<String, String>.from(json.decode(keysJson)));
+      final raw = Map<String, String>.from(json.decode(keysJson));
+      for (final entry in raw.entries) {
+        _apiKeys[entry.key] = _resolveApiKey(entry.value);
+      }
     }
     // 将存储的 apiKey 应用到当前配置
     if (_apiKeys.containsKey(_config.name)) {
@@ -179,7 +237,10 @@ class SettingsProvider extends ChangeNotifier {
 
     final aiEnhanceJson = prefs.getString(_aiEnhanceConfigKey);
     if (aiEnhanceJson != null) {
-      _aiEnhanceConfig = AiEnhanceConfig.fromJson(json.decode(aiEnhanceJson));
+      final decoded = json.decode(aiEnhanceJson) as Map<String, dynamic>;
+      _aiEnhanceConfig = AiEnhanceConfig.fromJson(
+        _decryptApiKeyInJson(decoded),
+      );
     } else {
       _aiEnhanceConfig = _aiEnhanceConfig.copyWith(
         prompt: _aiEnhanceDefaultPrompt,
@@ -193,11 +254,15 @@ class SettingsProvider extends ChangeNotifier {
       );
     }
 
-    // 加载文本模型条目列表
+    // 加载文本模型条目列表（解密 apiKey）
     final entriesJson = prefs.getString(_aiModelEntriesKey);
     if (entriesJson != null) {
       try {
-        _aiModelEntries = AiModelEntry.listFromJson(entriesJson);
+        final list = json.decode(entriesJson) as List<dynamic>;
+        _aiModelEntries = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => AiModelEntry.fromJson(_decryptApiKeyInJson(e)))
+            .toList();
       } catch (_) {}
     }
     // 如果有激活条目，同步到 aiEnhanceConfig
@@ -210,11 +275,15 @@ class SettingsProvider extends ChangeNotifier {
       );
     }
 
-    // 加载语音模型条目列表
+    // 加载语音模型条目列表（解密 apiKey）
     final sttEntriesJson = prefs.getString(_sttModelEntriesKey);
     if (sttEntriesJson != null) {
       try {
-        _sttModelEntries = SttModelEntry.listFromJson(sttEntriesJson);
+        final list = json.decode(sttEntriesJson) as List<dynamic>;
+        _sttModelEntries = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => SttModelEntry.fromJson(_decryptApiKeyInJson(e)))
+            .toList();
       } catch (_) {}
     }
     // 如果有激活的语音模型条目，同步到 config
@@ -234,7 +303,55 @@ class SettingsProvider extends ChangeNotifier {
       _locale = Locale(localeStr);
     }
 
+    final proxyModeStr = prefs.getString(_networkProxyModeKey);
+    _networkProxyMode = NetworkProxyModeX.fromStorage(proxyModeStr);
+    NetworkClientService.setProxyMode(_networkProxyMode);
+
+    // 迁移：将所有明文密钥重新加密保存
+    await _migrateEncryptKeys(prefs);
+
     notifyListeners();
+  }
+
+  /// 迁移旧的明文密钥到加密存储
+  Future<void> _migrateEncryptKeys(SharedPreferences prefs) async {
+    // 重新保存所有包含 apiKey 的数据（加密后写入）
+    await _saveConfigEncrypted(prefs);
+    await _saveApiKeysEncrypted(prefs);
+    await _saveAiEnhanceConfigEncrypted(prefs);
+    await _saveCustomProvidersEncrypted(prefs);
+    if (_aiModelEntries.isNotEmpty) await _saveAiModelEntries();
+    if (_sttModelEntries.isNotEmpty) await _saveSttModelEntries();
+  }
+
+  Future<void> _saveConfigEncrypted(SharedPreferences prefs) async {
+    final configMap = _encryptApiKeyInJson(_config.toJson());
+    await prefs.setString(_configKey, json.encode(configMap));
+  }
+
+  Future<void> _saveApiKeysEncrypted(SharedPreferences prefs) async {
+    if (_apiKeys.isEmpty) return;
+    final encrypted = <String, String>{};
+    for (final entry in _apiKeys.entries) {
+      final resolved = _resolveApiKey(entry.value);
+      encrypted[entry.key] = resolved.isEmpty
+          ? ''
+          : CryptoService.instance.encryptText(resolved);
+    }
+    await prefs.setString('api_keys', json.encode(encrypted));
+  }
+
+  Future<void> _saveAiEnhanceConfigEncrypted(SharedPreferences prefs) async {
+    final configMap = _encryptApiKeyInJson(_aiEnhanceConfig.toJson());
+    await prefs.setString(_aiEnhanceConfigKey, json.encode(configMap));
+  }
+
+  Future<void> _saveCustomProvidersEncrypted(SharedPreferences prefs) async {
+    if (_customProviders.isEmpty) return;
+    final encrypted = _customProviders
+        .map((e) => _encryptApiKeyInJson(e.toJson()))
+        .toList();
+    await prefs.setString('custom_providers', json.encode(encrypted));
   }
 
   Future<void> _loadPresetsFromAssets() async {
@@ -263,7 +380,10 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setConfig(SttProviderConfig config) async {
     _config = config;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_configKey, json.encode(config.toJson()));
+    await prefs.setString(
+      _configKey,
+      json.encode(_encryptApiKeyInJson(config.toJson())),
+    );
     notifyListeners();
   }
 
@@ -273,17 +393,32 @@ class SettingsProvider extends ChangeNotifier {
     final savedKey = _apiKeys[provider.name] ?? '';
     _config = provider.copyWith(apiKey: savedKey);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_configKey, json.encode(_config.toJson()));
+    await prefs.setString(
+      _configKey,
+      json.encode(_encryptApiKeyInJson(_config.toJson())),
+    );
     notifyListeners();
   }
 
   /// 设置当前服务商的 API Key
   Future<void> setApiKey(String apiKey) async {
-    _apiKeys[_config.name] = apiKey;
-    _config = _config.copyWith(apiKey: apiKey);
+    final normalizedApiKey = apiKey.trim();
+    _apiKeys[_config.name] = normalizedApiKey;
+    _config = _config.copyWith(apiKey: normalizedApiKey);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('api_keys', json.encode(_apiKeys));
-    await prefs.setString(_configKey, json.encode(_config.toJson()));
+    // 加密后存储 API Keys
+    final encryptedKeys = <String, String>{};
+    for (final entry in _apiKeys.entries) {
+      final resolved = _resolveApiKey(entry.value);
+      encryptedKeys[entry.key] = resolved.isEmpty
+          ? ''
+          : CryptoService.instance.encryptText(resolved);
+    }
+    await prefs.setString('api_keys', json.encode(encryptedKeys));
+    await prefs.setString(
+      _configKey,
+      json.encode(_encryptApiKeyInJson(_config.toJson())),
+    );
     notifyListeners();
   }
 
@@ -291,7 +426,10 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setModel(String model) async {
     _config = _config.copyWith(model: model);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_configKey, json.encode(_config.toJson()));
+    await prefs.setString(
+      _configKey,
+      json.encode(_encryptApiKeyInJson(_config.toJson())),
+    );
     notifyListeners();
   }
 
@@ -341,7 +479,10 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setAiEnhanceConfig(AiEnhanceConfig config) async {
     _aiEnhanceConfig = config;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_aiEnhanceConfigKey, json.encode(config.toJson()));
+    await prefs.setString(
+      _aiEnhanceConfigKey,
+      json.encode(_encryptApiKeyInJson(config.toJson())),
+    );
     notifyListeners();
   }
 
@@ -379,10 +520,10 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> _saveAiModelEntries() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _aiModelEntriesKey,
-      AiModelEntry.listToJson(_aiModelEntries),
-    );
+    final encryptedList = _aiModelEntries
+        .map((e) => _encryptApiKeyInJson(e.toJson()))
+        .toList();
+    await prefs.setString(_aiModelEntriesKey, json.encode(encryptedList));
   }
 
   Future<void> addAiModelEntry(AiModelEntry entry) async {
@@ -434,11 +575,11 @@ class SettingsProvider extends ChangeNotifier {
         apiKey: active.apiKey,
         model: active.model,
       );
-      // 同时持久化 aiEnhanceConfig
+      // 同时持久化 aiEnhanceConfig（加密 apiKey）
       SharedPreferences.getInstance().then((prefs) {
         prefs.setString(
           _aiEnhanceConfigKey,
-          json.encode(_aiEnhanceConfig.toJson()),
+          json.encode(_encryptApiKeyInJson(_aiEnhanceConfig.toJson())),
         );
       });
     }
@@ -448,10 +589,10 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> _saveSttModelEntries() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _sttModelEntriesKey,
-      SttModelEntry.listToJson(_sttModelEntries),
-    );
+    final encryptedList = _sttModelEntries
+        .map((e) => _encryptApiKeyInJson(e.toJson()))
+        .toList();
+    await prefs.setString(_sttModelEntriesKey, json.encode(encryptedList));
   }
 
   Future<void> addSttModelEntry(SttModelEntry entry) async {
@@ -504,9 +645,12 @@ class SettingsProvider extends ChangeNotifier {
         apiKey: active.apiKey,
         model: active.model,
       );
-      // 同时持久化 config
+      // 同时持久化 config（加密 apiKey）
       SharedPreferences.getInstance().then((prefs) {
-        prefs.setString(_configKey, json.encode(_config.toJson()));
+        prefs.setString(
+          _configKey,
+          json.encode(_encryptApiKeyInJson(_config.toJson())),
+        );
       });
     }
   }
@@ -516,7 +660,9 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'custom_providers',
-      json.encode(_customProviders.map((e) => e.toJson()).toList()),
+      json.encode(
+        _customProviders.map((e) => _encryptApiKeyInJson(e.toJson())).toList(),
+      ),
     );
     notifyListeners();
   }
@@ -526,7 +672,9 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'custom_providers',
-      json.encode(_customProviders.map((e) => e.toJson()).toList()),
+      json.encode(
+        _customProviders.map((e) => _encryptApiKeyInJson(e.toJson())).toList(),
+      ),
     );
     notifyListeners();
   }
@@ -543,6 +691,14 @@ class SettingsProvider extends ChangeNotifier {
     _locale = locale;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_localeKey, locale.languageCode);
+    notifyListeners();
+  }
+
+  Future<void> setNetworkProxyMode(NetworkProxyMode mode) async {
+    _networkProxyMode = mode;
+    NetworkClientService.setProxyMode(mode);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_networkProxyModeKey, mode.storageValue);
     notifyListeners();
   }
 }

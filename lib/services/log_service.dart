@@ -44,4 +44,32 @@ class LogService {
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
+
+  static Future<void> appendLog(
+    String message, {
+    String level = 'INFO',
+    String tag = 'APP',
+  }) async {
+    try {
+      final logPath = await logFilePath;
+      final file = File(logPath);
+      if (!await file.exists()) {
+        await file.create(recursive: true);
+      }
+
+      final ts = DateTime.now().toIso8601String();
+      final line = '[$ts][$level][$tag] $message\n';
+      await file.writeAsString(line, mode: FileMode.append, flush: true);
+    } catch (_) {
+      // ignore logging failures
+    }
+  }
+
+  static Future<void> info(String tag, String message) async {
+    await appendLog(message, level: 'INFO', tag: tag);
+  }
+
+  static Future<void> error(String tag, String message) async {
+    await appendLog(message, level: 'ERROR', tag: tag);
+  }
 }

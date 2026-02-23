@@ -11,6 +11,7 @@ import '../services/ai_enhance_service.dart';
 import '../services/history_db.dart';
 import '../services/stt_service.dart';
 import '../services/overlay_service.dart';
+import '../services/log_service.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
@@ -287,6 +288,7 @@ class RecordingProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _error = '转录失败: $e';
+      await LogService.error('RECORDING', _error);
       await _showTranscribeFailedOverlay();
       notifyListeners();
     }

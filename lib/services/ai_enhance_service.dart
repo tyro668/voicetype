@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import '../models/ai_enhance_config.dart';
+import 'log_service.dart';
+import 'network_client_service.dart';
 
 class AiEnhanceService {
   static const _timeout = Duration(seconds: 30);
@@ -12,8 +13,30 @@ class AiEnhanceService {
 
   AiEnhanceService(this.config);
 
+  String? _apiKeyValidationMessage() {
+    final apiKey = config.apiKey.trim();
+    if (apiKey.isEmpty) {
+      return 'API密钥为空，请先填写 API Key';
+    }
+    if (apiKey.startsWith('ENC:')) {
+      return 'API密钥解密失败，请重新输入 API Key';
+    }
+    return null;
+  }
+
   Future<String> enhance(String text) async {
     if (text.trim().isEmpty) return text;
+
+    await LogService.info(
+      'AI',
+      'start enhance model=${config.model} baseUrl=${config.baseUrl} textLength=${text.length}',
+    );
+
+    final apiKeyError = _apiKeyValidationMessage();
+    if (apiKeyError != null) {
+      await LogService.error('AI', 'api key validation failed: $apiKeyError');
+      throw AiEnhanceException('AI增强失败: $apiKeyError');
+    }
 
     final resolvedPrompt = config.prompt.replaceAll(
       '{agentName}',
@@ -38,14 +61,24 @@ class AiEnhanceService {
       throw AiEnhanceException('AI增强失败: 无效的端点 URL');
     }
 
-    final client = http.Client();
+    final client = NetworkClientService.createClient();
     try {
       final response = await client
           .post(uri, headers: headers, body: body)
           .timeout(_timeout);
 
+      await LogService.info(
+        'AI',
+        'enhance response status=${response.statusCode} bodyLength=${response.body.length}',
+      );
+
       if (response.statusCode == 200) {
-        return _extractContent(response.body, text);
+        final content = _extractContent(response.body, text);
+        await LogService.info(
+          'AI',
+          'enhance success textLength=${content.length}',
+        );
+        return content;
       }
 
       // 尝试解析错误信息
@@ -62,13 +95,17 @@ class AiEnhanceService {
         errorMsg = 'AI增强失败 (${response.statusCode}): ${response.body}';
       }
 
+      await LogService.error('AI', errorMsg);
       throw AiEnhanceException(errorMsg);
     } on TimeoutException {
+      await LogService.error('AI', 'AI增强失败: 请求超时');
       throw AiEnhanceException('AI增强失败: 请求超时');
     } on SocketException catch (e) {
+      await LogService.error('AI', 'AI增强失败: 网络连接错误 - ${e.message}');
       throw AiEnhanceException('AI增强失败: 网络连接错误 - ${e.message}');
     } catch (e) {
       if (e is AiEnhanceException) rethrow;
+      await LogService.error('AI', 'AI增强失败: $e');
       throw AiEnhanceException('AI增强失败: $e');
     } finally {
       client.close();
@@ -82,6 +119,17 @@ class AiEnhanceService {
   }
 
   Future<AiConnectionCheckResult> checkAvailabilityDetailed() async {
+    await LogService.info(
+      'AI',
+      'checkAvailability model=${config.model} baseUrl=${config.baseUrl}',
+    );
+
+    final apiKeyError = _apiKeyValidationMessage();
+    if (apiKeyError != null) {
+      await LogService.error('AI', 'checkAvailability failed: $apiKeyError');
+      return AiConnectionCheckResult(ok: false, message: apiKeyError);
+    }
+
     final normalizedBase = _normalizeBaseUrl(config.baseUrl);
     developer.log('检查连接 - 基础URL: $normalizedBase', name: 'AiEnhanceService');
 
@@ -89,138 +137,87 @@ class AiEnhanceService {
       return const AiConnectionCheckResult(ok: false, message: '端点 URL 无效');
     }
 
-    final uri = Uri.parse('$normalizedBase/chat/completions');
-    developer.log('检查连接 - 完整URI: $uri', name: 'AiEnhanceService');
-
     final headers = _buildHeaders();
-    developer.log('检查连接 - 请求头已构建', name: 'AiEnhanceService');
 
-    final body = json.encode({
-      'model': config.model,
-      'max_tokens': 5,
-      'temperature': 0,
-      'stream': false,
-      'messages': [
-        {'role': 'user', 'content': 'Hi'},
-      ],
-    });
+    // 与 Z.ai 保持一致：测试连接统一使用 /models 端点
+    return _checkModelsEndpoint(normalizedBase, headers);
+  }
 
-    // 尝试连接，带重试机制
-    for (int attempt = 1; attempt <= 2; attempt++) {
-      developer.log('检查连接 - 第 $attempt 次尝试', name: 'AiEnhanceService');
+  /// 用 /models 端点快速检查连接和认证
+  Future<AiConnectionCheckResult> _checkModelsEndpoint(
+    String normalizedBase,
+    Map<String, String> headers,
+  ) async {
+    final uri = Uri.parse('$normalizedBase/models');
+    developer.log('检查连接 - 尝试 /models: $uri', name: 'AiEnhanceService');
 
-      final client = http.Client();
-      try {
-        developer.log('检查连接 - 开始发送请求...', name: 'AiEnhanceService');
+    final client = NetworkClientService.createClient();
+    try {
+      final stopwatch = Stopwatch()..start();
+      final response = await client
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 10));
+      stopwatch.stop();
 
-        final stopwatch = Stopwatch()..start();
-        final response = await client
-            .post(uri, headers: headers, body: body)
-            .timeout(_timeout);
-        stopwatch.stop();
+      developer.log(
+        '检查连接 - /models 响应: ${response.statusCode}, 耗时: ${stopwatch.elapsedMilliseconds}ms',
+        name: 'AiEnhanceService',
+      );
 
-        developer.log(
-          '检查连接 - 收到响应: ${response.statusCode}, 耗时: ${stopwatch.elapsedMilliseconds}ms',
-          name: 'AiEnhanceService',
-        );
-        developer.log(
-          '检查连接 - 响应体长度: ${response.body.length}',
-          name: 'AiEnhanceService',
-        );
-
-        // 解析响应
-        final jsonBody = json.decode(response.body) as Map<String, dynamic>;
-
-        if (response.statusCode == 200) {
-          final choices = jsonBody['choices'] as List<dynamic>?;
-          if (choices != null && choices.isNotEmpty) {
-            return AiConnectionCheckResult(
-              ok: true,
-              message: '连接成功 (${uri.host})',
-            );
-          }
-          return const AiConnectionCheckResult(
-            ok: false,
-            message: '接口返回异常：未找到choices',
-          );
-        }
-
-        // 处理错误响应
-        final error = jsonBody['error'] as Map<String, dynamic>?;
-        if (error != null) {
-          final errorMsg = error['message'] as String? ?? '未知错误';
-          final errorCode = error['code'] as String?;
-
-          if (response.statusCode == 401 || errorCode == 'invalid_api_key') {
-            return AiConnectionCheckResult(
-              ok: false,
-              message: 'API密钥无效: $errorMsg',
-            );
-          }
-
-          return AiConnectionCheckResult(
-            ok: false,
-            message: 'API错误: $errorMsg',
-          );
-        }
-
-        final message = jsonBody['message'] as String?;
-        if (message != null) {
-          return AiConnectionCheckResult(
-            ok: false,
-            message: message,
-          );
-        }
-
-        return AiConnectionCheckResult(
-          ok: false,
-          message: '接口返回错误 ${response.statusCode}',
-        );
-      } on TimeoutException catch (e) {
-        developer.log('检查连接 - 第 $attempt 次超时: $e', name: 'AiEnhanceService');
-        if (attempt == 2) {
-          return AiConnectionCheckResult(
-            ok: false,
-            message: '请求超时 (${_timeout.inSeconds}秒)，请检查：\n'
-                '1. 网络连接是否正常\n'
-                '2. API端点是否正确\n'
-                '3. 是否使用了代理/VPN',
-          );
-        }
-        // 重试前等待
-        await Future.delayed(const Duration(seconds: 1));
-      } on SocketException catch (e) {
-        developer.log('检查连接 - 网络错误: $e', name: 'AiEnhanceService');
-        return AiConnectionCheckResult(
-          ok: false,
-          message: '网络连接失败: ${e.message}\n'
-              '请检查网络连接和DNS设置',
-        );
-      } on FormatException catch (e) {
-        developer.log('检查连接 - 格式异常: $e', name: 'AiEnhanceService');
-        return AiConnectionCheckResult(
-          ok: false,
-          message: '响应解析失败: $e',
-        );
-      } catch (e) {
-        developer.log('检查连接 - 其他异常: $e', name: 'AiEnhanceService');
-        if (attempt == 2) {
-          return AiConnectionCheckResult(
-            ok: false,
-            message: '连接失败: $e',
-          );
-        }
-        // 重试前等待
-        await Future.delayed(const Duration(seconds: 1));
-      } finally {
-        client.close();
+      if (response.statusCode == 200) {
+        await LogService.info('AI', '/models check success (${uri.host})');
+        return AiConnectionCheckResult(ok: true, message: '连接成功 (${uri.host})');
       }
-    }
 
-    return const AiConnectionCheckResult(
-      ok: false,
-      message: '连接失败：所有重试都失败了',
-    );
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        // 尝试解析错误信息
+        try {
+          final jsonBody = json.decode(response.body) as Map<String, dynamic>;
+          final error = jsonBody['error'] as Map<String, dynamic>?;
+          final errorMsg =
+              error?['message'] as String? ??
+              jsonBody['message'] as String? ??
+              '认证失败';
+          return AiConnectionCheckResult(
+            ok: false,
+            message: 'API密钥无效: $errorMsg',
+          );
+        } catch (_) {
+          return AiConnectionCheckResult(
+            ok: false,
+            message: 'API密钥无效 (${response.statusCode})',
+          );
+        }
+      }
+
+      // 404/405 表示服务可达但不支持该端点，仍视为连接成功
+      if (response.statusCode == 404 || response.statusCode == 405) {
+        return AiConnectionCheckResult(ok: true, message: '连接成功 (${uri.host})');
+      }
+
+      // 其他状态码（如 429 限流），服务端可达但有问题
+      // 仍然视为连接成功（能收到响应说明服务可达）
+      return AiConnectionCheckResult(ok: true, message: '连接成功 (${uri.host})');
+    } on TimeoutException {
+      developer.log('检查连接 - /models 超时', name: 'AiEnhanceService');
+      await LogService.error('AI', 'checkAvailability timeout');
+      return const AiConnectionCheckResult(ok: false, message: '请求超时，请检查网络连接');
+    } on SocketException catch (e) {
+      await LogService.error(
+        'AI',
+        'checkAvailability socket error: ${e.message}',
+      );
+      return AiConnectionCheckResult(
+        ok: false,
+        message: '网络连接失败: ${e.message}\n请检查网络连接和DNS设置',
+      );
+    } catch (e) {
+      developer.log('检查连接 - /models 异常: $e', name: 'AiEnhanceService');
+      await LogService.error('AI', 'checkAvailability error: $e');
+      return AiConnectionCheckResult(ok: false, message: '连接失败: $e');
+    } finally {
+      client.close();
+    }
   }
 
   bool _isValidBaseUrl(String baseUrl) {
@@ -234,9 +231,7 @@ class AiEnhanceService {
   }
 
   Map<String, String> _buildHeaders() {
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
+    final headers = <String, String>{'Content-Type': 'application/json'};
 
     final apiKey = config.apiKey.trim();
     if (apiKey.isNotEmpty) {
