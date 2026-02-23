@@ -1,0 +1,106 @@
+name: Build macOS Installer
+
+on:
+  push:
+    tags:
+      - 'v*'          # 推送 v* 标签时自动构建
+  workflow_dispatch:    # 也支持手动触发
+
+env:
+  FLUTTER_VERSION: '3.41.2'   # 需匹配 Dart SDK ^3.10.8
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (macOS)
+        run: |
+          set -euo pipefail
+          VERSION="${{ env.FLUTTER_VERSION }}"
+          ARCH="$(uname -m)"
+          if [[ "$ARCH" == "arm64" ]]; then
+            FLUTTER_ARCH="arm64"
+          else
+            FLUTTER_ARCH="x64"
+          fi
+
+          ZIP_URL="https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_${FLUTTER_ARCH}_${VERSION}-stable.zip"
+          ZIP_PATH="$RUNNER_TEMP/flutter.zip"
+          INSTALL_ROOT="$RUNNER_TEMP/flutter-sdk"
+
+          curl -L "$ZIP_URL" -o "$ZIP_PATH"
+          unzip -q "$ZIP_PATH" -d "$INSTALL_ROOT"
+
+          echo "FLUTTER_BIN=$INSTALL_ROOT/flutter/bin" >> "$GITHUB_ENV"
+          echo "$INSTALL_ROOT/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Flutter version
+        run: |
+          "$FLUTTER_BIN/flutter" --version
+          "$FLUTTER_BIN/dart" --version
+
+      - name: Flutter doctor
+        run: |
+          "$FLUTTER_BIN/flutter" doctor -v
+
+      - name: Get dependencies
+        run: |
+          "$FLUTTER_BIN/flutter" pub get
+
+      - name: Analyze
+        run: |
+          "$FLUTTER_BIN/flutter" analyze --no-fatal-infos
+
+      - name: Build macOS Release
+        run: |
+          "$FLUTTER_BIN/flutter" build macos --release
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -E '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          VERSION=${VERSION:-0.0.0}
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Package DMG
+        id: package
+        run: |
+          APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
+          if [[ -z "$APP_PATH" ]]; then
+            echo "No .app found in build output." >&2
+            exit 1
+          fi
+
+          APP_NAME="$(basename "$APP_PATH" .app)"
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DMG_NAME="${APP_NAME}-macos-${VERSION}.dmg"
+
+          hdiutil create -volname "$APP_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "build/$DMG_NAME"
+
+          echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_OUTPUT"
+          echo "DMG_PATH=build/$DMG_NAME" >> "$GITHUB_OUTPUT"
+          echo "Packaged: build/$DMG_NAME"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicetype-macos-${{ steps.version.outputs.VERSION }}
+          path: build/${{ steps.package.outputs.DMG_NAME }}
+          retention-days: 30
+
+      # 仅在 tag 推送时创建 GitHub Release
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/${{ steps.package.outputs.DMG_NAME }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

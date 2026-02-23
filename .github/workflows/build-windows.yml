@@ -1,0 +1,105 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'          # 推送 v* 标签时自动构建
+  workflow_dispatch:    # 也支持手动触发
+
+env:
+  FLUTTER_VERSION: '3.41.2'   # 需匹配 Dart SDK ^3.10.8
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (Windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ env.FLUTTER_VERSION }}"
+          $zipUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_${version}-stable.zip"
+          $zipPath = "$env:RUNNER_TEMP/flutter.zip"
+          $installRoot = "$env:RUNNER_TEMP/flutter-sdk"
+
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath $installRoot -Force
+
+          $flutterBin = "$installRoot/flutter/bin"
+          "FLUTTER_BIN=$flutterBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$flutterBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify Flutter version
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" --version
+          & "$env:FLUTTER_BIN/dart.bat" --version
+
+      - name: Flutter doctor
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" doctor -v
+
+      - name: Get dependencies
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" pub get
+
+      - name: Analyze
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" analyze --no-fatal-infos
+
+      - name: Build Windows Release
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" build windows --release
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path "pubspec.yaml" -Pattern '^version:\s*([^\s+]+)'
+          $ver = if ($match.Matches.Count -gt 0) { $match.Matches[0].Groups[1].Value } else { "0.0.0" }
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "Version: $ver"
+
+      - name: Package release artifacts
+        shell: pwsh
+        run: |
+          $releaseDir = Get-ChildItem "build\windows" -Recurse -Directory |
+            Where-Object { $_.Name -eq 'Release' -and $_.FullName -match 'runner' } |
+            Select-Object -First 1
+          if (-not $releaseDir) {
+            throw "Release directory not found"
+          }
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $zipName = "voicetype-windows-$version.zip"
+          Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
+          echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
+          echo "ZIP_PATH=build\$zipName" >> $env:GITHUB_OUTPUT
+          echo "Packaged: build\$zipName"
+        id: package
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicetype-windows-${{ steps.version.outputs.VERSION }}
+          path: build/${{ steps.package.outputs.ZIP_NAME }}
+          retention-days: 30
+
+      # 仅在 tag 推送时创建 GitHub Release
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/${{ steps.package.outputs.ZIP_NAME }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
