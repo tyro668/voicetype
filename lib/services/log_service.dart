@@ -6,7 +6,9 @@ class LogService {
   static Future<String> get logDirectoryPath async {
     if (Platform.isMacOS) {
       final libraryDir = await getLibraryDirectory();
-      final logsDir = Directory(path.join(libraryDir.path, 'Logs'));
+      final logsDir = Directory(
+        path.join(libraryDir.path, 'Logs', 'voicetype'),
+      );
       if (!await logsDir.exists()) {
         await logsDir.create(recursive: true);
       }

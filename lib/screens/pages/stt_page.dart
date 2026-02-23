@@ -6,9 +6,17 @@ import '../../models/provider_config.dart';
 import '../../models/stt_model_entry.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/stt_service.dart';
+import '../../widgets/model_form_widgets.dart';
 
-class SttPage extends StatelessWidget {
+class SttPage extends StatefulWidget {
   const SttPage({super.key});
+
+  @override
+  State<SttPage> createState() => _SttPageState();
+}
+
+class _SttPageState extends State<SttPage> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +40,8 @@ class SttPage extends StatelessWidget {
                 icon: const Icon(Icons.add, size: 18),
                 label: Text(l10n.addVoiceModel),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black87,
-                  side: BorderSide(color: Colors.grey.shade300),
+                  foregroundColor: _cs.onSurface,
+                  side: BorderSide(color: _cs.outline),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -58,38 +66,19 @@ class SttPage extends StatelessWidget {
   Widget _buildHeader(AppLocalizations l10n) {
     return Text(
       l10n.voiceModelSettings,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: _cs.onSurface,
       ),
     );
   }
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.mic_none_outlined, size: 48, color: Colors.grey.shade300),
-          const SizedBox(height: 12),
-          Text(
-            l10n.noModelsAdded,
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.addVoiceModelHint,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-          ),
-        ],
-      ),
+    return EmptyStateCard(
+      icon: Icons.mic_none_outlined,
+      title: l10n.noModelsAdded,
+      subtitle: l10n.addVoiceModelHint,
     );
   }
 
@@ -99,104 +88,17 @@ class SttPage extends StatelessWidget {
     SttModelEntry entry,
     AppLocalizations l10n,
   ) {
-    final isActive = entry.enabled;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isActive ? const Color(0xFF6C63FF) : Colors.grey.shade200,
-          width: isActive ? 1.5 : 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      entry.vendorName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                    if (isActive) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDE7F6),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          l10n.inUse,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF6C63FF),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  entry.model,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // 测试连接
-          IconButton(
-            icon: const Icon(Icons.wifi_tethering, size: 18),
-            tooltip: l10n.testConnection,
-            color: Colors.grey.shade500,
-            onPressed: () => _testConnection(context, entry, l10n),
-          ),
-          // 编辑
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            tooltip: l10n.edit,
-            color: Colors.grey.shade500,
-            onPressed: () => _showEditDialog(context, settings, entry, l10n),
-          ),
-          // 启用/切换
-          IconButton(
-            icon: Icon(
-              isActive ? Icons.check_circle : Icons.check_circle_outline,
-              size: 18,
-              color: isActive ? Colors.green : Colors.grey.shade400,
-            ),
-            tooltip: isActive ? l10n.currentlyInUse : l10n.useThisModel,
-            onPressed: isActive
-                ? null
-                : () => settings.enableSttModelEntry(entry.id),
-          ),
-          // 删除
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18),
-            tooltip: l10n.delete,
-            color: Colors.red.shade300,
-            onPressed: () => _confirmDelete(context, settings, entry, l10n),
-          ),
-        ],
-      ),
+    return ModelEntryCard(
+      vendorName: entry.vendorName,
+      modelName: entry.model,
+      isActive: entry.enabled,
+      l10n: l10n,
+      onTest: () => _testConnection(context, entry, l10n),
+      onEdit: () => _showEditDialog(context, settings, entry, l10n),
+      onEnable: entry.enabled
+          ? null
+          : () => settings.enableSttModelEntry(entry.id),
+      onDelete: () => _confirmDelete(context, settings, entry, l10n),
     );
   }
 
@@ -333,6 +235,8 @@ class _AddModelDialog extends StatefulWidget {
 }
 
 class _AddModelDialogState extends State<_AddModelDialog> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
   SttProviderConfig? _selectedVendor;
   SttModel? _selectedModel;
   bool _isCustom = false;
@@ -367,10 +271,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                 children: [
                   Text(
                     l10n.addVoiceModel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: _cs.onSurface,
                     ),
                   ),
                   const Spacer(),
@@ -384,12 +288,12 @@ class _AddModelDialogState extends State<_AddModelDialog> {
               ),
               const SizedBox(height: 14),
 
-              _buildLabel(l10n.vendor, required: true),
+              FormFieldLabel(l10n.vendor, required: true),
               const SizedBox(height: 6),
               _buildVendorDropdown(l10n),
               const SizedBox(height: 12),
 
-              _buildLabel(l10n.model, required: true),
+              FormFieldLabel(l10n.model, required: true),
               const SizedBox(height: 6),
               if (_isCustom)
                 _buildTextField(
@@ -401,7 +305,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
               const SizedBox(height: 12),
 
               if (_isCustom) ...[
-                _buildLabel(l10n.endpointUrl, required: true),
+                FormFieldLabel(l10n.endpointUrl, required: true),
                 const SizedBox(height: 6),
                 _buildTextField(
                   controller: _customBaseUrlController,
@@ -410,7 +314,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                 const SizedBox(height: 12),
               ],
 
-              _buildLabel(l10n.apiKey, required: true),
+              FormFieldLabel(l10n.apiKey, required: true),
               const SizedBox(height: 6),
               _buildTextField(
                 controller: _apiKeyController,
@@ -427,9 +331,9 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                 child: ElevatedButton(
                   onPressed: _canSubmit ? _submit : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black87,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade300,
+                    backgroundColor: _cs.onSurface,
+                    foregroundColor: _cs.onPrimary,
+                    disabledBackgroundColor: _cs.outline,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -483,23 +387,6 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     Navigator.pop(context);
   }
 
-  Widget _buildLabel(String text, {bool required = false}) {
-    return Row(
-      children: [
-        if (required)
-          const Text('* ', style: TextStyle(color: Colors.red, fontSize: 13)),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildVendorDropdown(AppLocalizations l10n) {
     final items = <DropdownMenuItem<String>>[
       ..._vendorOptions.map(
@@ -520,7 +407,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F7),
+        color: _cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButtonHideUnderline(
@@ -528,7 +415,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
           value: currentValue,
           isExpanded: true,
           hint: Text(l10n.selectVendor, style: const TextStyle(fontSize: 14)),
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
+          style: TextStyle(fontSize: 14, color: _cs.onSurface),
           items: items,
           onChanged: (value) {
             setState(() {
@@ -557,7 +444,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F7),
+        color: _cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButtonHideUnderline(
@@ -565,7 +452,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
           value: _selectedModel?.id,
           isExpanded: true,
           hint: Text(l10n.selectModel, style: const TextStyle(fontSize: 14)),
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
+          style: TextStyle(fontSize: 14, color: _cs.onSurface),
           items: models
               .map((m) => DropdownMenuItem(value: m.id, child: Text(m.id)))
               .toList(),
@@ -584,25 +471,11 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     required String hintText,
     bool obscureText = false,
   }) {
-    return SizedBox(
-      height: 42,
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        style: const TextStyle(fontSize: 14),
-        onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-          filled: true,
-          fillColor: const Color(0xFFF5F5F7),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+    return StyledTextField(
+      controller: controller,
+      hintText: hintText,
+      obscureText: obscureText,
+      onChanged: (_) => setState(() {}),
     );
   }
 }
@@ -626,6 +499,8 @@ class _EditModelDialog extends StatefulWidget {
 }
 
 class _EditModelDialogState extends State<_EditModelDialog> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
   late final TextEditingController _apiKeyController;
   late final TextEditingController _baseUrlController;
   late final TextEditingController _modelController;
@@ -646,6 +521,9 @@ class _EditModelDialogState extends State<_EditModelDialog> {
     super.dispose();
   }
 
+  bool get _isCustom =>
+      !widget.presets.any((p) => p.name == widget.entry.vendorName);
+
   @override
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
@@ -663,10 +541,10 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                 children: [
                   Text(
                     l10n.editVoiceModel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: _cs.onSurface,
                     ),
                   ),
                   const Spacer(),
@@ -680,20 +558,22 @@ class _EditModelDialogState extends State<_EditModelDialog> {
               ),
               const SizedBox(height: 14),
 
-              _buildLabel(l10n.vendor),
+              FormFieldLabel(l10n.vendor),
               const SizedBox(height: 6),
               _buildReadOnlyField(widget.entry.vendorName),
               const SizedBox(height: 12),
 
-              _buildLabel(l10n.endpointUrl, required: true),
-              const SizedBox(height: 6),
-              _buildTextField(
-                controller: _baseUrlController,
-                hintText: 'https://api.example.com/v1',
-              ),
-              const SizedBox(height: 12),
+              if (_isCustom) ...[
+                FormFieldLabel(l10n.endpointUrl, required: true),
+                const SizedBox(height: 6),
+                _buildTextField(
+                  controller: _baseUrlController,
+                  hintText: 'https://api.example.com/v1',
+                ),
+                const SizedBox(height: 12),
+              ],
 
-              _buildLabel(l10n.model, required: true),
+              FormFieldLabel(l10n.model, required: true),
               const SizedBox(height: 6),
               _buildTextField(
                 controller: _modelController,
@@ -701,7 +581,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
               ),
               const SizedBox(height: 12),
 
-              _buildLabel(l10n.apiKey, required: true),
+              FormFieldLabel(l10n.apiKey, required: true),
               const SizedBox(height: 6),
               _buildTextField(
                 controller: _apiKeyController,
@@ -718,8 +598,8 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                 child: ElevatedButton(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black87,
-                    foregroundColor: Colors.white,
+                    backgroundColor: _cs.onSurface,
+                    foregroundColor: _cs.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -742,7 +622,9 @@ class _EditModelDialogState extends State<_EditModelDialog> {
     final updated = SttModelEntry(
       id: widget.entry.id,
       vendorName: widget.entry.vendorName,
-      baseUrl: _baseUrlController.text.trim(),
+      baseUrl: _isCustom
+          ? _baseUrlController.text.trim()
+          : widget.entry.baseUrl,
       model: _modelController.text.trim(),
       apiKey: _apiKeyController.text.trim(),
       enabled: widget.entry.enabled,
@@ -751,36 +633,19 @@ class _EditModelDialogState extends State<_EditModelDialog> {
     Navigator.pop(context);
   }
 
-  Widget _buildLabel(String text, {bool required = false}) {
-    return Row(
-      children: [
-        if (required)
-          const Text('* ', style: TextStyle(color: Colors.red, fontSize: 13)),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildReadOnlyField(String text) {
     return Container(
       width: double.infinity,
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: _cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.centerLeft,
       child: Text(
         text,
-        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+        style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
       ),
     );
   }
@@ -790,24 +655,10 @@ class _EditModelDialogState extends State<_EditModelDialog> {
     required String hintText,
     bool obscureText = false,
   }) {
-    return SizedBox(
-      height: 42,
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        style: const TextStyle(fontSize: 14),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-          filled: true,
-          fillColor: const Color(0xFFF5F5F7),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+    return StyledTextField(
+      controller: controller,
+      hintText: hintText,
+      obscureText: obscureText,
     );
   }
 }

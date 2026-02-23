@@ -169,5 +169,28 @@
   "openSourceLicenses": "Open Source Licenses",
 
   "required": "Required",
-  "optional": "Optional"
+  "optional": "Optional",
+
+  "networkSettings": "Network",
+  "networkSettingsDescription": "Configure the network proxy mode for the application.",
+  "proxyConfig": "Proxy Configuration",
+  "useSystemProxy": "Use System Proxy",
+  "systemProxySubtitle": "Requests follow the system network proxy configuration.",
+  "noProxy": "No Proxy",
+  "noProxySubtitle": "All requests connect directly without any proxy.",
+
+  "inputMonitoringRequired": "Input Monitoring Required",
+  "inputMonitoringDescription": "The Fn global hotkey requires enabling VoiceType in \"System Settings > Privacy & Security > Input Monitoring\".",
+  "accessibilityRequired": "Accessibility Permission Required",
+  "accessibilityDescription": "To enable automatic text input, VoiceType needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".",
+  "later": "Later",
+  "openSettings": "Open Settings",
+  "pleaseConfigureSttModel": "Please configure a speech recognition model first",
+
+  "theme": "Theme",
+  "themeDescription": "Choose the appearance theme for the application.",
+  "themeMode": "Appearance",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark"
 }

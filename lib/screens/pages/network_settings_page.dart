@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/network_settings.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/settings_provider.dart';
 
 class NetworkSettingsPage extends StatelessWidget {
@@ -8,45 +9,48 @@ class NetworkSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     final settings = context.watch<SettingsProvider>();
     final mode = settings.networkProxyMode;
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '网络设置',
+          Text(
+            l10n.networkSettings,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            '配置应用的网络代理模式。',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            l10n.networkSettingsDescription,
+            style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: cs.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '代理配置',
+                Text(
+                  l10n.proxyConfig,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -54,8 +58,8 @@ class NetworkSettingsPage extends StatelessWidget {
                   value: NetworkProxyMode.system,
                   groupValue: mode,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('使用系统代理'),
-                  subtitle: const Text('请求遵循系统网络代理配置。'),
+                  title: Text(l10n.useSystemProxy),
+                  subtitle: Text(l10n.systemProxySubtitle),
                   onChanged: (value) {
                     if (value != null) {
                       settings.setNetworkProxyMode(value);
@@ -66,8 +70,8 @@ class NetworkSettingsPage extends StatelessWidget {
                   value: NetworkProxyMode.none,
                   groupValue: mode,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('不使用代理'),
-                  subtitle: const Text('所有请求直连，不走任何代理。'),
+                  title: Text(l10n.noProxy),
+                  subtitle: Text(l10n.noProxySubtitle),
                   onChanged: (value) {
                     if (value != null) {
                       settings.setNetworkProxyMode(value);

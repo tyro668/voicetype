@@ -74,12 +74,47 @@ class SttService {
 
     request.files.add(await http.MultipartFile.fromPath('file', audioPath));
 
+    http.Response response;
     final client = NetworkClientService.createClient();
-    final streamedResponse = await client
-        .send(request)
-        .timeout(const Duration(seconds: 120));
-    final response = await http.Response.fromStream(streamedResponse);
-    client.close();
+    try {
+      final streamedResponse = await client
+          .send(request)
+          .timeout(const Duration(seconds: 120));
+      response = await http.Response.fromStream(streamedResponse);
+    } on TimeoutException {
+      client.close();
+      if (_isAliyunCompatibleMode()) {
+        await LogService.info(
+          'STT',
+          'fallback to aliyun chat/completions because /audio/transcriptions timeout',
+        );
+        return _transcribeAliyunCompatibleFallback(audioPath);
+      }
+      rethrow;
+    } on SocketException catch (e) {
+      client.close();
+      if (_isAliyunCompatibleMode()) {
+        await LogService.info(
+          'STT',
+          'fallback to aliyun chat/completions because /audio/transcriptions socket error: ${e.message}',
+        );
+        return _transcribeAliyunCompatibleFallback(audioPath);
+      }
+      rethrow;
+    } on http.ClientException catch (e) {
+      client.close();
+      if (_isAliyunCompatibleMode()) {
+        await LogService.info(
+          'STT',
+          'fallback to aliyun chat/completions because /audio/transcriptions client error: ${e.message}',
+        );
+        return _transcribeAliyunCompatibleFallback(audioPath);
+      }
+      rethrow;
+    } finally {
+      client.close();
+    }
+
     await LogService.info(
       'STT',
       'transcribe response status=${response.statusCode} bodyLength=${response.body.length}',
@@ -96,6 +131,12 @@ class SttService {
       await LogService.info(
         'STT',
         'fallback to aliyun chat/completions because /audio/transcriptions returns 404',
+      );
+      return _transcribeAliyunCompatibleFallback(audioPath);
+    } else if (response.statusCode >= 500 && _isAliyunCompatibleMode()) {
+      await LogService.info(
+        'STT',
+        'fallback to aliyun chat/completions because /audio/transcriptions returns ${response.statusCode}',
       );
       return _transcribeAliyunCompatibleFallback(audioPath);
     } else {
@@ -256,7 +297,7 @@ class SttService {
     }
 
     try {
-      return _checkModelsEndpoint();
+      return await _checkModelsEndpoint();
     } on TimeoutException {
       await LogService.error('STT', 'checkAvailability timeout');
       return const SttConnectionCheckResult(ok: false, message: '请求超时，请检查网络连接');

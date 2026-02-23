@@ -21,16 +21,19 @@ class VoiceTypeApp extends StatelessWidget {
           return MaterialApp(
             title: 'VoiceType',
             debugShowCheckedModeBanner: false,
+            themeMode: settings.themeMode,
             theme: ThemeData(
               brightness: Brightness.light,
               colorSchemeSeed: const Color(0xFF6C63FF),
               useMaterial3: true,
             ),
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              colorSchemeSeed: const Color(0xFF6C63FF),
+              useMaterial3: true,
+            ),
             locale: settings.locale,
-            supportedLocales: const [
-              Locale('en'),
-              Locale('zh'),
-            ],
+            supportedLocales: const [Locale('en'), Locale('zh')],
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,

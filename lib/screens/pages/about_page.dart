@@ -6,6 +6,8 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
@@ -14,10 +16,10 @@ class AboutPage extends StatelessWidget {
         children: [
           Text(
             l10n.about,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: cs.onSurface,
             ),
           ),
           const SizedBox(height: 16),
@@ -25,16 +27,16 @@ class AboutPage extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: cs.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.mic, color: Color(0xFF6C63FF), size: 24),
+                    Icon(Icons.mic, color: cs.primary, size: 24),
                     SizedBox(width: 8),
                     Text(
                       'VoiceType',
@@ -46,13 +48,13 @@ class AboutPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text('${l10n.version} 1.0.0',
                     style: TextStyle(
-                        fontSize: 13, color: Colors.grey.shade500)),
+                        fontSize: 13, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 12),
                 Text(
                   l10n.appDescription,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade700,
+                    color: cs.onSurfaceVariant,
                     height: 1.5,
                   ),
                 ),

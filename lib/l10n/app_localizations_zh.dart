@@ -433,4 +433,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get optional => '选填';
+
+  @override
+  String get networkSettings => '网络设置';
+
+  @override
+  String get networkSettingsDescription => '配置应用的网络代理模式。';
+
+  @override
+  String get proxyConfig => '代理配置';
+
+  @override
+  String get useSystemProxy => '使用系统代理';
+
+  @override
+  String get systemProxySubtitle => '请求遵循系统网络代理配置。';
+
+  @override
+  String get noProxy => '不使用代理';
+
+  @override
+  String get noProxySubtitle => '所有请求直连，不走任何代理。';
+
+  @override
+  String get inputMonitoringRequired => '需要输入监控权限';
+
+  @override
+  String get inputMonitoringDescription =>
+      'Fn 全局快捷键需要在「系统设置 > 隐私与安全性 > 输入监控」中勾选 VoiceType。';
+
+  @override
+  String get accessibilityRequired => '需要辅助功能权限';
+
+  @override
+  String get accessibilityDescription =>
+      '为实现自动输入，需要在「系统设置 > 隐私与安全性 > 辅助功能」中勾选 VoiceType。';
+
+  @override
+  String get later => '稍后';
+
+  @override
+  String get openSettings => '打开设置';
+
+  @override
+  String get pleaseConfigureSttModel => '请先配置语音转换模型';
+
+  @override
+  String get theme => '外观';
+
+  @override
+  String get themeDescription => '选择应用的外观主题。';
+
+  @override
+  String get themeMode => '外观模式';
+
+  @override
+  String get themeSystem => '跟随系统';
+
+  @override
+  String get themeLight => '浅色';
+
+  @override
+  String get themeDark => '深色';
 }

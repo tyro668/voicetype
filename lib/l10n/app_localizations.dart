@@ -931,6 +931,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Optional'**
   String get optional;
+
+  /// No description provided for @networkSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get networkSettings;
+
+  /// No description provided for @networkSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure the network proxy mode for the application.'**
+  String get networkSettingsDescription;
+
+  /// No description provided for @proxyConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy Configuration'**
+  String get proxyConfig;
+
+  /// No description provided for @useSystemProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Use System Proxy'**
+  String get useSystemProxy;
+
+  /// No description provided for @systemProxySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests follow the system network proxy configuration.'**
+  String get systemProxySubtitle;
+
+  /// No description provided for @noProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'No Proxy'**
+  String get noProxy;
+
+  /// No description provided for @noProxySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All requests connect directly without any proxy.'**
+  String get noProxySubtitle;
+
+  /// No description provided for @inputMonitoringRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Monitoring Required'**
+  String get inputMonitoringRequired;
+
+  /// No description provided for @inputMonitoringDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The Fn global hotkey requires enabling VoiceType in \"System Settings > Privacy & Security > Input Monitoring\".'**
+  String get inputMonitoringDescription;
+
+  /// No description provided for @accessibilityRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility Permission Required'**
+  String get accessibilityRequired;
+
+  /// No description provided for @accessibilityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'To enable automatic text input, VoiceType needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".'**
+  String get accessibilityDescription;
+
+  /// No description provided for @later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get later;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSettings;
+
+  /// No description provided for @pleaseConfigureSttModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Please configure a speech recognition model first'**
+  String get pleaseConfigureSttModel;
+
+  /// No description provided for @theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get theme;
+
+  /// No description provided for @themeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the appearance theme for the application.'**
+  String get themeDescription;
+
+  /// No description provided for @themeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get themeMode;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
 }
 
 class _AppLocalizationsDelegate

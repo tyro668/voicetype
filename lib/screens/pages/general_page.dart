@@ -18,6 +18,8 @@ class GeneralPage extends StatefulWidget {
 }
 
 class _GeneralPageState extends State<GeneralPage> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
   bool? _micPermission;
   bool? _accessibilityPermission;
   String _currentDeviceName = '';
@@ -160,10 +162,10 @@ class _GeneralPageState extends State<GeneralPage> {
           // ===== 激活模式 =====
           Text(
             l10n.activationMode,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -174,7 +176,7 @@ class _GeneralPageState extends State<GeneralPage> {
               settings.activationMode == ActivationMode.tapToTalk
                   ? l10n.tapToTalkDescription
                   : l10n.pushToTalkDescription,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: 32),
@@ -182,16 +184,16 @@ class _GeneralPageState extends State<GeneralPage> {
           // ===== 听写快捷键 =====
           Text(
             l10n.dictationHotkey,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.dictationHotkeyDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _HotkeyCapture(settings: settings, l10n: l10n),
@@ -200,16 +202,16 @@ class _GeneralPageState extends State<GeneralPage> {
           // ===== 权限设置 =====
           Text(
             l10n.permissions,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.permissionsDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildPermissionButtons(l10n),
@@ -220,16 +222,16 @@ class _GeneralPageState extends State<GeneralPage> {
           // ===== 麦克风输入 =====
           Text(
             l10n.microphoneInput,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.microphoneInputDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildPreferBuiltIn(l10n),
@@ -240,16 +242,16 @@ class _GeneralPageState extends State<GeneralPage> {
           // ===== 最短录音时长 =====
           Text(
             l10n.minRecordingDuration,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.minRecordingDurationDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildMinDuration(settings, l10n),
@@ -258,34 +260,52 @@ class _GeneralPageState extends State<GeneralPage> {
           // ===== 语言设置 =====
           Text(
             l10n.language,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.languageDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildLanguageSelector(settings, l10n),
           const SizedBox(height: 36),
 
+          // ===== 外观主题 =====
+          Text(
+            l10n.theme,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.themeDescription,
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _buildThemeSelector(settings, l10n),
+          const SizedBox(height: 36),
+
           // ===== 日志 =====
           Text(
             l10n.logs,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.logsDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildLogSection(l10n),
@@ -299,21 +319,21 @@ class _GeneralPageState extends State<GeneralPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cs.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: Row(
         children: [
-          Icon(Icons.timer_outlined, size: 20, color: Colors.grey.shade600),
+          Icon(Icons.timer_outlined, size: 20, color: _cs.onSurfaceVariant),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               l10n.ignoreShortRecordings,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: _cs.onSurface,
               ),
             ),
           ),
@@ -324,15 +344,15 @@ class _GeneralPageState extends State<GeneralPage> {
                     settings.minRecordingSeconds - 1,
                   )
                 : null,
-            color: const Color(0xFF6C63FF),
+            color: _cs.primary,
             splashRadius: 18,
           ),
           Text(
             '${settings.minRecordingSeconds} ${l10n.seconds}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           IconButton(
@@ -342,7 +362,7 @@ class _GeneralPageState extends State<GeneralPage> {
                     settings.minRecordingSeconds + 1,
                   )
                 : null,
-            color: const Color(0xFF6C63FF),
+            color: _cs.primary,
             splashRadius: 18,
           ),
         ],
@@ -357,21 +377,21 @@ class _GeneralPageState extends State<GeneralPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cs.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: Row(
         children: [
-          Icon(Icons.language_outlined, size: 20, color: Colors.grey.shade600),
+          Icon(Icons.language_outlined, size: 20, color: _cs.onSurfaceVariant),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               l10n.interfaceLanguage,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: _cs.onSurface,
               ),
             ),
           ),
@@ -396,15 +416,80 @@ class _GeneralPageState extends State<GeneralPage> {
             style: ButtonStyle(
               backgroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFF6C63FF);
+                  return _cs.primary;
                 }
                 return Colors.transparent;
               }),
               foregroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
+                  return _cs.onPrimary;
                 }
-                return Colors.black87;
+                return _cs.onSurface;
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeSelector(SettingsProvider settings, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _cs.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.brightness_6_outlined,
+            size: 20,
+            color: _cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              l10n.themeMode,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          SegmentedButton<ThemeMode>(
+            segments: [
+              ButtonSegment(
+                value: ThemeMode.system,
+                label: Text(l10n.themeSystem),
+              ),
+              ButtonSegment(
+                value: ThemeMode.light,
+                label: Text(l10n.themeLight),
+              ),
+              ButtonSegment(value: ThemeMode.dark, label: Text(l10n.themeDark)),
+            ],
+            selected: {settings.themeMode},
+            onSelectionChanged: (selected) {
+              if (selected.isNotEmpty) {
+                settings.setThemeMode(selected.first);
+              }
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return _cs.primary;
+                }
+                return Colors.transparent;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return _cs.onPrimary;
+                }
+                return _cs.onSurface;
               }),
             ),
           ),
@@ -418,9 +503,9 @@ class _GeneralPageState extends State<GeneralPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,16 +514,16 @@ class _GeneralPageState extends State<GeneralPage> {
             children: [
               Icon(
                 Icons.description_outlined,
-                color: Colors.grey.shade600,
+                color: _cs.onSurfaceVariant,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 l10n.logFile,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: _cs.onSurface,
                 ),
               ),
               const Spacer(),
@@ -449,7 +534,7 @@ class _GeneralPageState extends State<GeneralPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
+                    color: _cs.tertiaryContainer,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -467,12 +552,12 @@ class _GeneralPageState extends State<GeneralPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: _cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     l10n.noLogFile,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
                   ),
                 ),
             ],
@@ -482,7 +567,7 @@ class _GeneralPageState extends State<GeneralPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F7),
+              color: _cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
             child: SingleChildScrollView(
@@ -492,7 +577,7 @@ class _GeneralPageState extends State<GeneralPage> {
                 style: TextStyle(
                   fontSize: 13,
                   fontFamily: 'monospace',
-                  color: Colors.grey.shade800,
+                  color: _cs.onSurfaceVariant,
                 ),
                 maxLines: 1,
               ),
@@ -507,8 +592,8 @@ class _GeneralPageState extends State<GeneralPage> {
                   icon: const Icon(Icons.folder_open_outlined, size: 18),
                   label: const Text('打开日志文件夹'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    foregroundColor: Colors.white,
+                    backgroundColor: _cs.primary,
+                    foregroundColor: _cs.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -522,8 +607,8 @@ class _GeneralPageState extends State<GeneralPage> {
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text('复制路径'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.grey.shade700,
-                  side: BorderSide(color: Colors.grey.shade300),
+                  foregroundColor: _cs.onSurfaceVariant,
+                  side: BorderSide(color: _cs.outline),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -576,9 +661,9 @@ class _GeneralPageState extends State<GeneralPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF9E6),
+        color: _cs.tertiaryContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE8D48A)),
+        border: Border.all(color: _cs.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,9 +704,9 @@ class _GeneralPageState extends State<GeneralPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cs.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: Row(
         children: [
@@ -631,23 +716,23 @@ class _GeneralPageState extends State<GeneralPage> {
               children: [
                 Text(
                   l10n.preferBuiltInMicrophone,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: _cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   l10n.preferBuiltInMicrophoneSubtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
                 ),
               ],
             ),
           ),
           Switch.adaptive(
             value: _preferBuiltIn,
-            activeColor: const Color(0xFF6C63FF),
+            activeTrackColor: _cs.primary,
             onChanged: (v) => setState(() => _preferBuiltIn = v),
           ),
         ],
@@ -663,9 +748,9 @@ class _GeneralPageState extends State<GeneralPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEDF7ED),
+        color: _cs.tertiaryContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFC3E6C3)),
+        border: Border.all(color: _cs.outline),
       ),
       child: Row(
         children: [
@@ -703,8 +788,9 @@ class _PermissionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.white,
+      color: cs.surface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -714,7 +800,7 @@ class _PermissionButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: cs.outlineVariant),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -732,14 +818,14 @@ class _PermissionButton extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                Icon(icon, size: 18, color: Colors.grey.shade600),
+                Icon(icon, size: 18, color: cs.onSurfaceVariant),
               const SizedBox(width: 10),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+                  color: cs.onSurface,
                 ),
               ),
             ],
@@ -783,6 +869,8 @@ class _HotkeyCapture extends StatefulWidget {
 }
 
 class _HotkeyCaptureState extends State<_HotkeyCapture> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
   bool _listening = false;
   final FocusNode _focusNode = FocusNode();
 
@@ -815,12 +903,10 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 28),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _cs.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _listening
-                      ? const Color(0xFF6C63FF)
-                      : Colors.grey.shade200,
+                  color: _listening ? _cs.primary : _cs.outlineVariant,
                   width: _listening ? 2 : 1,
                 ),
               ),
@@ -832,11 +918,11 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F0F5),
+                      color: _cs.secondaryContainer,
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
+                          color: _cs.shadow.withValues(alpha: 0.06),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -844,10 +930,10 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
                     ),
                     child: Text(
                       _listening ? '...' : widget.settings.hotkeyLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: _cs.onSurface,
                       ),
                     ),
                   ),
@@ -858,9 +944,7 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
                         : widget.l10n.clickToChangeHotkey,
                     style: TextStyle(
                       fontSize: 13,
-                      color: _listening
-                          ? const Color(0xFF6C63FF)
-                          : Colors.grey.shade400,
+                      color: _listening ? _cs.primary : _cs.outline,
                     ),
                   ),
                 ],
@@ -875,7 +959,7 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
             onPressed: () => widget.settings.resetHotkey(),
             icon: const Icon(Icons.restore, size: 16),
             label: const Text('恢复默认（Fn）'),
-            style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
+            style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),
       ],
@@ -934,15 +1018,16 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? const Color(0xFF6C63FF) : Colors.grey.shade200,
+            color: selected ? cs.primary : cs.outlineVariant,
             width: selected ? 2 : 1,
           ),
         ),
@@ -951,7 +1036,7 @@ class _ModeCard extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: selected ? const Color(0xFF6C63FF) : Colors.grey.shade500,
+              color: selected ? cs.primary : cs.onSurfaceVariant,
             ),
             const SizedBox(width: 10),
             Column(
@@ -962,12 +1047,12 @@ class _ModeCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: selected ? Colors.black87 : Colors.grey.shade600,
+                    color: selected ? cs.onSurface : cs.onSurfaceVariant,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  style: TextStyle(fontSize: 12, color: cs.outline),
                 ),
               ],
             ),

@@ -451,4 +451,71 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get optional => 'Optional';
+
+  @override
+  String get networkSettings => 'Network';
+
+  @override
+  String get networkSettingsDescription =>
+      'Configure the network proxy mode for the application.';
+
+  @override
+  String get proxyConfig => 'Proxy Configuration';
+
+  @override
+  String get useSystemProxy => 'Use System Proxy';
+
+  @override
+  String get systemProxySubtitle =>
+      'Requests follow the system network proxy configuration.';
+
+  @override
+  String get noProxy => 'No Proxy';
+
+  @override
+  String get noProxySubtitle =>
+      'All requests connect directly without any proxy.';
+
+  @override
+  String get inputMonitoringRequired => 'Input Monitoring Required';
+
+  @override
+  String get inputMonitoringDescription =>
+      'The Fn global hotkey requires enabling VoiceType in \"System Settings > Privacy & Security > Input Monitoring\".';
+
+  @override
+  String get accessibilityRequired => 'Accessibility Permission Required';
+
+  @override
+  String get accessibilityDescription =>
+      'To enable automatic text input, VoiceType needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".';
+
+  @override
+  String get later => 'Later';
+
+  @override
+  String get openSettings => 'Open Settings';
+
+  @override
+  String get pleaseConfigureSttModel =>
+      'Please configure a speech recognition model first';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get themeDescription =>
+      'Choose the appearance theme for the application.';
+
+  @override
+  String get themeMode => 'Appearance';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
 }

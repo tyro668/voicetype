@@ -10,6 +10,7 @@ extension NetworkProxyModeX on NetworkProxyMode {
 
   static NetworkProxyMode fromStorage(String? value) {
     return switch (value) {
+      'system' => NetworkProxyMode.system,
       'none' => NetworkProxyMode.none,
       _ => NetworkProxyMode.none,
     };

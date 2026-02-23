@@ -2,14 +2,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/ai_model_entry.dart';
 import '../models/ai_vendor_preset.dart';
 import '../models/network_settings.dart';
 import '../models/provider_config.dart';
 import '../models/stt_model_entry.dart';
-import '../services/crypto_service.dart';
+import '../database/app_database.dart';
 import '../services/network_client_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -25,6 +24,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _sttModelEntriesKey = 'stt_model_entries';
   static const _localeKey = 'locale';
   static const _networkProxyModeKey = 'network_proxy_mode';
+  static const _themeModeKey = 'theme_mode';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -54,6 +54,7 @@ class SettingsProvider extends ChangeNotifier {
   List<SttModelEntry> _sttModelEntries = [];
   Locale _locale = const Locale('zh');
   NetworkProxyMode _networkProxyMode = NetworkProxyMode.none;
+  ThemeMode _themeMode = ThemeMode.system;
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -86,6 +87,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Locale get locale => _locale;
   NetworkProxyMode get networkProxyMode => _networkProxyMode;
+  ThemeMode get themeMode => _themeMode;
 
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
@@ -120,76 +122,42 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
-  // ===== 加密辅助方法 =====
+  // ===== API Key 辅助方法 =====
 
-  /// 解析 API Key：支持明文、单层加密、历史双层加密。
-  /// 如果最终仍是 ENC: 前缀，说明解密失败（如主密钥丢失），返回空字符串。
+  /// 去除旧的 ENC: 加密前缀（兼容迁移），返回明文。
   String _resolveApiKey(String raw) {
     var value = raw.trim();
-    for (var i = 0; i < 3; i++) {
-      if (!value.startsWith('ENC:')) break;
-      final decrypted = CryptoService.instance.decryptText(value).trim();
-      if (decrypted == value) break;
-      value = decrypted;
-    }
-    if (value.startsWith('ENC:')) {
-      return '';
-    }
+    // 旧版本可能存有 ENC: 前缀的加密密钥，无法解密则清空
+    if (value.startsWith('ENC:')) return '';
     return value;
   }
 
-  /// 加密 JSON Map 中的 apiKey 字段
-  Map<String, dynamic> _encryptApiKeyInJson(Map<String, dynamic> jsonMap) {
-    final copy = Map<String, dynamic>.from(jsonMap);
-    final apiKey = copy['apiKey'];
-    if (apiKey is String && apiKey.isNotEmpty) {
-      final resolved = _resolveApiKey(apiKey);
-      copy['apiKey'] = resolved.isEmpty
-          ? ''
-          : CryptoService.instance.encryptText(resolved);
-    }
-    return copy;
-  }
-
-  /// 解密 JSON Map 中的 apiKey 字段
-  Map<String, dynamic> _decryptApiKeyInJson(Map<String, dynamic> jsonMap) {
-    final copy = Map<String, dynamic>.from(jsonMap);
-    final apiKey = copy['apiKey'];
-    if (apiKey is String && apiKey.isNotEmpty) {
-      copy['apiKey'] = _resolveApiKey(apiKey);
-    }
-    return copy;
-  }
-
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // 初始化加密服务（必须在加载数据之前）
-    await CryptoService.initialize();
+    final db = AppDatabase.instance;
 
     await _loadPresetsFromAssets();
 
-    // 加载服务商配置（解密 apiKey）
-    final configJson = prefs.getString(_configKey);
+    // 加载服务商配置
+    final configJson = await db.getSetting(_configKey);
     if (configJson != null) {
       final decoded = json.decode(configJson) as Map<String, dynamic>;
-      _config = SttProviderConfig.fromJson(_decryptApiKeyInJson(decoded));
+      _config = SttProviderConfig.fromJson(_cleanApiKeyInJson(decoded));
     }
 
-    // 加载自定义服务商（解密 apiKey）
-    final customJson = prefs.getString('custom_providers');
+    // 加载自定义服务商
+    final customJson = await db.getSetting('custom_providers');
     if (customJson != null) {
       _customProviders = (json.decode(customJson) as List)
           .map(
             (e) => SttProviderConfig.fromJson(
-              _decryptApiKeyInJson(e as Map<String, dynamic>),
+              _cleanApiKeyInJson(e as Map<String, dynamic>),
             ),
           )
           .toList();
     }
 
-    // 加载 API Keys（解密值）
-    final keysJson = prefs.getString('api_keys');
+    // 加载 API Keys
+    final keysJson = await db.getSetting('api_keys');
     if (keysJson != null) {
       final raw = Map<String, String>.from(json.decode(keysJson));
       for (final entry in raw.entries) {
@@ -202,30 +170,30 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     // 加载快捷键
-    final hotkeyId = prefs.getInt(_hotkeyKey);
-    if (hotkeyId != null) {
-      _hotkey = LogicalKeyboardKey(hotkeyId);
+    final hotkeyStr = await db.getSetting(_hotkeyKey);
+    if (hotkeyStr != null) {
+      _hotkey = LogicalKeyboardKey(int.parse(hotkeyStr));
     }
 
     // 加载激活模式
-    final modeIndex = prefs.getInt(_activationModeKey);
-    if (modeIndex != null) {
-      _activationMode = ActivationMode.values[modeIndex];
+    final modeStr = await db.getSetting(_activationModeKey);
+    if (modeStr != null) {
+      _activationMode = ActivationMode.values[int.parse(modeStr)];
     }
 
-    final aiEnhanceEnabled = prefs.getBool(_aiEnhanceEnabledKey);
-    if (aiEnhanceEnabled != null) {
-      _aiEnhanceEnabled = aiEnhanceEnabled;
+    final aiEnabledStr = await db.getSetting(_aiEnhanceEnabledKey);
+    if (aiEnabledStr != null) {
+      _aiEnhanceEnabled = aiEnabledStr == 'true';
     }
 
-    final useCustomPrompt = prefs.getBool(_aiEnhanceUseCustomPromptKey);
-    if (useCustomPrompt != null) {
-      _aiEnhanceUseCustomPrompt = useCustomPrompt;
+    final useCustomStr = await db.getSetting(_aiEnhanceUseCustomPromptKey);
+    if (useCustomStr != null) {
+      _aiEnhanceUseCustomPrompt = useCustomStr == 'true';
     }
 
-    final minSec = prefs.getInt(_minRecordingSecondsKey);
-    if (minSec != null) {
-      _minRecordingSeconds = minSec;
+    final minSecStr = await db.getSetting(_minRecordingSecondsKey);
+    if (minSecStr != null) {
+      _minRecordingSeconds = int.parse(minSecStr);
     }
 
     try {
@@ -235,33 +203,31 @@ class SettingsProvider extends ChangeNotifier {
       _aiEnhanceDefaultPrompt = prompt;
     } catch (_) {}
 
-    final aiEnhanceJson = prefs.getString(_aiEnhanceConfigKey);
+    final aiEnhanceJson = await db.getSetting(_aiEnhanceConfigKey);
     if (aiEnhanceJson != null) {
       final decoded = json.decode(aiEnhanceJson) as Map<String, dynamic>;
-      _aiEnhanceConfig = AiEnhanceConfig.fromJson(
-        _decryptApiKeyInJson(decoded),
-      );
+      _aiEnhanceConfig = AiEnhanceConfig.fromJson(_cleanApiKeyInJson(decoded));
     } else {
       _aiEnhanceConfig = _aiEnhanceConfig.copyWith(
         prompt: _aiEnhanceDefaultPrompt,
       );
     }
 
-    final defaultModelsJson = prefs.getString(_aiEnhanceDefaultModelsKey);
+    final defaultModelsJson = await db.getSetting(_aiEnhanceDefaultModelsKey);
     if (defaultModelsJson != null) {
       _aiEnhanceDefaultModels.addAll(
         Map<String, String>.from(json.decode(defaultModelsJson)),
       );
     }
 
-    // 加载文本模型条目列表（解密 apiKey）
-    final entriesJson = prefs.getString(_aiModelEntriesKey);
+    // 加载文本模型条目列表
+    final entriesJson = await db.getSetting(_aiModelEntriesKey);
     if (entriesJson != null) {
       try {
         final list = json.decode(entriesJson) as List<dynamic>;
         _aiModelEntries = list
             .whereType<Map<String, dynamic>>()
-            .map((e) => AiModelEntry.fromJson(_decryptApiKeyInJson(e)))
+            .map((e) => AiModelEntry.fromJson(_cleanApiKeyInJson(e)))
             .toList();
       } catch (_) {}
     }
@@ -275,14 +241,14 @@ class SettingsProvider extends ChangeNotifier {
       );
     }
 
-    // 加载语音模型条目列表（解密 apiKey）
-    final sttEntriesJson = prefs.getString(_sttModelEntriesKey);
+    // 加载语音模型条目列表
+    final sttEntriesJson = await db.getSetting(_sttModelEntriesKey);
     if (sttEntriesJson != null) {
       try {
         final list = json.decode(sttEntriesJson) as List<dynamic>;
         _sttModelEntries = list
             .whereType<Map<String, dynamic>>()
-            .map((e) => SttModelEntry.fromJson(_decryptApiKeyInJson(e)))
+            .map((e) => SttModelEntry.fromJson(_cleanApiKeyInJson(e)))
             .toList();
       } catch (_) {}
     }
@@ -298,60 +264,36 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     // 加载语言设置
-    final localeStr = prefs.getString(_localeKey);
+    final localeStr = await db.getSetting(_localeKey);
     if (localeStr != null) {
       _locale = Locale(localeStr);
     }
 
-    final proxyModeStr = prefs.getString(_networkProxyModeKey);
+    // 加载主题模式
+    final themeModeStr = await db.getSetting(_themeModeKey);
+    if (themeModeStr != null) {
+      _themeMode = switch (themeModeStr) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+    }
+
+    final proxyModeStr = await db.getSetting(_networkProxyModeKey);
     _networkProxyMode = NetworkProxyModeX.fromStorage(proxyModeStr);
     NetworkClientService.setProxyMode(_networkProxyMode);
-
-    // 迁移：将所有明文密钥重新加密保存
-    await _migrateEncryptKeys(prefs);
 
     notifyListeners();
   }
 
-  /// 迁移旧的明文密钥到加密存储
-  Future<void> _migrateEncryptKeys(SharedPreferences prefs) async {
-    // 重新保存所有包含 apiKey 的数据（加密后写入）
-    await _saveConfigEncrypted(prefs);
-    await _saveApiKeysEncrypted(prefs);
-    await _saveAiEnhanceConfigEncrypted(prefs);
-    await _saveCustomProvidersEncrypted(prefs);
-    if (_aiModelEntries.isNotEmpty) await _saveAiModelEntries();
-    if (_sttModelEntries.isNotEmpty) await _saveSttModelEntries();
-  }
-
-  Future<void> _saveConfigEncrypted(SharedPreferences prefs) async {
-    final configMap = _encryptApiKeyInJson(_config.toJson());
-    await prefs.setString(_configKey, json.encode(configMap));
-  }
-
-  Future<void> _saveApiKeysEncrypted(SharedPreferences prefs) async {
-    if (_apiKeys.isEmpty) return;
-    final encrypted = <String, String>{};
-    for (final entry in _apiKeys.entries) {
-      final resolved = _resolveApiKey(entry.value);
-      encrypted[entry.key] = resolved.isEmpty
-          ? ''
-          : CryptoService.instance.encryptText(resolved);
+  /// 清理 JSON Map 中的 apiKey 字段（去除旧 ENC: 前缀）。
+  Map<String, dynamic> _cleanApiKeyInJson(Map<String, dynamic> jsonMap) {
+    final copy = Map<String, dynamic>.from(jsonMap);
+    final apiKey = copy['apiKey'];
+    if (apiKey is String && apiKey.isNotEmpty) {
+      copy['apiKey'] = _resolveApiKey(apiKey);
     }
-    await prefs.setString('api_keys', json.encode(encrypted));
-  }
-
-  Future<void> _saveAiEnhanceConfigEncrypted(SharedPreferences prefs) async {
-    final configMap = _encryptApiKeyInJson(_aiEnhanceConfig.toJson());
-    await prefs.setString(_aiEnhanceConfigKey, json.encode(configMap));
-  }
-
-  Future<void> _saveCustomProvidersEncrypted(SharedPreferences prefs) async {
-    if (_customProviders.isEmpty) return;
-    final encrypted = _customProviders
-        .map((e) => _encryptApiKeyInJson(e.toJson()))
-        .toList();
-    await prefs.setString('custom_providers', json.encode(encrypted));
+    return copy;
   }
 
   Future<void> _loadPresetsFromAssets() async {
@@ -379,11 +321,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setConfig(SttProviderConfig config) async {
     _config = config;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _configKey,
-      json.encode(_encryptApiKeyInJson(config.toJson())),
-    );
+    await _saveSetting(_configKey, json.encode(_config.toJson()));
     notifyListeners();
   }
 
@@ -392,11 +330,7 @@ class SettingsProvider extends ChangeNotifier {
     // 恢复该服务商之前存储的 apiKey
     final savedKey = _apiKeys[provider.name] ?? '';
     _config = provider.copyWith(apiKey: savedKey);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _configKey,
-      json.encode(_encryptApiKeyInJson(_config.toJson())),
-    );
+    await _saveSetting(_configKey, json.encode(_config.toJson()));
     notifyListeners();
   }
 
@@ -405,83 +339,63 @@ class SettingsProvider extends ChangeNotifier {
     final normalizedApiKey = apiKey.trim();
     _apiKeys[_config.name] = normalizedApiKey;
     _config = _config.copyWith(apiKey: normalizedApiKey);
-    final prefs = await SharedPreferences.getInstance();
-    // 加密后存储 API Keys
-    final encryptedKeys = <String, String>{};
-    for (final entry in _apiKeys.entries) {
-      final resolved = _resolveApiKey(entry.value);
-      encryptedKeys[entry.key] = resolved.isEmpty
-          ? ''
-          : CryptoService.instance.encryptText(resolved);
-    }
-    await prefs.setString('api_keys', json.encode(encryptedKeys));
-    await prefs.setString(
-      _configKey,
-      json.encode(_encryptApiKeyInJson(_config.toJson())),
-    );
+    await _saveSetting('api_keys', json.encode(_apiKeys));
+    await _saveSetting(_configKey, json.encode(_config.toJson()));
     notifyListeners();
   }
 
   /// 设置当前服务商的模型
   Future<void> setModel(String model) async {
     _config = _config.copyWith(model: model);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _configKey,
-      json.encode(_encryptApiKeyInJson(_config.toJson())),
-    );
+    await _saveSetting(_configKey, json.encode(_config.toJson()));
     notifyListeners();
   }
 
   Future<void> setHotkey(LogicalKeyboardKey key) async {
     _hotkey = key;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_hotkeyKey, key.keyId);
+    await _saveSetting(_hotkeyKey, key.keyId.toString());
     notifyListeners();
   }
 
   Future<void> resetHotkey() async {
     _hotkey = defaultHotkey;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_hotkeyKey);
+    await AppDatabase.instance.removeSetting(_hotkeyKey);
     notifyListeners();
   }
 
   /// 设置激活模式
   Future<void> setActivationMode(ActivationMode mode) async {
     _activationMode = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_activationModeKey, mode.index);
+    await _saveSetting(_activationModeKey, mode.index.toString());
     notifyListeners();
   }
 
   Future<void> setAiEnhanceEnabled(bool enabled) async {
     _aiEnhanceEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_aiEnhanceEnabledKey, enabled);
+    await _saveSetting(_aiEnhanceEnabledKey, enabled.toString());
     notifyListeners();
   }
 
   Future<void> setAiEnhanceUseCustomPrompt(bool enabled) async {
     _aiEnhanceUseCustomPrompt = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_aiEnhanceUseCustomPromptKey, enabled);
+    await _saveSetting(_aiEnhanceUseCustomPromptKey, enabled.toString());
     notifyListeners();
   }
 
   Future<void> setMinRecordingSeconds(int seconds) async {
     _minRecordingSeconds = seconds.clamp(1, 30);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_minRecordingSecondsKey, _minRecordingSeconds);
+    await _saveSetting(
+      _minRecordingSecondsKey,
+      _minRecordingSeconds.toString(),
+    );
     notifyListeners();
   }
 
   Future<void> setAiEnhanceConfig(AiEnhanceConfig config) async {
     _aiEnhanceConfig = config;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _saveSetting(
       _aiEnhanceConfigKey,
-      json.encode(_encryptApiKeyInJson(config.toJson())),
+      json.encode(_aiEnhanceConfig.toJson()),
     );
     notifyListeners();
   }
@@ -508,8 +422,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setAiEnhanceDefaultModel(String baseUrl, String model) async {
     _aiEnhanceDefaultModels[baseUrl] = model;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _saveSetting(
       _aiEnhanceDefaultModelsKey,
       json.encode(_aiEnhanceDefaultModels),
     );
@@ -519,11 +432,10 @@ class SettingsProvider extends ChangeNotifier {
   // ===== 文本模型条目管理 =====
 
   Future<void> _saveAiModelEntries() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encryptedList = _aiModelEntries
-        .map((e) => _encryptApiKeyInJson(e.toJson()))
-        .toList();
-    await prefs.setString(_aiModelEntriesKey, json.encode(encryptedList));
+    await _saveSetting(
+      _aiModelEntriesKey,
+      json.encode(_aiModelEntries.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<void> addAiModelEntry(AiModelEntry entry) async {
@@ -575,24 +487,17 @@ class SettingsProvider extends ChangeNotifier {
         apiKey: active.apiKey,
         model: active.model,
       );
-      // 同时持久化 aiEnhanceConfig（加密 apiKey）
-      SharedPreferences.getInstance().then((prefs) {
-        prefs.setString(
-          _aiEnhanceConfigKey,
-          json.encode(_encryptApiKeyInJson(_aiEnhanceConfig.toJson())),
-        );
-      });
+      _saveSetting(_aiEnhanceConfigKey, json.encode(_aiEnhanceConfig.toJson()));
     }
   }
 
   // ===== 语音模型条目管理 =====
 
   Future<void> _saveSttModelEntries() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encryptedList = _sttModelEntries
-        .map((e) => _encryptApiKeyInJson(e.toJson()))
-        .toList();
-    await prefs.setString(_sttModelEntriesKey, json.encode(encryptedList));
+    await _saveSetting(
+      _sttModelEntriesKey,
+      json.encode(_sttModelEntries.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<void> addSttModelEntry(SttModelEntry entry) async {
@@ -645,36 +550,24 @@ class SettingsProvider extends ChangeNotifier {
         apiKey: active.apiKey,
         model: active.model,
       );
-      // 同时持久化 config（加密 apiKey）
-      SharedPreferences.getInstance().then((prefs) {
-        prefs.setString(
-          _configKey,
-          json.encode(_encryptApiKeyInJson(_config.toJson())),
-        );
-      });
+      _saveSetting(_configKey, json.encode(_config.toJson()));
     }
   }
 
   Future<void> addCustomProvider(SttProviderConfig provider) async {
     _customProviders.add(provider);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _saveSetting(
       'custom_providers',
-      json.encode(
-        _customProviders.map((e) => _encryptApiKeyInJson(e.toJson())).toList(),
-      ),
+      json.encode(_customProviders.map((e) => e.toJson()).toList()),
     );
     notifyListeners();
   }
 
   Future<void> removeCustomProvider(int index) async {
     _customProviders.removeAt(index);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _saveSetting(
       'custom_providers',
-      json.encode(
-        _customProviders.map((e) => _encryptApiKeyInJson(e.toJson())).toList(),
-      ),
+      json.encode(_customProviders.map((e) => e.toJson()).toList()),
     );
     notifyListeners();
   }
@@ -689,16 +582,32 @@ class SettingsProvider extends ChangeNotifier {
   /// 设置语言
   Future<void> setLocale(Locale locale) async {
     _locale = locale;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_localeKey, locale.languageCode);
+    await _saveSetting(_localeKey, locale.languageCode);
     notifyListeners();
   }
 
   Future<void> setNetworkProxyMode(NetworkProxyMode mode) async {
     _networkProxyMode = mode;
     NetworkClientService.setProxyMode(mode);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_networkProxyModeKey, mode.storageValue);
+    await _saveSetting(_networkProxyModeKey, mode.storageValue);
     notifyListeners();
+  }
+
+  /// 设置主题模式
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    final value = switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    };
+    await _saveSetting(_themeModeKey, value);
+    notifyListeners();
+  }
+
+  // ===== 通用持久化辅助 =====
+
+  Future<void> _saveSetting(String key, String value) async {
+    await AppDatabase.instance.setSetting(key, value);
   }
 }

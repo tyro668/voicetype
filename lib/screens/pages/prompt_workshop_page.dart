@@ -15,6 +15,8 @@ class PromptWorkshopPage extends StatefulWidget {
 
 class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     with SingleTickerProviderStateMixin {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
   late TabController _tabController;
   final _promptController = TextEditingController();
   final _agentNameController = TextEditingController();
@@ -68,16 +70,16 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
         children: [
           Text(
             l10n.promptWorkshop,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _cs.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.promptDescription,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildTabs(l10n),
@@ -96,15 +98,15 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
   Widget _buildTabs(AppLocalizations l10n) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: TabBar(
         controller: _tabController,
-        labelColor: Colors.black87,
-        unselectedLabelColor: Colors.grey.shade500,
-        indicatorColor: Colors.black87,
+        labelColor: _cs.onSurface,
+        unselectedLabelColor: _cs.onSurfaceVariant,
+        indicatorColor: _cs.onSurface,
         indicatorWeight: 2,
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontSize: 14),
@@ -165,7 +167,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
             useCustomPrompt
                 ? l10n.customPromptEnabled
                 : l10n.customPromptDisabled,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Text(
@@ -195,8 +197,8 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
                 icon: const Icon(Icons.save, size: 16),
                 label: Text(l10n.saveAgentConfig),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
-                  foregroundColor: Colors.white,
+                  backgroundColor: _cs.onSurface,
+                  foregroundColor: _cs.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -226,7 +228,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
           const SizedBox(height: 8),
           Text(
             l10n.testAgentDescription,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
           _buildLabeledField(
@@ -244,8 +246,8 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
               icon: const Icon(Icons.play_arrow, size: 16),
               label: Text(_testing ? l10n.running : l10n.runTest),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87,
-                foregroundColor: Colors.white,
+                backgroundColor: _cs.onSurface,
+                foregroundColor: _cs.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -320,9 +322,9 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: child,
     );
@@ -333,9 +335,9 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F7),
+        color: _cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: SelectableText(
         text,
@@ -358,10 +360,10 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: _cs.onSurface,
           ),
         ),
         const SizedBox(height: 6),
@@ -373,25 +375,25 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: TextStyle(color: Colors.grey.shade400),
+            hintStyle: TextStyle(color: _cs.outline),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: _cs.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(color: _cs.outline),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(color: _cs.outline),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: Color(0xFF6C63FF),
+              borderSide: BorderSide(
+                color: _cs.primary,
                 width: 1.5,
               ),
             ),

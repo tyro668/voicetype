@@ -42,9 +42,12 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
   int _selectedNav = 0;
   bool _processing = false;
   late VoidCallback _settingsListener;
+  SettingsProvider? _settingsProvider;
   bool _didShowAccessibilityGuide = false;
   bool _didShowInputMonitoringGuide = false;
 
@@ -54,7 +57,7 @@ class _MainScreenState extends State<MainScreen> {
     _NavItem(icon: Icons.psychology_outlined, label: l10n.textModelSettings),
     _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.promptWorkshop),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
-    const _NavItem(icon: Icons.language_outlined, label: '网络设置'),
+    _NavItem(icon: Icons.language_outlined, label: l10n.networkSettings),
     _NavItem(icon: Icons.info_outline, label: l10n.about),
   ];
 
@@ -66,6 +69,7 @@ class _MainScreenState extends State<MainScreen> {
     _ensureAccessibilityPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = context.read<SettingsProvider>();
+      _settingsProvider = settings;
       _settingsListener = () {
         _registerCurrentHotkey(settings);
         _ensureInputMonitoringPermissionIfNeeded(settings.hotkey);
@@ -125,23 +129,24 @@ class _MainScreenState extends State<MainScreen> {
     if (_didShowInputMonitoringGuide) return;
     _didShowInputMonitoringGuide = true;
 
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (ctx) => AlertDialog(
-        title: const Text('需要输入监控权限'),
-        content: const Text('Fn 全局快捷键需要在“系统设置 > 隐私与安全性 > 输入监控”中勾选 VoiceType。'),
+        title: Text(l10n.inputMonitoringRequired),
+        content: Text(l10n.inputMonitoringDescription),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('稍后'),
+            child: Text(l10n.later),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               OverlayService.openInputMonitoringPrivacy();
             },
-            child: const Text('打开设置'),
+            child: Text(l10n.openSettings),
           ),
         ],
       ),
@@ -149,23 +154,24 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _showAccessibilityGuide() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (ctx) => AlertDialog(
-        title: const Text('需要辅助功能权限'),
-        content: const Text('为实现自动输入，需要在“系统设置 > 隐私与安全性 > 辅助功能”中勾选 VoiceType。'),
+        title: Text(l10n.accessibilityRequired),
+        content: Text(l10n.accessibilityDescription),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('稍后'),
+            child: Text(l10n.later),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               OverlayService.openAccessibilityPrivacy();
             },
-            child: const Text('打开设置'),
+            child: Text(l10n.openSettings),
           ),
         ],
       ),
@@ -186,11 +192,12 @@ class _MainScreenState extends State<MainScreen> {
     OverlayService.showMainWindow();
     if (!mounted) return;
     setState(() => _selectedNav = 1);
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text('请先配置语音转换模型'),
+      SnackBar(
+        content: Text(l10n.pleaseConfigureSttModel),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -199,8 +206,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     OverlayService.onGlobalKeyEvent = null;
-    final settings = context.read<SettingsProvider>();
-    settings.removeListener(_settingsListener);
+    _settingsProvider?.removeListener(_settingsListener);
     super.dispose();
   }
 
@@ -279,7 +285,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F8),
+      backgroundColor: _cs.surfaceContainerLow,
       body: Row(
         children: [
           _buildSidebar(),
@@ -295,8 +301,8 @@ class _MainScreenState extends State<MainScreen> {
     return Container(
       width: 200,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(right: BorderSide(color: Colors.grey.shade200)),
+        color: _cs.surface,
+        border: Border(right: BorderSide(color: _cs.outlineVariant)),
       ),
       child: SafeArea(
         child: Column(
@@ -306,14 +312,17 @@ class _MainScreenState extends State<MainScreen> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Row(
                 children: [
-                  const Icon(Icons.mic, color: Color(0xFF6C63FF), size: 22),
+                  Icon(Icons.mic, color: _cs.primary, size: 22),
                   const SizedBox(width: 8),
-                  const Text(
-                    'VoiceType',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  Flexible(
+                    child: Text(
+                      'VoiceType',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _cs.onSurface,
+                      ),
                     ),
                   ),
                 ],
@@ -326,9 +335,7 @@ class _MainScreenState extends State<MainScreen> {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 child: Material(
-                  color: selected
-                      ? const Color(0xFFF0F0F5)
-                      : Colors.transparent,
+                  color: selected ? _cs.secondaryContainer : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
@@ -344,8 +351,8 @@ class _MainScreenState extends State<MainScreen> {
                             item.icon,
                             size: 18,
                             color: selected
-                                ? Colors.black87
-                                : Colors.grey.shade500,
+                                ? _cs.onSurface
+                                : _cs.onSurfaceVariant,
                           ),
                           const SizedBox(width: 10),
                           Text(
@@ -356,8 +363,8 @@ class _MainScreenState extends State<MainScreen> {
                                   ? FontWeight.w600
                                   : FontWeight.w400,
                               color: selected
-                                  ? Colors.black87
-                                  : Colors.grey.shade600,
+                                  ? _cs.onSurface
+                                  : _cs.onSurfaceVariant,
                             ),
                           ),
                         ],
