@@ -20,7 +20,8 @@ class AppDelegate: FlutterAppDelegate {
   var hotKeyHandler: EventHandlerRef?
   var registeredHotKeyCode: UInt32 = UInt32(kVK_F2)
   var lastActiveApp: NSRunningApplication?
-  var previousFnPressed: Bool = false
+  var previousFnPressedEventTap: Bool = false
+  var previousFnPressedNSEvent: Bool = false
   private lazy var logFileURL: URL = {
     let libraryDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
     let logsDir = libraryDir?.appendingPathComponent("Logs")
@@ -121,12 +122,10 @@ class AppDelegate: FlutterAppDelegate {
         if let args = call.arguments as? [String: Any],
            let keyCode = args["keyCode"] as? Int {
           let modifiers = args["modifiers"] as? Int ?? 0
-          self?.log("[hotkey] method registerHotkey keyCode=\(keyCode) modifiers=\(modifiers)")
           let ok = self?.registerHotkey(
             keyCode: UInt32(keyCode),
             modifiers: UInt32(modifiers)
           ) ?? false
-          self?.log("[hotkey] method registerHotkey result ok=\(ok)")
           result(ok)
         } else {
           self?.log("[hotkey] method registerHotkey invalid args=\(String(describing: call.arguments))")
@@ -141,7 +140,6 @@ class AppDelegate: FlutterAppDelegate {
     }
 
     ensureAccessibilityPermission()
-    log("[hotkey] accessibility trusted: \(AXIsProcessTrusted())")
 
     // 注册全局快捷键监听（即使主窗口不在前台也能触发）
     setupGlobalHotkey(controller: controller)
@@ -244,9 +242,14 @@ class AppDelegate: FlutterAppDelegate {
       if self.hotKeyRef != nil {
         return
       }
+      // EventTap 可用时，不使用 NSEvent 兜底通道，避免重复/冲突触发
+      if self.registeredHotKeyCode == kVK_FunctionKey,
+         let tap = self.eventTap,
+         CGEvent.tapIsEnabled(tap: tap) {
+        return
+      }
       self.captureActiveApplication()
       if self.methodChannel == nil {
-        self.log("[hotkey] global event but methodChannel is nil")
         return
       }
 
@@ -265,19 +268,16 @@ class AppDelegate: FlutterAppDelegate {
         // Fn 键特殊处理：通过 function 标志位变化检测
         if self.registeredHotKeyCode == kVK_FunctionKey {
           let fnPressed = event.modifierFlags.contains(.function)
-          if fnPressed == self.previousFnPressed {
+          if UInt32(event.keyCode) != kVK_FunctionKey {
             return
           }
-          self.previousFnPressed = fnPressed
-          self.log(
-            "[hotkey] global flagsChanged Fn detected keyCode=\(event.keyCode) function=\(fnPressed) rawFlags=\(event.modifierFlags.rawValue)"
-          )
+          if fnPressed == self.previousFnPressedNSEvent {
+            return
+          }
+          self.previousFnPressedNSEvent = fnPressed
           eventType = fnPressed ? "down" : "up"
         } else if UInt32(event.keyCode) == self.registeredHotKeyCode {
           eventType = event.modifierFlags.contains(.function) ? "down" : "up"
-          self.log(
-            "[hotkey] global flagsChanged keyCode=\(event.keyCode) function=\(event.modifierFlags.contains(.function)) rawFlags=\(event.modifierFlags.rawValue)"
-          )
         } else {
           return
         }
@@ -285,7 +285,6 @@ class AppDelegate: FlutterAppDelegate {
         return
       }
 
-      self.log("[hotkey] global keyCode=\(event.keyCode) type=\(eventType) repeat=\(event.isARepeat)")
       self.emitGlobalKeyEvent(
         keyCode: self.registeredHotKeyCode,
         type: eventType,
@@ -299,9 +298,14 @@ class AppDelegate: FlutterAppDelegate {
       if self.hotKeyRef != nil {
         return event
       }
+      // EventTap 可用时，不使用 NSEvent 兜底通道，避免重复/冲突触发
+      if self.registeredHotKeyCode == kVK_FunctionKey,
+         let tap = self.eventTap,
+         CGEvent.tapIsEnabled(tap: tap) {
+        return event
+      }
       self.captureActiveApplication()
       if self.methodChannel == nil {
-        self.log("[hotkey] local event but methodChannel is nil")
         return event
       }
 
@@ -319,19 +323,16 @@ class AppDelegate: FlutterAppDelegate {
       } else if event.type == .flagsChanged {
         if self.registeredHotKeyCode == kVK_FunctionKey {
           let fnPressed = event.modifierFlags.contains(.function)
-          if fnPressed == self.previousFnPressed {
+          if UInt32(event.keyCode) != kVK_FunctionKey {
             return event
           }
-          self.previousFnPressed = fnPressed
-          self.log(
-            "[hotkey] local flagsChanged Fn detected keyCode=\(event.keyCode) function=\(fnPressed) rawFlags=\(event.modifierFlags.rawValue)"
-          )
+          if fnPressed == self.previousFnPressedNSEvent {
+            return event
+          }
+          self.previousFnPressedNSEvent = fnPressed
           eventType = fnPressed ? "down" : "up"
         } else if UInt32(event.keyCode) == self.registeredHotKeyCode {
           eventType = event.modifierFlags.contains(.function) ? "down" : "up"
-          self.log(
-            "[hotkey] local flagsChanged keyCode=\(event.keyCode) function=\(event.modifierFlags.contains(.function)) rawFlags=\(event.modifierFlags.rawValue)"
-          )
         } else {
           return event
         }
@@ -339,7 +340,6 @@ class AppDelegate: FlutterAppDelegate {
         return event
       }
 
-      self.log("[hotkey] local keyCode=\(event.keyCode) type=\(eventType) repeat=\(event.isARepeat)")
       self.emitGlobalKeyEvent(
         keyCode: self.registeredHotKeyCode,
         type: eventType,
@@ -403,7 +403,8 @@ class AppDelegate: FlutterAppDelegate {
   @discardableResult
   func registerHotkey(keyCode: UInt32, modifiers: UInt32) -> Bool {
     registeredHotKeyCode = keyCode
-    previousFnPressed = false
+    previousFnPressedEventTap = false
+    previousFnPressedNSEvent = false
 
     // Fn 键不走 Carbon：直接使用 EventTap + NSEvent 兜底
     if keyCode == kVK_FunctionKey {
@@ -462,6 +463,8 @@ class AppDelegate: FlutterAppDelegate {
       UnregisterEventHotKey(hotKeyRef)
       self.hotKeyRef = nil
     }
+    previousFnPressedEventTap = false
+    previousFnPressedNSEvent = false
   }
 
   func fourCharCode(_ string: String) -> OSType {
@@ -544,28 +547,16 @@ class AppDelegate: FlutterAppDelegate {
         // Fn 键特殊处理：通过 maskSecondaryFn 标志位变化检测按下/释放
         if delegate.registeredHotKeyCode == kVK_FunctionKey {
           let fnPressed = event.flags.contains(.maskSecondaryFn)
-          if fnPressed != delegate.previousFnPressed {
-            delegate.previousFnPressed = fnPressed
-            delegate.log(
-              "[hotkey] eventTap flagsChanged Fn detected keyCode=\(keyCode) maskSecondaryFn=\(fnPressed) rawFlags=\(event.flags.rawValue)"
-            )
-            eventType = fnPressed ? "down" : "up"
-          } else if UInt32(keyCode) == kVK_FunctionKey {
-            // 某些 release 场景下 Fn 事件可能出现 keyCode 变化但标志位未翻转，兜底为状态切换
-            let inferredPressed = !delegate.previousFnPressed
-            delegate.previousFnPressed = inferredPressed
-            delegate.log(
-              "[hotkey] eventTap flagsChanged Fn inferred by keyCode keyCode=\(keyCode) inferredPressed=\(inferredPressed) rawFlags=\(event.flags.rawValue)"
-            )
-            eventType = inferredPressed ? "down" : "up"
-          } else {
+          if UInt32(keyCode) != kVK_FunctionKey {
             return Unmanaged.passUnretained(event)
           }
+          if fnPressed == delegate.previousFnPressedEventTap {
+            return Unmanaged.passUnretained(event)
+          }
+          delegate.previousFnPressedEventTap = fnPressed
+          eventType = fnPressed ? "down" : "up"
         } else if UInt32(keyCode) == delegate.registeredHotKeyCode {
           let fnPressed = event.flags.contains(.maskSecondaryFn)
-          delegate.log(
-            "[hotkey] eventTap flagsChanged keyCode=\(keyCode) maskSecondaryFn=\(fnPressed) rawFlags=\(event.flags.rawValue)"
-          )
           eventType = fnPressed ? "down" : "up"
         } else {
           return Unmanaged.passUnretained(event)
@@ -573,10 +564,6 @@ class AppDelegate: FlutterAppDelegate {
       } else {
         return Unmanaged.passUnretained(event)
       }
-
-      delegate.log(
-        "[hotkey] eventTap dispatch keyCode=\(keyCode) type=\(eventType) repeat=\(type == .flagsChanged ? false : isRepeat)"
-      )
 
       delegate.emitGlobalKeyEvent(
         keyCode: delegate.registeredHotKeyCode,
@@ -623,14 +610,23 @@ class AppDelegate: FlutterAppDelegate {
     self.eventTap = eventTap
     eventTapSource = source
 
-    // 更频繁地检查并重新启用 event tap，防止系统自动禁用
+    // 高频检查并重新启用 event tap，防止系统因权限不足自动禁用
     eventTapKeepAliveTimer?.invalidate()
-    eventTapKeepAliveTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-      if let tap = self?.eventTap {
-        if !CGEvent.tapIsEnabled(tap: tap) {
-          self?.log("[hotkey] re-enabling disabled event tap")
-          CGEvent.tapEnable(tap: tap, enable: true)
+    var disableCount = 0
+    eventTapKeepAliveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+      guard let self = self, let tap = self.eventTap else { return }
+      if !CGEvent.tapIsEnabled(tap: tap) {
+        disableCount += 1
+        // 检测权限是否已授予：如果已授予则重建 EventTap 以获得稳定连接
+        if AXIsProcessTrusted() || CGPreflightListenEventAccess() {
+          let isFn = self.registeredHotKeyCode == kVK_FunctionKey
+          self.setupEventTap(preferHIDForFn: isFn, recreateIfNeeded: true)
+          disableCount = 0
+          return
         }
+        CGEvent.tapEnable(tap: tap, enable: true)
+      } else {
+        disableCount = 0
       }
     }
 

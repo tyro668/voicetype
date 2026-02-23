@@ -38,10 +38,11 @@ class AiEnhanceService {
       throw AiEnhanceException('AI增强失败: $apiKeyError');
     }
 
-    final resolvedPrompt = config.prompt.replaceAll(
-      '{agentName}',
-      config.agentName,
-    );
+    final resolvedPrompt =
+        (config.prompt.trim().isEmpty
+                ? AiEnhanceConfig.defaultPrompt
+                : config.prompt)
+            .replaceAll('{agentName}', config.agentName);
 
     final headers = _buildHeaders();
     final body = json.encode({
@@ -49,7 +50,7 @@ class AiEnhanceService {
       'temperature': 0.2,
       'messages': [
         {'role': 'system', 'content': resolvedPrompt},
-        {'role': 'user', 'content': text},
+        {'role': 'user', 'content': _buildEnhanceUserMessage(text)},
       ],
     });
 
@@ -110,6 +111,17 @@ class AiEnhanceService {
     } finally {
       client.close();
     }
+  }
+
+  String _buildEnhanceUserMessage(String text) {
+    return '''
+请严格根据 system 提示词对以下文本做优化。
+仅输出优化后的文本本身，不要添加解释、前后缀或引号。
+
+<source>
+$text
+</source>
+''';
   }
 
   /// 检查文本模型服务是否可用
@@ -247,13 +259,49 @@ class AiEnhanceService {
     final choices = jsonBody['choices'] as List<dynamic>?;
     if (choices != null && choices.isNotEmpty) {
       final message = choices.first['message'] as Map<String, dynamic>?;
-      final content = message?['content'] as String?;
-      return content?.trim().isNotEmpty == true
-          ? content!.trim()
-          : fallbackText;
+      final content = _readMessageContent(message?['content']);
+      if (content.isEmpty) return fallbackText;
+      final cleaned = _sanitizeEnhancedText(content);
+      return cleaned.isEmpty ? fallbackText : cleaned;
     }
 
     return fallbackText;
+  }
+
+  String _readMessageContent(dynamic content) {
+    if (content is String) return content.trim();
+    if (content is List) {
+      final buffer = StringBuffer();
+      for (final item in content) {
+        if (item is Map<String, dynamic>) {
+          final text = item['text'];
+          if (text is String && text.trim().isNotEmpty) {
+            if (buffer.isNotEmpty) buffer.writeln();
+            buffer.write(text.trim());
+          }
+        }
+      }
+      return buffer.toString().trim();
+    }
+    return '';
+  }
+
+  String _sanitizeEnhancedText(String text) {
+    final cleaned = text.trim();
+    if (cleaned.isEmpty) return cleaned;
+    final normalized = cleaned.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+    const genericReplies = <String>{
+      '谢谢',
+      '谢谢你',
+      'thanks',
+      'thankyou',
+      '好的',
+      'ok',
+    };
+    if (genericReplies.contains(normalized)) {
+      return '';
+    }
+    return cleaned;
   }
 
   String _normalizeBaseUrl(String baseUrl) {

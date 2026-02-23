@@ -118,6 +118,10 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
   }
 
   Widget _buildCurrentTab(AppLocalizations l10n) {
+    final settings = context.watch<SettingsProvider>();
+    final currentPrompt = settings.aiEnhanceUseCustomPrompt
+        ? settings.aiEnhanceConfig.prompt
+        : _defaultPrompt;
     return _buildCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +131,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          _buildCodeBlock(_defaultPrompt),
+          _buildCodeBlock(currentPrompt),
         ],
       ),
     );
@@ -270,7 +274,12 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     });
 
     try {
-      final config = settings.effectiveAiEnhanceConfig;
+      final promptForTest = settings.aiEnhanceUseCustomPrompt
+          ? _promptController.text
+          : _defaultPrompt;
+      final config = settings.effectiveAiEnhanceConfig.copyWith(
+        prompt: promptForTest,
+      );
       final service = AiEnhanceService(config);
       final result = await service.enhance(_testInputController.text);
       _testOutputController.text = result;
