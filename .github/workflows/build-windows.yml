@@ -1,0 +1,50 @@
+name: Build Windows EXE
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Package release artifacts
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([^\s+]+)').Matches[0].Groups[1].Value
+          $releaseDir = "build\windows\x64\runner\Release"
+          $zipName    = "voicetype-windows-$version.zip"
+
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath "build\windows\$zipName" -Force
+          Write-Host "Packaged: build\windows\$zipName"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicetype-windows
+          path: build/windows/voicetype-windows-*.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/windows/voicetype-windows-*.zip

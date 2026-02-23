@@ -4,14 +4,26 @@
 
 ## 启动调试
 
+macOS:
 ```
-flutter run  -d macos
+flutter run -d macos
+```
+
+Windows:
+```
+flutter run -d windows
 ```
 
 ## 构建安装文件
 
+macOS:
 ```
 flutter build macos
+```
+
+Windows:
+```
+flutter build windows
 ```
 
 ## 一键构建脚本
@@ -22,11 +34,16 @@ macOS (DMG):
 ./scripts/build-macos.sh
 ```
 
-Windows (EXE):
+Windows (ZIP containing EXE + runtime DLLs):
 
 ```
 powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 ```
+
+> **Windows 使用说明**
+> - 首次运行后请在应用「通用设置」中将快捷键改为 **F2**（或其他 F 功能键），因为 macOS 的 Fn 键在 Windows 上不可用。
+> - 文字自动插入功能通过剪贴板 + Ctrl+V 模拟输入实现。
+> - GitHub Actions 会在每次打 Tag（如 `v1.0.0`）时自动构建并上传 Windows 压缩包到 Releases。
 ## 配置语音模型
 
 推荐使用GLM的语音模型
