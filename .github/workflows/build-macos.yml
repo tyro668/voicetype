@@ -56,7 +56,7 @@ jobs:
 
       - name: Build macOS Release
         run: |
-          "$FLUTTER_BIN/flutter" build macos --release
+          "$FLUTTER_BIN/flutter" build macos --release --target-platform=darwin-x64,darwin-arm64
 
       - name: Extract version
         id: version
@@ -74,6 +74,14 @@ jobs:
             echo "No .app found in build output." >&2
             exit 1
           fi
+
+          # 统一架构可执行文件校验
+          APP_BIN="$APP_PATH/Contents/MacOS/$(basename "$APP_PATH" .app)"
+          file "$APP_BIN"
+
+          # 对 CI 产物进行 ad-hoc 签名，降低下载后运行时动态库校验异常概率
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
           APP_NAME="$(basename "$APP_PATH" .app)"
           VERSION="${{ steps.version.outputs.VERSION }}"
