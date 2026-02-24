@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -6,6 +7,7 @@ import '../../models/provider_config.dart';
 import '../../models/stt_model_entry.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/stt_service.dart';
+import '../../services/whisper_cpp_service.dart';
 import '../../widgets/model_form_widgets.dart';
 
 class SttPage extends StatefulWidget {
@@ -17,6 +19,12 @@ class SttPage extends StatefulWidget {
 
 class _SttPageState extends State<SttPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
+
+  static bool isLocalModelEntry(SttModelEntry entry) {
+    return entry.vendorName == '本地模型' ||
+        entry.vendorName == '本地 whisper.cpp' ||
+        entry.vendorName == 'whisper.cpp';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,10 +125,8 @@ class _SttPageState extends State<SttPage> {
     );
 
     final config = SttProviderConfig(
-      type:
-          entry.baseUrl.contains('localhost') ||
-              entry.baseUrl.contains('127.0.0.1')
-          ? SttProviderType.whisper
+      type: isLocalModelEntry(entry)
+          ? SttProviderType.whisperCpp
           : SttProviderType.cloud,
       name: entry.vendorName,
       baseUrl: entry.baseUrl,
@@ -218,6 +224,7 @@ class _SttPageState extends State<SttPage> {
   }
 }
 
+
 // ==================== 添加模型对话框 ====================
 class _AddModelDialog extends StatefulWidget {
   final List<SttProviderConfig> presets;
@@ -244,7 +251,17 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   final _customBaseUrlController = TextEditingController();
   final _customModelController = TextEditingController();
 
+  // 本地模型下载状态
+  bool _downloading = false;
+  double _downloadProgress = 0.0;
+  String? _downloadError;
+  String _downloadStatus = '';
+  final Map<String, bool> _modelDownloaded = {};
+
   List<SttProviderConfig> get _vendorOptions => widget.presets;
+
+  bool get _isLocalModel =>
+      _selectedVendor?.type == SttProviderType.whisperCpp;
 
   @override
   void dispose() {
@@ -260,99 +277,358 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: const BoxConstraints(maxWidth: 440),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    l10n.addVoiceModel,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _cs.onSurface,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      l10n.addVoiceModel,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _cs.onSurface,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => Navigator.pop(context),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                FormFieldLabel(l10n.vendor, required: true),
+                const SizedBox(height: 6),
+                _buildVendorDropdown(l10n),
+                const SizedBox(height: 12),
+
+                if (_isLocalModel)
+                  _buildLocalModelSection(l10n)
+                else ...[
+                  FormFieldLabel(l10n.model, required: true),
+                  const SizedBox(height: 6),
+                  if (_isCustom)
+                    _buildTextField(
+                      controller: _customModelController,
+                      hintText: l10n.enterModelName('whisper-1'),
+                    )
+                  else
+                    _buildModelDropdown(l10n),
+                  const SizedBox(height: 12),
+
+                  if (_isCustom) ...[
+                    FormFieldLabel(l10n.endpointUrl, required: true),
+                    const SizedBox(height: 6),
+                    _buildTextField(
+                      controller: _customBaseUrlController,
+                      hintText: 'https://api.openai.com/v1',
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  FormFieldLabel(l10n.apiKey, required: true),
+                  const SizedBox(height: 6),
+                  _buildTextField(
+                    controller: _apiKeyController,
+                    hintText: l10n.enterApiKey,
+                    obscureText: true,
                   ),
                 ],
-              ),
-              const SizedBox(height: 14),
 
-              FormFieldLabel(l10n.vendor, required: true),
-              const SizedBox(height: 6),
-              _buildVendorDropdown(l10n),
-              const SizedBox(height: 12),
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
 
-              FormFieldLabel(l10n.model, required: true),
-              const SizedBox(height: 6),
-              if (_isCustom)
-                _buildTextField(
-                  controller: _customModelController,
-                  hintText: l10n.enterModelName('whisper-1'),
-                )
-              else
-                _buildModelDropdown(l10n),
-              const SizedBox(height: 12),
-
-              if (_isCustom) ...[
-                FormFieldLabel(l10n.endpointUrl, required: true),
-                const SizedBox(height: 6),
-                _buildTextField(
-                  controller: _customBaseUrlController,
-                  hintText: 'https://api.openai.com/v1',
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              FormFieldLabel(l10n.apiKey, required: true),
-              const SizedBox(height: 6),
-              _buildTextField(
-                controller: _apiKeyController,
-                hintText: l10n.enterApiKey,
-                obscureText: true,
-              ),
-
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              const SizedBox(height: 14),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _canSubmit ? _submit : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _cs.onSurface,
-                    foregroundColor: _cs.onPrimary,
-                    disabledBackgroundColor: _cs.outline,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _canSubmit ? _submit : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _cs.onSurface,
+                      foregroundColor: _cs.onPrimary,
+                      disabledBackgroundColor: _cs.outline,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.addModel,
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ),
-                  child: Text(
-                    l10n.addModel,
-                    style: const TextStyle(fontSize: 14),
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  // ---- 本地模型专用 UI ----
+  Widget _buildLocalModelSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.green.withValues(alpha: 0.05),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, size: 16, color: Colors.green),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '本地模型通过 FFI 直接调用 whisper.cpp，只需下载模型文件即可使用',
+                  style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        FormFieldLabel(l10n.selectModel, required: true),
+        const SizedBox(height: 8),
+        ...kWhisperModels.map((m) => _buildModelDownloadTile(m)),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildModelDownloadTile(WhisperModel model) {
+    final isSelected = _selectedModel?.id == model.fileName;
+    final downloaded = _modelDownloaded[model.fileName];
+    final isDownloading = _downloading && isSelected;
+
+    return FutureBuilder<bool>(
+      future: downloaded != null
+          ? Future.value(downloaded)
+          : WhisperCppService.isModelDownloaded(model.fileName),
+      builder: (context, snapshot) {
+        final exists = snapshot.data ?? downloaded ?? false;
+        if (snapshot.hasData && _modelDownloaded[model.fileName] == null) {
+          // 缓存结果避免重复检查
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _modelDownloaded[model.fileName] = exists);
+            }
+          });
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? _cs.primary : _cs.outlineVariant,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: exists
+                ? () => setState(() {
+                      _selectedModel = SttModel(
+                        id: model.fileName,
+                        description: model.description,
+                      );
+                    })
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  // 选中指示器
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    size: 18,
+                    color: isSelected
+                        ? _cs.primary
+                        : exists
+                            ? _cs.outline
+                            : _cs.outline.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(width: 10),
+                  // 模型信息
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          model.fileName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _cs.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          model.description,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _cs.onSurfaceVariant,
+                          ),
+                        ),
+                        if (isDownloading) ...[
+                          const SizedBox(height: 6),
+                          if (_downloadStatus.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                _downloadStatus,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: _cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: _downloadProgress,
+                              minHeight: 4,
+                              backgroundColor: _cs.surfaceContainerHighest,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: _cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                        if (_downloadError != null && isSelected) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _downloadError!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // 下载/已下载状态
+                  if (exists)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, size: 14, color: Colors.green),
+                          SizedBox(width: 4),
+                          Text(
+                            '已下载',
+                            style: TextStyle(fontSize: 11, color: Colors.green),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (isDownloading)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _cs.primary,
+                      ),
+                    )
+                  else
+                    TextButton.icon(
+                      onPressed: () => _downloadModel(model),
+                      icon: const Icon(Icons.download, size: 16),
+                      label: const Text('下载', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _downloadModel(WhisperModel model) async {
+    setState(() {
+      _downloading = true;
+      _downloadProgress = 0.0;
+      _downloadError = null;
+      _downloadStatus = '';
+      _selectedModel = SttModel(
+        id: model.fileName,
+        description: model.description,
+      );
+    });
+
+    try {
+      await WhisperCppService.downloadModel(
+        model,
+        onProgress: (progress) {
+          if (mounted) {
+            setState(() => _downloadProgress = progress);
+          }
+        },
+        onStatus: (message) {
+          if (mounted) {
+            setState(() => _downloadStatus = message);
+          }
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _modelDownloaded[model.fileName] = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _downloadError = e.toString();
+        });
+      }
+    }
+  }
+
   bool get _canSubmit {
+    if (_downloading) return false;
+    if (_isLocalModel) {
+      return _selectedModel != null &&
+          (_modelDownloaded[_selectedModel!.id] == true);
+    }
     if (_apiKeyController.text.trim().isEmpty) return false;
     if (_isCustom) {
       return _customBaseUrlController.text.trim().isNotEmpty &&
@@ -366,7 +642,11 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     final String baseUrl;
     final String model;
 
-    if (_isCustom) {
+    if (_isLocalModel) {
+      vendorName = _selectedVendor!.name;
+      baseUrl = '';  // FFI 模式不需要路径
+      model = _selectedModel!.id;
+    } else if (_isCustom) {
       vendorName = '自定义';
       baseUrl = _customBaseUrlController.text.trim();
       model = _customModelController.text.trim();
@@ -381,7 +661,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       vendorName: vendorName,
       baseUrl: baseUrl,
       model: model,
-      apiKey: _apiKeyController.text.trim(),
+      apiKey: _isLocalModel ? '' : _apiKeyController.text.trim(),
     );
     widget.onAdd(entry);
     Navigator.pop(context);
@@ -454,6 +734,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   }
 }
 
+
 // ==================== 编辑模型对话框 ====================
 class _EditModelDialog extends StatefulWidget {
   final SttModelEntry entry;
@@ -495,7 +776,10 @@ class _EditModelDialogState extends State<_EditModelDialog> {
     super.dispose();
   }
 
+  bool get _isLocalModel => _SttPageState.isLocalModelEntry(widget.entry);
+
   bool get _isCustom =>
+      !_isLocalModel &&
       !widget.presets.any((p) => p.name == widget.entry.vendorName);
 
   @override
@@ -507,100 +791,133 @@ class _EditModelDialogState extends State<_EditModelDialog> {
         constraints: const BoxConstraints(maxWidth: 400),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    l10n.editVoiceModel,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _cs.onSurface,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      l10n.editVoiceModel,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _cs.onSurface,
+                      ),
                     ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                FormFieldLabel(l10n.vendor),
+                const SizedBox(height: 6),
+                _buildReadOnlyField(widget.entry.vendorName),
+                const SizedBox(height: 12),
+
+                if (_isLocalModel) ...[
+                  FormFieldLabel(l10n.model, required: true),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _modelController,
+                          hintText: 'ggml-tiny.bin',
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: '打开模型文件所在目录',
+                        child: IconButton(
+                          icon: Icon(Icons.folder_open, size: 20, color: _cs.onSurfaceVariant),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          onPressed: () => _openModelFileLocation(_modelController.text.trim()),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => Navigator.pop(context),
+                ] else ...[
+                  if (_isCustom) ...[
+                    FormFieldLabel(l10n.endpointUrl, required: true),
+                    const SizedBox(height: 6),
+                    _buildTextField(
+                      controller: _baseUrlController,
+                      hintText: 'https://api.example.com/v1',
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  FormFieldLabel(l10n.model, required: true),
+                  const SizedBox(height: 6),
+                  _buildTextField(
+                    controller: _modelController,
+                    hintText: l10n.enterModelName('whisper-1'),
+                  ),
+                  const SizedBox(height: 12),
+
+                  FormFieldLabel(l10n.apiKey, required: true),
+                  const SizedBox(height: 6),
+                  _buildTextField(
+                    controller: _apiKeyController,
+                    hintText: l10n.enterApiKey,
+                    obscureText: true,
                   ),
                 ],
-              ),
-              const SizedBox(height: 14),
 
-              FormFieldLabel(l10n.vendor),
-              const SizedBox(height: 6),
-              _buildReadOnlyField(widget.entry.vendorName),
-              const SizedBox(height: 12),
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
 
-              if (_isCustom) ...[
-                FormFieldLabel(l10n.endpointUrl, required: true),
-                const SizedBox(height: 6),
-                _buildTextField(
-                  controller: _baseUrlController,
-                  hintText: 'https://api.example.com/v1',
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              FormFieldLabel(l10n.model, required: true),
-              const SizedBox(height: 6),
-              _buildTextField(
-                controller: _modelController,
-                hintText: l10n.enterModelName('whisper-1'),
-              ),
-              const SizedBox(height: 12),
-
-              FormFieldLabel(l10n.apiKey, required: true),
-              const SizedBox(height: 6),
-              _buildTextField(
-                controller: _apiKeyController,
-                hintText: l10n.enterApiKey,
-                obscureText: true,
-              ),
-
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              const SizedBox(height: 14),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _cs.onSurface,
-                    foregroundColor: _cs.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _cs.onSurface,
+                      foregroundColor: _cs.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.saveChanges,
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ),
-                  child: Text(
-                    l10n.saveChanges,
-                    style: const TextStyle(fontSize: 14),
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Future<void> _openModelFileLocation(String fileName) async {
+    if (fileName.isEmpty) return;
+    final dir = await WhisperCppService.defaultModelDir;
+    await Process.run('open', [dir]);
+  }
+
   void _submit() {
     final updated = SttModelEntry(
       id: widget.entry.id,
       vendorName: widget.entry.vendorName,
-      baseUrl: _isCustom
+      baseUrl: _isLocalModel || _isCustom
           ? _baseUrlController.text.trim()
           : widget.entry.baseUrl,
       model: _modelController.text.trim(),
-      apiKey: _apiKeyController.text.trim(),
+      apiKey: _isLocalModel ? '' : _apiKeyController.text.trim(),
       enabled: widget.entry.enabled,
     );
     widget.onSave(updated);

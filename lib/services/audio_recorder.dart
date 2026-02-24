@@ -35,7 +35,15 @@ class AudioRecorderService {
     if (!await recordingsDir.exists()) {
       await recordingsDir.create(recursive: true);
     }
-    _currentPath = path.join(recordingsDir.path, '${const Uuid().v4()}.wav');
+    final now = DateTime.now();
+    final ts = '${now.year}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}'
+        '${now.hour.toString().padLeft(2, '0')}'
+        '${now.minute.toString().padLeft(2, '0')}'
+        '${now.second.toString().padLeft(2, '0')}';
+    final shortId = const Uuid().v4().substring(0, 8);
+    _currentPath = path.join(recordingsDir.path, '${ts}_$shortId.wav');
 
     final file = File(_currentPath!);
     if (!await file.exists()) {

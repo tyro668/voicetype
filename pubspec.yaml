@@ -44,6 +44,9 @@ dependencies:
   floor: ^1.5.0
   sqflite: ^2.4.0
   fl_chart: ^0.70.2
+  whisper_flutter_new: ^1.0.1
+  ffi: ^2.1.0
+  llamadart: ^0.6.2
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +81,7 @@ flutter:
 
   assets:
     - assets/prompts/default_prompt.md
+    - assets/prompts/local_model_prompt.md
     - assets/presets/models.json
 
   # To add assets to your application, add an assets section, like this:

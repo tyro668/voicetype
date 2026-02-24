@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/provider_config.dart';
 import 'log_service.dart';
 import 'network_client_service.dart';
+import 'whisper_cpp_service.dart';
 
 class SttService {
   final SttProviderConfig config;
@@ -42,6 +43,11 @@ class SttService {
   /// 使用 OpenAI 兼容的 /audio/transcriptions 接口
   /// 与 Z.ai 保持一致，所有云端模型都走标准 OpenAI 接口
   Future<String> transcribe(String audioPath) async {
+    // whisper.cpp 本地模式：直接调用可执行文件
+    if (config.type == SttProviderType.whisperCpp) {
+      return _transcribeWhisperCpp(audioPath);
+    }
+
     final resolvedModel = _resolvedModel();
     await LogService.info(
       'STT',
@@ -56,6 +62,23 @@ class SttService {
 
     // 所有云端服务统一走标准 OpenAI 接口
     return _transcribeOpenAI(audioPath, resolvedModel);
+  }
+
+  /// 使用本地 whisper.cpp 可执行文件转录
+  Future<String> _transcribeWhisperCpp(String audioPath) async {
+    await LogService.info(
+      'STT',
+      'start whisper.cpp transcribe exec=${config.baseUrl} model=${config.model} file=$audioPath',
+    );
+    final service = WhisperCppService(
+      executablePath: config.baseUrl,
+      modelPath: config.model,
+    );
+    try {
+      return await service.transcribe(audioPath);
+    } on WhisperCppException catch (e) {
+      throw SttException(e.message);
+    }
   }
 
   /// 标准 OpenAI /audio/transcriptions 接口
@@ -289,6 +312,16 @@ class SttService {
       'STT',
       'checkAvailability provider=${config.name} model=${config.model} baseUrl=${config.baseUrl}',
     );
+
+    // whisper.cpp 本地模式：检查可执行文件和模型文件
+    if (config.type == SttProviderType.whisperCpp) {
+      final service = WhisperCppService(
+        executablePath: config.baseUrl,
+        modelPath: config.model,
+      );
+      final result = await service.checkAvailability();
+      return SttConnectionCheckResult(ok: result.ok, message: result.message);
+    }
 
     final apiKeyError = _apiKeyValidationMessage();
     if (apiKeyError != null) {

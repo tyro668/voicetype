@@ -47,7 +47,10 @@ void main() {
       expect(presets, isNotEmpty);
       for (final preset in presets) {
         expect(preset.name, isNotEmpty);
-        expect(preset.baseUrl, isNotEmpty);
+        // whisperCpp 类型的 baseUrl 可以为空（可执行文件路径可选）
+        if (preset.type != SttProviderType.whisperCpp) {
+          expect(preset.baseUrl, isNotEmpty);
+        }
         expect(preset.model, isNotEmpty);
         expect(preset.availableModels, isNotEmpty);
       }
@@ -96,7 +99,7 @@ void main() {
       expect(presets[0].name, 'Good');
     });
 
-    test('fromPresetJsonList with whisper type', () {
+    test('fromPresetJsonList with whisper type falls back to cloud', () {
       final jsonList = [
         {
           'name': 'Local Whisper',
@@ -111,7 +114,7 @@ void main() {
 
       final presets = SttProviderConfig.fromPresetJsonList(jsonList);
 
-      expect(presets[0].type, SttProviderType.whisper);
+      expect(presets[0].type, SttProviderType.cloud);
     });
   });
 

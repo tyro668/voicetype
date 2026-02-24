@@ -26,14 +26,22 @@
       ]
     },
     {
-      "type": "whisper",
-      "name": "本地 Whisper",
-      "baseUrl": "http://localhost:8080/v1",
-      "defaultModel": "whisper-1",
+      "type": "whisperCpp",
+      "name": "本地模型",
+      "baseUrl": "",
+      "defaultModel": "ggml-tiny.bin",
       "models": [
         {
-          "id": "whisper-1",
-          "description": "本地 Whisper 模型 (需先启动本地服务)"
+          "id": "ggml-tiny.bin",
+          "description": "Tiny (~75MB) - 速度最快，适合日常使用"
+        },
+        {
+          "id": "ggml-base.bin",
+          "description": "Base (~142MB) - 平衡速度与准确率"
+        },
+        {
+          "id": "ggml-small.bin",
+          "description": "Small (~466MB) - 更高准确率"
         }
       ]
     }
@@ -85,6 +93,22 @@
         {
           "id": "qwen-flash",
           "description": "千问 Flash"
+        }
+      ]
+    },
+    {
+      "name": "本地模型",
+      "baseUrl": "",
+      "isLocal": true,
+      "defaultModel": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
+      "models": [
+        {
+          "id": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
+          "description": "Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐"
+        },
+        {
+          "id": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+          "description": "Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快"
         }
       ]
     }

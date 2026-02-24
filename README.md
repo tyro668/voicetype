@@ -70,10 +70,29 @@ powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 
 ## 用户界面
 
-通用设置
+### 通用设置
 ![通用设置](screenshots/main.png)
-语音模型设置
+
+### 语音模型设置
+
+用于设置将语音转为为文本的模型，分为在线模型（优秀的语音识别效果，可以支持各种方言）和本地模型（仅供测试使用）
+
+#### 在线语音识别模型（效果好）
 ![语音模型设置](screenshots/voice_setting.png)
+
+#### 本地语音识别模型（测试用）
+![本地语音模型设置](screenshots/local_voice_model.png)
+
+### 文本模型设置
+
+用于设置将口语化的句子修改为通顺的语句，分为在线模型（优秀的文本优化效果）和本地模型（仅供测试使用，效果较差）
+
+#### 在线文本增强模型（效果好）
+![文本模型设置](screenshots/text_setting.png)
+
+#### 本地文本增强模型（测试用）
+![本地文本模型设置](screenshots/local_text_model.png)
+
 
 录音效果
 ![录音效果](screenshots/record.png)

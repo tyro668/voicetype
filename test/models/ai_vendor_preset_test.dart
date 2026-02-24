@@ -9,7 +9,9 @@ void main() {
       expect(presets, isNotEmpty);
       for (final preset in presets) {
         expect(preset.name, isNotEmpty);
-        expect(preset.baseUrl, isNotEmpty);
+        if (!preset.isLocal) {
+          expect(preset.baseUrl, isNotEmpty);
+        }
         expect(preset.models, isNotEmpty);
       }
     });
@@ -122,6 +124,26 @@ void main() {
       // defaultModel 'non-existent-model' doesn't match any model id,
       // so override should be null and first model used
       expect(presets[0].defaultModelId, 'actual');
+    });
+
+    test('fromPresetJsonList parses local model with empty baseUrl', () {
+      final jsonList = [
+        {
+          'name': '本地模型',
+          'baseUrl': '',
+          'isLocal': true,
+          'models': [
+            {'id': 'model.gguf', 'description': 'Local model'},
+          ],
+        },
+      ];
+
+      final presets = AiVendorPreset.fromPresetJsonList(jsonList);
+
+      expect(presets.length, 1);
+      expect(presets[0].name, '本地模型');
+      expect(presets[0].isLocal, true);
+      expect(presets[0].baseUrl, '');
     });
   });
 

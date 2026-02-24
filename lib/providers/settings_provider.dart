@@ -265,12 +265,7 @@ class SettingsProvider extends ChangeNotifier {
     // 如果有激活的语音模型条目，同步到 config
     final activeStt = activeSttModelEntry;
     if (activeStt != null) {
-      _config = _config.copyWith(
-        name: activeStt.vendorName,
-        baseUrl: activeStt.baseUrl,
-        apiKey: activeStt.apiKey,
-        model: activeStt.model,
-      );
+      _syncSttConfigFromActiveEntry();
     }
 
     // 加载语言设置
@@ -492,6 +487,8 @@ class SettingsProvider extends ChangeNotifier {
   void _syncAiConfigFromActiveEntry() {
     final active = activeAiModelEntry;
     if (active != null) {
+      // 本地模型：baseUrl 和 apiKey 保持为空，
+      // AiEnhanceService 会自动检测并使用 LocalLlmService.localBaseUrl
       _aiEnhanceConfig = _aiEnhanceConfig.copyWith(
         baseUrl: active.baseUrl,
         apiKey: active.apiKey,
@@ -554,7 +551,17 @@ class SettingsProvider extends ChangeNotifier {
   void _syncSttConfigFromActiveEntry() {
     final active = activeSttModelEntry;
     if (active != null) {
+      // 根据 vendorName 判断 provider type
+      SttProviderType type;
+      if (active.vendorName == '本地模型' ||
+          active.vendorName == '本地 whisper.cpp' ||
+          active.vendorName == 'whisper.cpp') {
+        type = SttProviderType.whisperCpp;
+      } else {
+        type = SttProviderType.cloud;
+      }
       _config = _config.copyWith(
+        type: type,
         name: active.vendorName,
         baseUrl: active.baseUrl,
         apiKey: active.apiKey,

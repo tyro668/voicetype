@@ -1,4 +1,4 @@
-enum SttProviderType { cloud, whisper }
+enum SttProviderType { cloud, whisperCpp }
 
 /// 激活模式
 enum ActivationMode { tapToTalk, pushToTalk }
@@ -41,14 +41,26 @@ class SttProviderConfig {
     'model': model,
   };
 
-  factory SttProviderConfig.fromJson(Map<String, dynamic> json) =>
-      SttProviderConfig(
-        type: SttProviderType.values[json['type']],
-        name: json['name'],
-        baseUrl: json['baseUrl'],
-        apiKey: json['apiKey'],
-        model: json['model'],
-      );
+  factory SttProviderConfig.fromJson(Map<String, dynamic> json) {
+    // 兼容旧数据：旧 enum 顺序为 cloud=0, whisper=1, whisperCpp=2
+    // 新 enum 顺序为 cloud=0, whisperCpp=1
+    final typeIndex = json['type'] as int;
+    final SttProviderType type;
+    if (typeIndex >= 2) {
+      type = SttProviderType.whisperCpp; // 旧 whisperCpp=2 → 新 whisperCpp
+    } else if (typeIndex == 1) {
+      type = SttProviderType.cloud; // 旧 whisper=1 → 降级为 cloud
+    } else {
+      type = SttProviderType.cloud;
+    }
+    return SttProviderConfig(
+      type: type,
+      name: json['name'],
+      baseUrl: json['baseUrl'],
+      apiKey: json['apiKey'],
+      model: json['model'],
+    );
+  }
 
   SttProviderConfig copyWith({
     SttProviderType? type,
@@ -98,13 +110,15 @@ class SttProviderConfig {
       ],
     ),
     SttProviderConfig(
-      type: SttProviderType.whisper,
-      name: '本地 Whisper',
-      baseUrl: 'http://localhost:8080/v1',
+      type: SttProviderType.whisperCpp,
+      name: '本地模型',
+      baseUrl: '',
       apiKey: '',
-      model: 'whisper-1',
+      model: 'ggml-tiny.bin',
       availableModels: [
-        SttModel(id: 'whisper-1', description: '本地 Whisper 模型 (需先启动本地服务)'),
+        SttModel(id: 'ggml-tiny.bin', description: 'Tiny (~75MB) - 速度最快，适合日常使用'),
+        SttModel(id: 'ggml-base.bin', description: 'Base (~142MB) - 平衡速度与准确率'),
+        SttModel(id: 'ggml-small.bin', description: 'Small (~466MB) - 更高准确率'),
       ],
     ),
   ];
@@ -129,7 +143,8 @@ class SttProviderConfig {
         .where(
           (preset) =>
               preset.name.isNotEmpty &&
-              preset.baseUrl.isNotEmpty &&
+              (preset.baseUrl.isNotEmpty ||
+                  preset.type == SttProviderType.whisperCpp) &&
               preset.model.isNotEmpty,
         )
         .toList();
@@ -137,8 +152,9 @@ class SttProviderConfig {
 
   static SttProviderType _parseProviderType(String? value) {
     switch (value) {
-      case 'whisper':
-        return SttProviderType.whisper;
+      case 'whisperCpp':
+        return SttProviderType.whisperCpp;
+      case 'whisper': // 兼容旧数据，降级为 cloud
       case 'cloud':
       default:
         return SttProviderType.cloud;

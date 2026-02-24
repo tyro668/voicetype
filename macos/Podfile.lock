@@ -5,11 +5,14 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
+  - whisper_flutter_new (0.0.1):
+    - FlutterMacOS
 
 DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
   - record_macos (from `Flutter/ephemeral/.symlinks/plugins/record_macos/macos`)
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
+  - whisper_flutter_new (from `Flutter/ephemeral/.symlinks/plugins/whisper_flutter_new/macos`)
 
 EXTERNAL SOURCES:
   FlutterMacOS:
@@ -18,11 +21,14 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/record_macos/macos
   sqflite_darwin:
     :path: Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin
+  whisper_flutter_new:
+    :path: Flutter/ephemeral/.symlinks/plugins/whisper_flutter_new/macos
 
 SPEC CHECKSUMS:
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   record_macos: 7f227161b93c49e7e34fe681c5891c8622c8cc8b
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  whisper_flutter_new: d73daf7f6977167139555f841bd5b6bfbf4f9e3b
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 

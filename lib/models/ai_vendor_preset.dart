@@ -3,12 +3,14 @@ class AiVendorPreset {
   final String baseUrl;
   final List<AiModel> models;
   final String? defaultModelIdOverride;
+  final bool isLocal;
 
   const AiVendorPreset({
     required this.name,
     required this.baseUrl,
     required this.models,
     this.defaultModelIdOverride,
+    this.isLocal = false,
   });
 
   String get defaultModelId => defaultModelIdOverride ?? models.first.id;
@@ -37,29 +39,43 @@ class AiVendorPreset {
         AiModel(id: 'qwen-turbo', description: '千问 Turbo'),
       ],
     ),
+    AiVendorPreset(
+      name: '本地模型',
+      baseUrl: '',
+      isLocal: true,
+      models: [
+        AiModel(id: 'qwen2.5-0.5b-instruct-q5_k_m.gguf', description: 'Qwen2.5 0.5B Q5_K_M (~400MB)'),
+        AiModel(id: 'qwen2.5-0.5b-instruct-q4_k_m.gguf', description: 'Qwen2.5 0.5B Q4_K_M (~350MB)'),
+      ],
+      defaultModelIdOverride: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
+    ),
   ];
 
   static List<AiVendorPreset> fromPresetJsonList(List<dynamic> items) {
     return items
         .whereType<Map<String, dynamic>>()
         .map(
-          (item) => AiVendorPreset(
-            name: item['name'] ?? '',
-            baseUrl: item['baseUrl'] ?? '',
-            models: (item['models'] as List<dynamic>? ?? [])
-                .whereType<Map<String, dynamic>>()
-                .map(AiModel.fromJson)
-                .toList(),
-            defaultModelIdOverride: _resolveDefaultModelId(
-              item['defaultModel']?.toString(),
-              item['models'],
-            ),
-          ),
+          (item) {
+            final isLocal = item['isLocal'] == true;
+            return AiVendorPreset(
+              name: item['name'] ?? '',
+              baseUrl: item['baseUrl'] ?? '',
+              isLocal: isLocal,
+              models: (item['models'] as List<dynamic>? ?? [])
+                  .whereType<Map<String, dynamic>>()
+                  .map(AiModel.fromJson)
+                  .toList(),
+              defaultModelIdOverride: _resolveDefaultModelId(
+                item['defaultModel']?.toString(),
+                item['models'],
+              ),
+            );
+          },
         )
         .where(
           (preset) =>
               preset.name.isNotEmpty &&
-              preset.baseUrl.isNotEmpty &&
+              (preset.baseUrl.isNotEmpty || preset.isLocal) &&
               preset.models.isNotEmpty,
         )
         .toList();

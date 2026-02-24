@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 import '../models/ai_enhance_config.dart';
+import 'local_llm_service.dart';
 import 'log_service.dart';
 import 'network_client_service.dart';
 
@@ -13,7 +14,11 @@ class AiEnhanceService {
 
   AiEnhanceService(this.config);
 
+  /// Whether this config represents a local model (empty baseUrl + empty apiKey).
+  bool get _isLocalModel => config.baseUrl.trim().isEmpty && config.apiKey.trim().isEmpty;
+
   String? _apiKeyValidationMessage() {
+    if (_isLocalModel) return null; // local model doesn't need API key
     final apiKey = config.apiKey.trim();
     if (apiKey.isEmpty) {
       return 'API密钥为空，请先填写 API Key';
@@ -26,6 +31,11 @@ class AiEnhanceService {
 
   Future<AiEnhanceResult> enhance(String text) async {
     if (text.trim().isEmpty) return AiEnhanceResult(text: text);
+
+    // 本地模型：直接通过 FFI 调用 llamadart
+    if (_isLocalModel) {
+      return _enhanceLocal(text);
+    }
 
     await LogService.info(
       'AI',
@@ -121,6 +131,38 @@ class AiEnhanceService {
     }
   }
 
+  /// 本地模型增强：通过 llamadart FFI 直接推理
+  Future<AiEnhanceResult> _enhanceLocal(String text) async {
+    await LogService.info(
+      'AI',
+      'start local enhance model=${config.model} textLength=${text.length}',
+    );
+
+    // 本地小模型使用专用的简洁提示词
+    final localPrompt = await LocalLlmService.localPrompt;
+
+    try {
+      final result = await LocalLlmService.enhance(
+        modelFileName: config.model,
+        systemPrompt: localPrompt,
+        userMessage: text,
+      );
+
+      final cleaned = _sanitizeEnhancedText(result);
+      final content = cleaned.isEmpty ? text : cleaned;
+
+      await LogService.info(
+        'AI',
+        'local enhance success textLength=${content.length}',
+      );
+
+      return AiEnhanceResult(text: content);
+    } catch (e) {
+      await LogService.error('AI', 'local enhance failed: $e');
+      throw AiEnhanceException('AI增强失败 (本地模型): $e');
+    }
+  }
+
   String _buildEnhanceUserMessage(String text) {
     return '''
 请严格根据 system 提示词对以下文本做优化。
@@ -139,6 +181,12 @@ $text
   }
 
   Future<AiConnectionCheckResult> checkAvailabilityDetailed() async {
+    // 本地模型：检查模型文件是否就绪
+    if (_isLocalModel) {
+      final result = await LocalLlmService.checkAvailability(config.model);
+      return AiConnectionCheckResult(ok: result.ok, message: result.message);
+    }
+
     await LogService.info(
       'AI',
       'checkAvailability model=${config.model} baseUrl=${config.baseUrl}',
