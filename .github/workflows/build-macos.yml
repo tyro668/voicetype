@@ -56,7 +56,7 @@ jobs:
 
       - name: Build macOS Release
         run: |
-          "$FLUTTER_BIN/flutter" build macos --release --target-platform=darwin-x64,darwin-arm64
+          "$FLUTTER_BIN/flutter" build macos --release
 
       - name: Extract version
         id: version
