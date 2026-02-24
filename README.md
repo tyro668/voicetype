@@ -16,6 +16,10 @@ flutter run  -d windows
 
 ## 构建安装文件
 
+如果要在自己电脑上构建，使用以下的方式，如果要直接下载使用，在这里[下载安装文件](https://github.com/tyro668/voicetype/releases)。
+
+**注意：** mac上使用该应用需要自己去隐私与安全性中允许该应用
+
 ### mac版本
 ```
 flutter build macos --release
@@ -41,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 ```
 ## 配置语音模型
 
-推荐使用GLM的语音模型
+推荐使用GLM的语音模型，直接访问[智普的官网](https://bigmodel.cn/usercenter)充值10块钱，然后新建好API Key后，在应用中进行配置即可。
 
 |属性名|属性值|
 |-----|-----|
