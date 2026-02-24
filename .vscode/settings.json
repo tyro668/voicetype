@@ -1,5 +1,9 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "flutter": true
+        "flutter": true,
+        "git tag": true,
+        "git add": true,
+        "git commit": true,
+        "git push": true
     }
 }
