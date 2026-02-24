@@ -190,6 +190,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logsTip => '日志文件包含应用程序的运行记录，可用于排查问题。如果应用出现异常，可以将此日志文件提供给开发者进行分析。';
 
   @override
+  String get recordingStorage => '录音文件存储';
+
+  @override
+  String get recordingStorageDescription => '查看和管理录音音频文件的存储位置。';
+
+  @override
+  String get recordingFiles => '录音文件';
+
+  @override
+  String get files => '个文件';
+
+  @override
+  String get openRecordingFolder => '打开文件夹';
+
+  @override
+  String get copyPath => '复制路径';
+
+  @override
+  String get clearRecordingFiles => '清理文件';
+
+  @override
+  String get clearRecordingFilesConfirm => '确定要删除所有录音文件吗？此操作不可撤销。';
+
+  @override
+  String get confirm => '确定';
+
+  @override
   String get addModel => '添加模型';
 
   @override

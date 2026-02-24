@@ -20,6 +20,7 @@ class RecordingProvider extends ChangeNotifier {
   final HistoryDb _historyDb = HistoryDb.instance;
 
   RecordingState _state = RecordingState.idle;
+  bool _busy = false;
   String _transcribedText = '';
   String _error = '';
   DateTime? _recordingStartTime;
@@ -28,6 +29,7 @@ class RecordingProvider extends ChangeNotifier {
   Timer? _healthTimer;
   StreamSubscription<double>? _amplitudeSub;
   final List<Transcription> _history = [];
+  Completer<void>? _stopCompleter;
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
   String _transcribingLabel = 'Transcribing';
@@ -39,6 +41,7 @@ class RecordingProvider extends ChangeNotifier {
   }
 
   RecordingState get state => _state;
+  bool get busy => _busy;
   String get transcribedText => _transcribedText;
   String get error => _error;
   Duration get recordingDuration => _recordingDuration;
@@ -72,71 +75,112 @@ class RecordingProvider extends ChangeNotifier {
   }
 
   Future<void> startRecording() async {
+    if (_busy) return;
+    _busy = true;
     try {
-      _error = '';
-      _amplitudeSub?.cancel();
-      _amplitudeSub = null;
-      if (await _recorder.isRecording()) {
-        await _recorder.reset();
-      }
-      final hasPermission = await _recorder.hasPermission();
-      if (!hasPermission) {
-        _error = '需要麦克风权限才能录音';
-        notifyListeners();
-        return;
-      }
-
-      OverlayService.showOverlay(
-        state: 'starting',
-        duration: '00:00',
-        level: 0.0,
-        stateLabel: _startingLabel,
+      await _startRecordingInternal().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          LogService.error('RECORDING', 'startRecording timed out after 15s');
+          _state = RecordingState.idle;
+          unawaited(OverlayService.hideOverlay());
+          notifyListeners();
+        },
       );
-
-      try {
-        await _recorder.startWithTimeout(const Duration(seconds: 2));
-      } catch (_) {
-        await _recorder.reset();
-        await _recorder.startWithTimeout(const Duration(seconds: 2));
-      }
-      _state = RecordingState.recording;
-      _recordingStartTime = DateTime.now();
-      _recordingDuration = Duration.zero;
-
-      OverlayService.showOverlay(
-        state: 'recording',
-        duration: '00:00',
-        level: 0.0,
-        stateLabel: _recordingLabel,
-      );
-
-      _amplitudeSub = _recorder.amplitudeStream.listen((level) {
-        OverlayService.updateOverlay(
-          state: 'recording',
-          duration: _durationStr,
-          level: level,
-          stateLabel: _recordingLabel,
-        );
-      });
-
-      _healthTimer?.cancel();
-      _healthTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
-        await _recorder.isRecording();
-        await _recorder.currentFileSize();
-      });
-
-      _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        _recordingDuration = DateTime.now().difference(_recordingStartTime!);
-        notifyListeners();
-      });
-
-      notifyListeners();
     } catch (e) {
       _error = '录音启动失败: $e';
       _state = RecordingState.idle;
-      OverlayService.hideOverlay();
+      unawaited(OverlayService.hideOverlay());
       notifyListeners();
+    } finally {
+      _busy = false;
     }
+  }
+
+  Future<void> _startRecordingInternal() async {
+    // 等待上一次 stop 操作完成，避免竞态
+    if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
+      await LogService.info('RECORDING', 'waiting for stopCompleter');
+      await _stopCompleter!.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {},
+      );
+    }
+    _error = '';
+    _amplitudeSub?.cancel();
+    _amplitudeSub = null;
+
+    // 无论当前状态如何，都先 reset recorder，确保干净状态
+    await LogService.info('RECORDING', 'resetting recorder');
+    try {
+      await _recorder.reset().timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // reset 超时也继续尝试录音
+      await LogService.info('RECORDING', 'reset timeout, continuing');
+    }
+    await LogService.info('RECORDING', 'checking permission');
+    final hasPermission = await _recorder.hasPermission()
+        .timeout(const Duration(seconds: 3), onTimeout: () => false);
+    if (!hasPermission) {
+      _error = '需要麦克风权限才能录音';
+      notifyListeners();
+      return;
+    }
+
+    await LogService.info('RECORDING', 'showing starting overlay');
+    // 不 await overlay 调用，避免阻塞录音流程
+    unawaited(OverlayService.showOverlay(
+      state: 'starting',
+      duration: '00:00',
+      level: 0.0,
+      stateLabel: _startingLabel,
+    ));
+
+    await LogService.info('RECORDING', 'starting recorder');
+    try {
+      await _recorder.startWithTimeout(const Duration(seconds: 2));
+    } catch (e) {
+      await LogService.info('RECORDING', 'start failed ($e), resetting and retrying');
+      try {
+        await _recorder.reset().timeout(const Duration(seconds: 3));
+      } catch (_) {}
+      await _recorder.startWithTimeout(const Duration(seconds: 2));
+    }
+    await LogService.info('RECORDING', 'recorder started successfully');
+    _state = RecordingState.recording;
+    _recordingStartTime = DateTime.now();
+    _recordingDuration = Duration.zero;
+
+    unawaited(OverlayService.showOverlay(
+      state: 'recording',
+      duration: '00:00',
+      level: 0.0,
+      stateLabel: _recordingLabel,
+    ));
+
+    _amplitudeSub = _recorder.amplitudeStream.listen((level) {
+      OverlayService.updateOverlay(
+        state: 'recording',
+        duration: _durationStr,
+        level: level,
+        stateLabel: _recordingLabel,
+      );
+    });
+
+    _healthTimer?.cancel();
+    _healthTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      try {
+        await _recorder.isRecording();
+        await _recorder.currentFileSize();
+      } catch (_) {}
+    });
+
+    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _recordingDuration = DateTime.now().difference(_recordingStartTime!);
+      notifyListeners();
+    });
+
+    notifyListeners();
   }
 
   Future<void> stopAndTranscribe(
@@ -145,6 +189,8 @@ class RecordingProvider extends ChangeNotifier {
     AiEnhanceConfig? aiEnhanceConfig,
     int minRecordingSeconds = 3,
   }) async {
+    if (_busy) return;
+    _busy = true;
     try {
       _durationTimer?.cancel();
       _durationTimer = null;
@@ -158,19 +204,23 @@ class RecordingProvider extends ChangeNotifier {
       // 录音时长不足，忽略本次输入
       if (duration.inSeconds < minRecordingSeconds) {
         _state = RecordingState.idle;
-        OverlayService.hideOverlay();
-        _recorder.stop().then((_) => _recorder.reset());
+        unawaited(OverlayService.hideOverlay());
+        _stopCompleter = Completer<void>();
+        _recorder.stop().then((_) => _recorder.reset()).whenComplete(() {
+          if (!_stopCompleter!.isCompleted) _stopCompleter!.complete();
+        });
         notifyListeners();
         return;
       }
 
-      OverlayService.showOverlay(
+      unawaited(OverlayService.showOverlay(
         state: 'transcribing',
         stateLabel: _transcribingLabel,
-      );
+      ));
       _state = RecordingState.idle;
       notifyListeners();
 
+      _stopCompleter = Completer<void>();
       unawaited(
         _stopAndTranscribeInBackground(
           config,
@@ -182,10 +232,15 @@ class RecordingProvider extends ChangeNotifier {
     } catch (e) {
       _error = '停止录音失败: $e';
       _state = RecordingState.idle;
-      OverlayService.hideOverlay();
+      unawaited(OverlayService.hideOverlay());
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
+      if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
+        _stopCompleter!.complete();
+      }
       notifyListeners();
+    } finally {
+      _busy = false;
     }
   }
 
@@ -195,7 +250,9 @@ class RecordingProvider extends ChangeNotifier {
     required bool aiEnhanceEnabled,
     required AiEnhanceConfig? aiEnhanceConfig,
   }) async {
+    final sw = Stopwatch()..start();
     try {
+      await LogService.info('TRANSCRIBE', 'step1: stopping recorder...');
       final stopFuture = _recorder.stop();
       final fallbackPath = _recorder.currentPath;
 
@@ -203,28 +260,44 @@ class RecordingProvider extends ChangeNotifier {
         const Duration(seconds: 20),
         onTimeout: () => null,
       );
+      await LogService.info('TRANSCRIBE', 'step1 done: recorder.stop() ${sw.elapsedMilliseconds}ms, path=${path != null}');
 
       if (path == null && fallbackPath != null) {
+        await LogService.info('TRANSCRIBE', 'step2: waiting for file ready fallbackPath=$fallbackPath');
         path = await _waitForFileReady(
           fallbackPath,
           const Duration(seconds: 20),
         );
+        await LogService.info('TRANSCRIBE', 'step2 done: ${sw.elapsedMilliseconds}ms, path=${path != null}');
       }
 
       if (path == null) {
+        await LogService.info('TRANSCRIBE', 'step3: retry stop...');
         path = await stopFuture.timeout(
           const Duration(seconds: 10),
           onTimeout: () => null,
         );
+        await LogService.info('TRANSCRIBE', 'step3 done: ${sw.elapsedMilliseconds}ms, path=${path != null}');
+      }
+
+      // recorder 已停止，允许下一次录音
+      if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
+        _stopCompleter!.complete();
       }
 
       if (path == null) {
         _error = '录音文件获取失败';
+        await LogService.error('TRANSCRIBE', 'no audio file after ${sw.elapsedMilliseconds}ms');
         await _recorder.reset();
-        OverlayService.hideOverlay();
+        unawaited(OverlayService.hideOverlay());
         notifyListeners();
         return;
       }
+
+      // 检查文件大小
+      final file = File(path);
+      final fileSize = await file.exists() ? await file.length() : -1;
+      await LogService.info('TRANSCRIBE', 'audio file ready: size=${fileSize}bytes, elapsed=${sw.elapsedMilliseconds}ms');
 
       _transcribeInBackground(
         path,
@@ -235,8 +308,12 @@ class RecordingProvider extends ChangeNotifier {
       );
     } catch (e) {
       _error = '停止录音失败: $e';
+      await LogService.error('TRANSCRIBE', 'stop failed after ${sw.elapsedMilliseconds}ms: $e');
+      if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
+        _stopCompleter!.complete();
+      }
       await _recorder.reset();
-      OverlayService.hideOverlay();
+      unawaited(OverlayService.hideOverlay());
       notifyListeners();
     }
   }
@@ -264,20 +341,26 @@ class RecordingProvider extends ChangeNotifier {
     required bool aiEnhanceEnabled,
     required AiEnhanceConfig? aiEnhanceConfig,
   }) async {
+    final sw = Stopwatch()..start();
     try {
+      await LogService.info('TRANSCRIBE', 'stt start: provider=${config.name} model=${config.model} baseUrl=${config.baseUrl}');
       final sttService = SttService(config);
       final rawText = await sttService.transcribe(path);
+      await LogService.info('TRANSCRIBE', 'stt done: ${sw.elapsedMilliseconds}ms, textLength=${rawText.length}, text="${rawText.length > 50 ? rawText.substring(0, 50) : rawText}"');
       var finalText = rawText;
 
       if (aiEnhanceEnabled && aiEnhanceConfig != null) {
         try {
-          OverlayService.showOverlay(
+          await LogService.info('TRANSCRIBE', 'ai enhance start...');
+          unawaited(OverlayService.showOverlay(
             state: 'enhancing',
             stateLabel: _enhancingLabel,
-          );
+          ));
           final enhancer = AiEnhanceService(aiEnhanceConfig);
           finalText = await enhancer.enhance(rawText);
+          await LogService.info('TRANSCRIBE', 'ai enhance done: ${sw.elapsedMilliseconds}ms');
         } catch (e) {
+          await LogService.error('TRANSCRIBE', 'ai enhance failed: $e');
           finalText = rawText;
         }
       }
@@ -302,35 +385,38 @@ class RecordingProvider extends ChangeNotifier {
           // ignore
         }
         try {
+          await LogService.info('TRANSCRIBE', 'inserting text...');
           await OverlayService.insertText(finalText);
-          OverlayService.hideOverlay();
+          await LogService.info('TRANSCRIBE', 'insertText done: ${sw.elapsedMilliseconds}ms');
         } catch (e) {
-          // ignore
+          await LogService.error('TRANSCRIBE', 'insertText failed: $e');
         }
-        OverlayService.hideOverlay();
+        unawaited(OverlayService.hideOverlay());
+        await LogService.info('TRANSCRIBE', 'complete success: total ${sw.elapsedMilliseconds}ms');
       } else {
         _error = '转录结果为空';
-        await _showTranscribeFailedOverlay();
+        await LogService.error('TRANSCRIBE', 'empty result after ${sw.elapsedMilliseconds}ms');
+        _showTranscribeFailedOverlay();
       }
 
       notifyListeners();
     } catch (e) {
       _error = '转录失败: $e';
-      await LogService.error('RECORDING', _error);
-      await _showTranscribeFailedOverlay();
+      await LogService.error('TRANSCRIBE', 'failed after ${sw.elapsedMilliseconds}ms: $e');
+      _showTranscribeFailedOverlay();
       notifyListeners();
     }
   }
 
-  Future<void> _showTranscribeFailedOverlay() async {
-    try {
-      await OverlayService.showOverlay(
-        state: 'transcribe_failed',
-        stateLabel: _transcribeFailedLabel,
-      );
-      await Future.delayed(const Duration(seconds: 3));
-      await OverlayService.hideOverlay();
-    } catch (_) {}
+  void _showTranscribeFailedOverlay() {
+    // 不 await overlay 调用，避免 MethodChannel 阻塞后续录音
+    OverlayService.showOverlay(
+      state: 'transcribe_failed',
+      stateLabel: _transcribeFailedLabel,
+    ).catchError((_) {});
+    Future.delayed(const Duration(seconds: 3), () {
+      OverlayService.hideOverlay().catchError((_) {});
+    });
   }
 
   Future<void> _loadHistory() async {

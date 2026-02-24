@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../models/provider_config.dart';
 import '../providers/recording_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/log_service.dart';
 import '../services/overlay_service.dart';
 import 'pages/general_page.dart';
 import 'pages/stt_page.dart';
@@ -66,11 +67,11 @@ class _MainScreenState extends State<MainScreen> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
   int _selectedNav = 0;
-  bool _processing = false;
   late VoidCallback _settingsListener;
   SettingsProvider? _settingsProvider;
   bool _didShowAccessibilityGuide = false;
   bool _didShowInputMonitoringGuide = false;
+  LogicalKeyboardKey? _lastRegisteredHotkey;
 
   List<_NavItem> _getNavItems(AppLocalizations l10n) => [
     _NavItem(icon: Icons.settings_outlined, label: l10n.generalSettings),
@@ -102,10 +103,16 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _registerCurrentHotkey(SettingsProvider settings) {
+    // 只在热键实际变化时才重新注册，避免不必要的反复注册
+    if (settings.hotkey == _lastRegisteredHotkey) return;
+    _lastRegisteredHotkey = settings.hotkey;
+
     final keyCode = _platformKeyCodeFor(settings.hotkey);
     if (keyCode == null) return;
 
+    LogService.info('HOTKEY', 'registering hotkey keyCode=$keyCode');
     OverlayService.registerHotkey(keyCode: keyCode).then((ok) {
+      LogService.info('HOTKEY', 'registerHotkey result=$ok');
       if (!mounted || ok) return;
       if (settings.hotkey == LogicalKeyboardKey.fn) {
         _showInputMonitoringGuide();
@@ -268,7 +275,6 @@ class _MainScreenState extends State<MainScreen> {
 
   void _handleGlobalKeyEvent(int keyCode, String type, bool isRepeat) {
     if (isRepeat) return;
-    if (_processing) return;
 
     final settings = context.read<SettingsProvider>();
     final recording = context.read<RecordingProvider>();
@@ -277,54 +283,44 @@ class _MainScreenState extends State<MainScreen> {
     if (key == null) return;
     if (key != settings.hotkey) return;
 
+    LogService.info('HOTKEY', 'hotkey type=$type state=${recording.state} busy=${recording.busy} mode=${settings.activationMode}');
+
+    if (recording.busy) return;
+
     if (settings.activationMode == ActivationMode.tapToTalk) {
       if (type == 'down') {
-        _processing = true;
         if (recording.state == RecordingState.recording) {
-          recording
-              .stopAndTranscribe(
-                settings.config,
-                aiEnhanceEnabled: settings.aiEnhanceEnabled,
-                aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
-                minRecordingSeconds: settings.minRecordingSeconds,
-              )
-              .whenComplete(() {
-                _processing = false;
-              });
-        } else {
+          // 防止重复触发 stop
+          recording.stopAndTranscribe(
+            settings.config,
+            aiEnhanceEnabled: settings.aiEnhanceEnabled,
+            aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+            minRecordingSeconds: settings.minRecordingSeconds,
+          );
+        } else if (recording.state == RecordingState.idle) {
           if (!_hasValidSttModel(settings)) {
             _promptSttConfig();
-            _processing = false;
             return;
           }
-          recording.startRecording().whenComplete(() {
-            _processing = false;
-          });
+          recording.startRecording();
         }
+        // transcribing 状态下忽略
       }
     } else {
-      if (type == 'down' && recording.state != RecordingState.recording) {
-        _processing = true;
+      // push-to-talk 模式
+      if (type == 'down' && recording.state == RecordingState.idle) {
         if (!_hasValidSttModel(settings)) {
           _promptSttConfig();
-          _processing = false;
           return;
         }
-        recording.startRecording().whenComplete(() {
-          _processing = false;
-        });
+        recording.startRecording();
       } else if (type == 'up' && recording.state == RecordingState.recording) {
-        _processing = true;
-        recording
-            .stopAndTranscribe(
-              settings.config,
-              aiEnhanceEnabled: settings.aiEnhanceEnabled,
-              aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
-              minRecordingSeconds: settings.minRecordingSeconds,
-            )
-            .whenComplete(() {
-              _processing = false;
-            });
+        recording.stopAndTranscribe(
+          settings.config,
+          aiEnhanceEnabled: settings.aiEnhanceEnabled,
+          aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+          minRecordingSeconds: settings.minRecordingSeconds,
+        );
       }
     }
   }

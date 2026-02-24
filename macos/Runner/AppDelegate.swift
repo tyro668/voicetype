@@ -22,6 +22,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   var lastActiveApp: NSRunningApplication?
   var previousFnPressedEventTap: Bool = false
   var previousFnPressedNSEvent: Bool = false
+  var lastFnDownTime: CFAbsoluteTime = 0
   private lazy var logFileURL: URL = {
     let libraryDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
     let logsDir = libraryDir?.appendingPathComponent("Logs")
@@ -208,9 +209,18 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       "isRepeat": isRepeat,
     ]
 
+    log("[hotkey] emit keyCode=\(keyCode) type=\(type) isRepeat=\(isRepeat) source=\(source)")
+
     DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-      self.methodChannel?.invokeMethod("onGlobalKeyEvent", arguments: payload)
+      guard let self = self else {
+        NSLog("[hotkey] emit skipped: self is nil")
+        return
+      }
+      guard let channel = self.methodChannel else {
+        NSLog("[hotkey] emit skipped: methodChannel is nil")
+        return
+      }
+      channel.invokeMethod("onGlobalKeyEvent", arguments: payload)
     }
   }
 
@@ -280,10 +290,18 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           if UInt32(event.keyCode) != kVK_FunctionKey {
             return
           }
+          let now = CFAbsoluteTimeGetCurrent()
           if fnPressed == self.previousFnPressedNSEvent {
-            return
+            if (now - self.lastFnDownTime) > 0.5 {
+              self.previousFnPressedNSEvent = !fnPressed
+            } else {
+              return
+            }
           }
           self.previousFnPressedNSEvent = fnPressed
+          if fnPressed {
+            self.lastFnDownTime = now
+          }
           eventType = fnPressed ? "down" : "up"
         } else if UInt32(event.keyCode) == self.registeredHotKeyCode {
           eventType = event.modifierFlags.contains(.function) ? "down" : "up"
@@ -335,10 +353,18 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           if UInt32(event.keyCode) != kVK_FunctionKey {
             return event
           }
+          let now = CFAbsoluteTimeGetCurrent()
           if fnPressed == self.previousFnPressedNSEvent {
-            return event
+            if (now - self.lastFnDownTime) > 0.5 {
+              self.previousFnPressedNSEvent = !fnPressed
+            } else {
+              return event
+            }
           }
           self.previousFnPressedNSEvent = fnPressed
+          if fnPressed {
+            self.lastFnDownTime = now
+          }
           eventType = fnPressed ? "down" : "up"
         } else if UInt32(event.keyCode) == self.registeredHotKeyCode {
           eventType = event.modifierFlags.contains(.function) ? "down" : "up"
@@ -385,6 +411,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           delegate.captureActiveApplication()
           let kind = GetEventKind(event)
           let type = kind == UInt32(kEventHotKeyPressed) ? "down" : "up"
+
+          delegate.log("[hotkey] Carbon handler fired type=\(type) keyCode=\(delegate.registeredHotKeyCode)")
 
           delegate.emitGlobalKeyEvent(
             keyCode: delegate.registeredHotKeyCode,
@@ -559,10 +587,20 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           if UInt32(keyCode) != kVK_FunctionKey {
             return Unmanaged.passUnretained(event)
           }
+          let now = CFAbsoluteTimeGetCurrent()
           if fnPressed == delegate.previousFnPressedEventTap {
-            return Unmanaged.passUnretained(event)
+            // 状态相同但距离上次 down 超过 0.5 秒，可能丢失了中间事件，强制重置
+            if (now - delegate.lastFnDownTime) > 0.5 {
+              delegate.previousFnPressedEventTap = !fnPressed
+              delegate.log("[hotkey] EventTap Fn state reset (stale), fnPressed=\(fnPressed)")
+            } else {
+              return Unmanaged.passUnretained(event)
+            }
           }
           delegate.previousFnPressedEventTap = fnPressed
+          if fnPressed {
+            delegate.lastFnDownTime = now
+          }
           eventType = fnPressed ? "down" : "up"
         } else if UInt32(keyCode) == delegate.registeredHotKeyCode {
           let fnPressed = event.flags.contains(.maskSecondaryFn)
@@ -626,6 +664,9 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       guard let self = self, let tap = self.eventTap else { return }
       if !CGEvent.tapIsEnabled(tap: tap) {
         disableCount += 1
+        self.log("[hotkey] EventTap disabled (count=\(disableCount)), re-enabling")
+        // EventTap 被禁用期间可能丢失了 Fn 释放事件，重置状态
+        self.previousFnPressedEventTap = false
         // 检测权限是否已授予：如果已授予则重建 EventTap 以获得稳定连接
         if AXIsProcessTrusted() || CGPreflightListenEventAccess() {
           let isFn = self.registeredHotKeyCode == kVK_FunctionKey

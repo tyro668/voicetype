@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import '../../l10n/app_localizations.dart';
@@ -33,12 +34,18 @@ class _GeneralPageState extends State<GeneralPage> {
   int? _logFileSize;
   bool _logFileExists = false;
 
+  // Recordings
+  String _recordingsDirPath = '';
+  int _recordingsFileCount = 0;
+  int _recordingsTotalSize = 0;
+
   @override
   void initState() {
     super.initState();
     _loadPermissions();
     _loadInputDevices();
     _loadLogInfo();
+    _loadRecordingsInfo();
   }
 
   Future<void> _loadPermissions() async {
@@ -112,6 +119,94 @@ class _GeneralPageState extends State<GeneralPage> {
         _logFileSize = fileSize;
         _logFileExists = fileExists;
       });
+    }
+  }
+
+  Future<void> _loadRecordingsInfo() async {
+    try {
+      final dir = await _getRecordingsDirectory();
+      final dirPath = dir.path;
+      var count = 0;
+      var totalSize = 0;
+      if (await dir.exists()) {
+        await for (final entity in dir.list()) {
+          if (entity is File) {
+            count++;
+            totalSize += await entity.length();
+          }
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _recordingsDirPath = dirPath;
+          _recordingsFileCount = count;
+          _recordingsTotalSize = totalSize;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<Directory> _getRecordingsDirectory() async {
+    final appDir = await getApplicationSupportDirectory();
+    return Directory('${appDir.path}/recordings');
+  }
+
+  Future<void> _openRecordingsDirectory() async {
+    try {
+      final result = await Process.run('open', [_recordingsDirPath]);
+      if (result.exitCode != 0) {
+        _showError('无法打开文件夹: ${result.stderr}');
+      }
+    } catch (e) {
+      _showError('打开文件夹失败: $e');
+    }
+  }
+
+  Future<void> _copyRecordingsPath() async {
+    await Clipboard.setData(ClipboardData(text: _recordingsDirPath));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('录音路径已复制到剪贴板'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _clearRecordings() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.clearRecordingFiles),
+        content: Text(l10n.clearRecordingFilesConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final dir = await _getRecordingsDirectory();
+      if (await dir.exists()) {
+        await for (final entity in dir.list()) {
+          if (entity is File) {
+            await entity.delete();
+          }
+        }
+      }
+      await _loadRecordingsInfo();
+    } catch (e) {
+      _showError('清理失败: $e');
     }
   }
 
@@ -309,6 +404,24 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 16),
           _buildLogSection(l10n),
+          const SizedBox(height: 36),
+
+          // ===== 录音文件存储 =====
+          Text(
+            l10n.recordingStorage,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.recordingStorageDescription,
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _buildRecordingsSection(l10n),
           const SizedBox(height: 40),
         ],
       ),
@@ -609,6 +722,136 @@ class _GeneralPageState extends State<GeneralPage> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _cs.onSurfaceVariant,
                   side: BorderSide(color: _cs.outline),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingsSection(AppLocalizations l10n) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cs.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.folder_outlined,
+                color: _cs.onSurfaceVariant,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                l10n.recordingFiles,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: _cs.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _cs.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '$_recordingsFileCount ${l10n.files}  ·  ${LogService.formatFileSize(_recordingsTotalSize)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SelectableText(
+                _recordingsDirPath.isEmpty ? l10n.loading : _recordingsDirPath,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  color: _cs.onSurfaceVariant,
+                ),
+                maxLines: 1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _recordingsDirPath.isNotEmpty
+                      ? _openRecordingsDirectory
+                      : null,
+                  icon: const Icon(Icons.folder_open_outlined, size: 18),
+                  label: Text(l10n.openRecordingFolder),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _cs.primary,
+                    foregroundColor: _cs.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _recordingsDirPath.isNotEmpty
+                    ? _copyRecordingsPath
+                    : null,
+                icon: const Icon(Icons.copy, size: 18),
+                label: Text(l10n.copyPath),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _cs.onSurfaceVariant,
+                  side: BorderSide(color: _cs.outline),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _recordingsFileCount > 0 ? _clearRecordings : null,
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: Text(l10n.clearRecordingFiles),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: BorderSide(
+                    color: _recordingsFileCount > 0
+                        ? Colors.red.shade300
+                        : _cs.outline,
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

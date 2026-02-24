@@ -458,6 +458,60 @@ abstract class AppLocalizations {
   /// **'Log files contain application runtime records for troubleshooting. If the app encounters issues, you can provide this log file to developers for analysis.'**
   String get logsTip;
 
+  /// No description provided for @recordingStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording Storage'**
+  String get recordingStorage;
+
+  /// No description provided for @recordingStorageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'View and manage recording audio files.'**
+  String get recordingStorageDescription;
+
+  /// No description provided for @recordingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording Files'**
+  String get recordingFiles;
+
+  /// No description provided for @files.
+  ///
+  /// In en, this message translates to:
+  /// **'files'**
+  String get files;
+
+  /// No description provided for @openRecordingFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Folder'**
+  String get openRecordingFolder;
+
+  /// No description provided for @copyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Path'**
+  String get copyPath;
+
+  /// No description provided for @clearRecordingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Files'**
+  String get clearRecordingFiles;
+
+  /// No description provided for @clearRecordingFilesConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete all recording files? This action cannot be undone.'**
+  String get clearRecordingFilesConfirm;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
   /// No description provided for @addModel.
   ///
   /// In en, this message translates to:

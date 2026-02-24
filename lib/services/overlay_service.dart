@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'log_service.dart';
 
 /// 与原生 overlay 窗口通信的服务（支持 macOS 和 Windows）
 class OverlayService {
@@ -13,13 +14,21 @@ class OverlayService {
   static Function(int keyCode, String type, bool isRepeat)? onGlobalKeyEvent;
 
   static void init() {
+    LogService.info('OVERLAY', 'init: setting method call handler');
     _channel.setMethodCallHandler((call) async {
+      LogService.info('OVERLAY', 'received native call: ${call.method}');
       if (call.method == 'onGlobalKeyEvent') {
         final args = call.arguments as Map;
         final keyCode = args['keyCode'] as int;
         final type = args['type'] as String;
         final isRepeat = args['isRepeat'] as bool;
-        onGlobalKeyEvent?.call(keyCode, type, isRepeat);
+        final hasCallback = onGlobalKeyEvent != null;
+        LogService.info('OVERLAY', 'onGlobalKeyEvent keyCode=$keyCode type=$type hasCallback=$hasCallback');
+        try {
+          onGlobalKeyEvent?.call(keyCode, type, isRepeat);
+        } catch (e) {
+          LogService.error('OVERLAY', 'onGlobalKeyEvent callback error: $e');
+        }
       }
     });
   }

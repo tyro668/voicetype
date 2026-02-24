@@ -69,6 +69,16 @@
   "tip": "提示",
   "logsTip": "日志文件包含应用程序的运行记录，可用于排查问题。如果应用出现异常，可以将此日志文件提供给开发者进行分析。",
 
+  "recordingStorage": "录音文件存储",
+  "recordingStorageDescription": "查看和管理录音音频文件的存储位置。",
+  "recordingFiles": "录音文件",
+  "files": "个文件",
+  "openRecordingFolder": "打开文件夹",
+  "copyPath": "复制路径",
+  "clearRecordingFiles": "清理文件",
+  "clearRecordingFilesConfirm": "确定要删除所有录音文件吗？此操作不可撤销。",
+  "confirm": "确定",
+
   "addModel": "添加模型",
   "addVoiceModel": "添加语音模型",
   "addTextModel": "添加文本模型",

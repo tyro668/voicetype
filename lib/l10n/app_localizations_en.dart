@@ -197,6 +197,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'Log files contain application runtime records for troubleshooting. If the app encounters issues, you can provide this log file to developers for analysis.';
 
   @override
+  String get recordingStorage => 'Recording Storage';
+
+  @override
+  String get recordingStorageDescription =>
+      'View and manage recording audio files.';
+
+  @override
+  String get recordingFiles => 'Recording Files';
+
+  @override
+  String get files => 'files';
+
+  @override
+  String get openRecordingFolder => 'Open Folder';
+
+  @override
+  String get copyPath => 'Copy Path';
+
+  @override
+  String get clearRecordingFiles => 'Clear Files';
+
+  @override
+  String get clearRecordingFilesConfirm =>
+      'Are you sure you want to delete all recording files? This action cannot be undone.';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
   String get addModel => 'Add Model';
 
   @override

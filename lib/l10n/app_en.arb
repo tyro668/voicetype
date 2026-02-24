@@ -74,6 +74,16 @@
   "tip": "Tip",
   "logsTip": "Log files contain application runtime records for troubleshooting. If the app encounters issues, you can provide this log file to developers for analysis.",
 
+  "recordingStorage": "Recording Storage",
+  "recordingStorageDescription": "View and manage recording audio files.",
+  "recordingFiles": "Recording Files",
+  "files": "files",
+  "openRecordingFolder": "Open Folder",
+  "copyPath": "Copy Path",
+  "clearRecordingFiles": "Clear Files",
+  "clearRecordingFilesConfirm": "Are you sure you want to delete all recording files? This action cannot be undone.",
+  "confirm": "Confirm",
+
   "addModel": "Add Model",
   "addVoiceModel": "Add Voice Model",
   "addTextModel": "Add Text Model",
