@@ -62,6 +62,10 @@ class DashboardStats {
   final Map<String, int> providerDistribution;
   final Map<String, int> modelDistribution;
 
+  // ── AI 增强 token 用量 ──
+  final int enhancePromptTokens;
+  final int enhanceCompletionTokens;
+
   const DashboardStats({
     required this.totalCount,
     required this.totalDurationMs,
@@ -86,6 +90,8 @@ class DashboardStats {
     required this.trendGranularity,
     required this.providerDistribution,
     required this.modelDistribution,
+    required this.enhancePromptTokens,
+    required this.enhanceCompletionTokens,
   });
 
   /// 空状态。
@@ -111,7 +117,11 @@ class DashboardStats {
     trendGranularity: TrendGranularity.day,
     providerDistribution: {},
     modelDistribution: {},
+    enhancePromptTokens: 0,
+    enhanceCompletionTokens: 0,
   );
 
   bool get isEmpty => totalCount == 0;
+
+  int get enhanceTotalTokens => enhancePromptTokens + enhanceCompletionTokens;
 }

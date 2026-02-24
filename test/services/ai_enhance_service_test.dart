@@ -38,7 +38,7 @@ void main() {
         );
 
         final result = await AiEnhanceService(config).enhance('raw text');
-        expect(result, 'Enhanced text here');
+        expect(result.text, 'Enhanced text here');
       });
 
       test('returns original text when input is empty', () async {
@@ -51,7 +51,7 @@ void main() {
         );
 
         final result = await AiEnhanceService(config).enhance('');
-        expect(result, '');
+        expect(result.text, '');
       });
 
       test('returns original text when input is whitespace only', () async {
@@ -64,7 +64,7 @@ void main() {
         );
 
         final result = await AiEnhanceService(config).enhance('   ');
-        expect(result, '   ');
+        expect(result.text, '   ');
       });
 
       test('throws AiEnhanceException for empty API key', () async {

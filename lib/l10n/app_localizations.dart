@@ -1357,6 +1357,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} sessions'**
   String sessions(int count);
+
+  /// No description provided for @enhanceTokenUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Enhancement Tokens'**
+  String get enhanceTokenUsage;
+
+  /// No description provided for @enhanceInputTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Tokens'**
+  String get enhanceInputTokens;
+
+  /// No description provided for @enhanceOutputTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Output Tokens'**
+  String get enhanceOutputTokens;
+
+  /// No description provided for @enhanceTotalTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Tokens'**
+  String get enhanceTotalTokens;
 }
 
 class _AppLocalizationsDelegate

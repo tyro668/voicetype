@@ -282,7 +282,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
       );
       final service = AiEnhanceService(config);
       final result = await service.enhance(_testInputController.text);
-      _testOutputController.text = result;
+      _testOutputController.text = result.text;
     } catch (e) {
       setState(() {
         _testError = e.toString();

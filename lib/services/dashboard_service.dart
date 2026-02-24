@@ -1,5 +1,6 @@
 import '../database/app_database.dart';
 import '../models/dashboard_stats.dart';
+import 'token_stats_service.dart';
 
 /// 仪表盘统计计算服务。
 ///
@@ -115,6 +116,9 @@ class DashboardService {
       now: now,
     );
 
+    // ── AI 增强 token 用量 ──
+    final tokenStats = await TokenStatsService.instance.getTokens();
+
     return DashboardStats(
       totalCount: totalCount,
       totalDurationMs: totalDurationMs,
@@ -139,6 +143,8 @@ class DashboardService {
       trendGranularity: granularity,
       providerDistribution: providerDist,
       modelDistribution: modelDist,
+      enhancePromptTokens: tokenStats.promptTokens,
+      enhanceCompletionTokens: tokenStats.completionTokens,
     );
   }
 

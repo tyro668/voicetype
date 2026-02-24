@@ -267,5 +267,10 @@
         "type": "int"
       }
     }
-  }
+  },
+
+  "enhanceTokenUsage": "Text Enhancement Tokens",
+  "enhanceInputTokens": "Input Tokens",
+  "enhanceOutputTokens": "Output Tokens",
+  "enhanceTotalTokens": "Total Tokens"
 }

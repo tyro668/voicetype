@@ -24,8 +24,8 @@ class AiEnhanceService {
     return null;
   }
 
-  Future<String> enhance(String text) async {
-    if (text.trim().isEmpty) return text;
+  Future<AiEnhanceResult> enhance(String text) async {
+    if (text.trim().isEmpty) return AiEnhanceResult(text: text);
 
     await LogService.info(
       'AI',
@@ -74,12 +74,20 @@ class AiEnhanceService {
       );
 
       if (response.statusCode == 200) {
-        final content = _extractContent(response.body, text);
+        final jsonBody = json.decode(response.body) as Map<String, dynamic>;
+        final content = _extractContentFromJson(jsonBody, text);
+        final usage = jsonBody['usage'] as Map<String, dynamic>?;
+        final promptTokens = (usage?['prompt_tokens'] as int?) ?? 0;
+        final completionTokens = (usage?['completion_tokens'] as int?) ?? 0;
         await LogService.info(
           'AI',
-          'enhance success textLength=${content.length}',
+          'enhance success textLength=${content.length} promptTokens=$promptTokens completionTokens=$completionTokens',
         );
-        return content;
+        return AiEnhanceResult(
+          text: content,
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+        );
       }
 
       // 尝试解析错误信息
@@ -253,9 +261,7 @@ $text
     return headers;
   }
 
-  String _extractContent(String responseBody, String fallbackText) {
-    final jsonBody = json.decode(responseBody) as Map<String, dynamic>;
-
+  String _extractContentFromJson(Map<String, dynamic> jsonBody, String fallbackText) {
     final choices = jsonBody['choices'] as List<dynamic>?;
     if (choices != null && choices.isNotEmpty) {
       final message = choices.first['message'] as Map<String, dynamic>?;
@@ -264,7 +270,6 @@ $text
       final cleaned = _sanitizeEnhancedText(content);
       return cleaned.isEmpty ? fallbackText : cleaned;
     }
-
     return fallbackText;
   }
 
@@ -327,3 +332,19 @@ class AiConnectionCheckResult {
 
   const AiConnectionCheckResult({required this.ok, required this.message});
 }
+
+/// AI 增强结果，包含增强后的文本和 token 用量。
+class AiEnhanceResult {
+  final String text;
+  final int promptTokens;
+  final int completionTokens;
+
+  const AiEnhanceResult({
+    required this.text,
+    this.promptTokens = 0,
+    this.completionTokens = 0,
+  });
+
+  int get totalTokens => promptTokens + completionTokens;
+}
+

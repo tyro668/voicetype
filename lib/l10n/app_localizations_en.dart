@@ -681,4 +681,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessions(int count) {
     return '$count sessions';
   }
+
+  @override
+  String get enhanceTokenUsage => 'Text Enhancement Tokens';
+
+  @override
+  String get enhanceInputTokens => 'Input Tokens';
+
+  @override
+  String get enhanceOutputTokens => 'Output Tokens';
+
+  @override
+  String get enhanceTotalTokens => 'Total Tokens';
 }

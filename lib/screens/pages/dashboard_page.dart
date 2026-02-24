@@ -636,6 +636,41 @@ class _DashboardPageState extends State<DashboardPage> {
             value: _stats.avgCharsPerMinute.toStringAsFixed(1),
             cs: _cs,
           ),
+          if (_stats.enhanceTotalTokens > 0) ...[
+            const SizedBox(height: 20),
+            Text(
+              _l10n.enhanceTokenUsage,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.arrow_upward_rounded,
+              iconColor: Colors.orange,
+              label: _l10n.enhanceInputTokens,
+              value: _formatNumber(_stats.enhancePromptTokens),
+              cs: _cs,
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.arrow_downward_rounded,
+              iconColor: Colors.teal,
+              label: _l10n.enhanceOutputTokens,
+              value: _formatNumber(_stats.enhanceCompletionTokens),
+              cs: _cs,
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.token_outlined,
+              iconColor: _cs.secondary,
+              label: _l10n.enhanceTotalTokens,
+              value: _formatNumber(_stats.enhanceTotalTokens),
+              cs: _cs,
+            ),
+          ],
         ],
       ),
     );

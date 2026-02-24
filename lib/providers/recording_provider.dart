@@ -12,6 +12,7 @@ import '../services/history_db.dart';
 import '../services/stt_service.dart';
 import '../services/overlay_service.dart';
 import '../services/log_service.dart';
+import '../services/token_stats_service.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
@@ -357,7 +358,17 @@ class RecordingProvider extends ChangeNotifier {
             stateLabel: _enhancingLabel,
           ));
           final enhancer = AiEnhanceService(aiEnhanceConfig);
-          finalText = await enhancer.enhance(rawText);
+          final enhanceResult = await enhancer.enhance(rawText);
+          finalText = enhanceResult.text;
+          // 累计 token 用量
+          if (enhanceResult.totalTokens > 0) {
+            try {
+              await TokenStatsService.instance.addTokens(
+                promptTokens: enhanceResult.promptTokens,
+                completionTokens: enhanceResult.completionTokens,
+              );
+            } catch (_) {}
+          }
           await LogService.info('TRANSCRIBE', 'ai enhance done: ${sw.elapsedMilliseconds}ms');
         } catch (e) {
           await LogService.error('TRANSCRIBE', 'ai enhance failed: $e');

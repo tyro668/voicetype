@@ -654,4 +654,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String sessions(int count) {
     return '$count 次';
   }
+
+  @override
+  String get enhanceTokenUsage => '文本增强 Token 用量';
+
+  @override
+  String get enhanceInputTokens => '输入 Token';
+
+  @override
+  String get enhanceOutputTokens => '输出 Token';
+
+  @override
+  String get enhanceTotalTokens => '总 Token';
 }

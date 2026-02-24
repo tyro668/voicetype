@@ -83,8 +83,8 @@
           "description": "千问 Max"
         },
         {
-          "id": "qwen-turbo",
-          "description": "千问 Turbo"
+          "id": "qwen-flash",
+          "description": "千问 Flash"
         }
       ]
     }
