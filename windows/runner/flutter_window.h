@@ -28,6 +28,10 @@ class FlutterWindow : public Win32Window {
  private:
     static constexpr UINT kOverlayWidth = 360;
     static constexpr UINT kOverlayHeight = 56;
+     static constexpr UINT kTrayCallbackMessage = WM_APP + 101;
+     static constexpr UINT kTrayIconId = 1;
+     static constexpr UINT kTrayMenuOpenId = 40001;
+     static constexpr UINT kTrayMenuExitId = 40002;
 
     static FlutterWindow* instance_;
 
@@ -57,6 +61,10 @@ class FlutterWindow : public Win32Window {
 
     void ShowMainWindowNative();
     void InsertTextAtCursor(const std::wstring& text);
+    void InitializeTrayIcon();
+    void RemoveTrayIcon();
+    void ShowTrayMenu();
+    void ExitFromTray();
 
   // The project to run.
   flutter::DartProject project_;
@@ -71,6 +79,9 @@ class FlutterWindow : public Win32Window {
     int hotkey_key_code_ = VK_F2;
     bool hotkey_enabled_ = false;
     bool hotkey_is_down_ = false;
+
+    bool tray_icon_initialized_ = false;
+    bool exiting_from_tray_ = false;
 
     HWND overlay_window_ = nullptr;
     std::string overlay_state_ = "idle";

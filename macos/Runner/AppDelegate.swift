@@ -6,7 +6,7 @@ import FlutterMacOS
 let kVK_FunctionKey: UInt32 = 63
 
 @main
-class AppDelegate: FlutterAppDelegate {
+class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   var overlayPanel: NSPanel?
   var overlayContentView: OverlayView?
   var methodChannel: FlutterMethodChannel?
@@ -54,6 +54,7 @@ class AppDelegate: FlutterAppDelegate {
 
     setupStatusItem()
     mainFlutterWindow?.isReleasedWhenClosed = false
+    mainFlutterWindow?.delegate = self
 
     methodChannel?.setMethodCallHandler { [weak self] call, result in
       switch call.method {
@@ -215,6 +216,14 @@ class AppDelegate: FlutterAppDelegate {
 
   @objc func showMainWindowFromStatusItem() {
     showMainWindow()
+  }
+
+  func windowShouldClose(_ sender: NSWindow) -> Bool {
+    if sender == mainFlutterWindow {
+      sender.orderOut(nil)
+      return false
+    }
+    return true
   }
 
   @objc func quitFromStatusItem() {

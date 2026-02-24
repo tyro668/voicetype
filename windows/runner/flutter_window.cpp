@@ -6,10 +6,12 @@
 #include <cmath>
 #include <cstring>
 #include <optional>
+#include <shellapi.h>
 #include <string>
 #include <windowsx.h>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "resource.h"
 
 namespace {
 
@@ -107,6 +109,7 @@ bool FlutterWindow::OnCreate() {
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   instance_ = this;
+  InitializeTrayIcon();
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -121,6 +124,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  RemoveTrayIcon();
   HideOverlay();
   if (overlay_window_) {
     DestroyWindow(overlay_window_);
@@ -591,6 +595,75 @@ void FlutterWindow::InsertTextAtCursor(const std::wstring& text) {
   SendInput(4, inputs, sizeof(INPUT));
 }
 
+void FlutterWindow::InitializeTrayIcon() {
+  if (tray_icon_initialized_) {
+    return;
+  }
+
+  const HWND hwnd = GetHandle();
+  if (hwnd == nullptr) {
+    return;
+  }
+
+  NOTIFYICONDATAW nid{};
+  nid.cbSize = sizeof(nid);
+  nid.hWnd = hwnd;
+  nid.uID = kTrayIconId;
+  nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+  nid.uCallbackMessage = kTrayCallbackMessage;
+  nid.hIcon = static_cast<HICON>(LoadImageW(
+      GetModuleHandle(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON,
+      16, 16, LR_DEFAULTCOLOR));
+  wcscpy_s(nid.szTip, L"voicetype");
+
+  tray_icon_initialized_ = Shell_NotifyIconW(NIM_ADD, &nid) == TRUE;
+}
+
+void FlutterWindow::RemoveTrayIcon() {
+  if (!tray_icon_initialized_) {
+    return;
+  }
+
+  const HWND hwnd = GetHandle();
+  if (hwnd != nullptr) {
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd;
+    nid.uID = kTrayIconId;
+    Shell_NotifyIconW(NIM_DELETE, &nid);
+  }
+
+  tray_icon_initialized_ = false;
+}
+
+void FlutterWindow::ShowTrayMenu() {
+  const HWND hwnd = GetHandle();
+  if (hwnd == nullptr) {
+    return;
+  }
+
+  HMENU menu = CreatePopupMenu();
+  if (menu == nullptr) {
+    return;
+  }
+
+  AppendMenuW(menu, MF_STRING, kTrayMenuOpenId, L"打开");
+  AppendMenuW(menu, MF_STRING, kTrayMenuExitId, L"退出");
+
+  POINT cursor{};
+  GetCursorPos(&cursor);
+  SetForegroundWindow(hwnd);
+  TrackPopupMenu(menu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, cursor.x, cursor.y, 0,
+                 hwnd, nullptr);
+  DestroyMenu(menu);
+}
+
+void FlutterWindow::ExitFromTray() {
+  exiting_from_tray_ = true;
+  RemoveTrayIcon();
+  Destroy();
+}
+
 LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
@@ -606,6 +679,34 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_CLOSE:
+      if (!exiting_from_tray_) {
+        ShowWindow(hwnd, SW_HIDE);
+        return 0;
+      }
+      break;
+    case WM_COMMAND: {
+      const UINT command = LOWORD(wparam);
+      if (command == kTrayMenuOpenId) {
+        ShowMainWindowNative();
+        return 0;
+      }
+      if (command == kTrayMenuExitId) {
+        ExitFromTray();
+        return 0;
+      }
+      break;
+    }
+    case kTrayCallbackMessage:
+      if (LOWORD(lparam) == WM_LBUTTONDBLCLK) {
+        ShowMainWindowNative();
+        return 0;
+      }
+      if (LOWORD(lparam) == WM_RBUTTONUP || LOWORD(lparam) == WM_CONTEXTMENU) {
+        ShowTrayMenu();
+        return 0;
+      }
+      break;
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
