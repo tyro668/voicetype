@@ -270,7 +270,7 @@ class WhisperCppService {
       throw WhisperCppException('语音识别失败: $e');
     } finally {
       if (wavPath != audioPath) {
-        File(wavPath).delete().catchError((_) {});
+        File(wavPath).delete().ignore();
       }
     }
   }

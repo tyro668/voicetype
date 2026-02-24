@@ -275,29 +275,30 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
             ),
           ),
           const SizedBox(height: 12),
-          RadioListTile<NetworkProxyMode>(
-            value: NetworkProxyMode.system,
+          RadioGroup<NetworkProxyMode>(
             groupValue: mode,
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.useSystemProxy),
-            subtitle: Text(l10n.systemProxySubtitle),
             onChanged: (value) {
               if (value != null) {
                 settings.setNetworkProxyMode(value);
               }
             },
-          ),
-          RadioListTile<NetworkProxyMode>(
-            value: NetworkProxyMode.none,
-            groupValue: mode,
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.noProxy),
-            subtitle: Text(l10n.noProxySubtitle),
-            onChanged: (value) {
-              if (value != null) {
-                settings.setNetworkProxyMode(value);
-              }
-            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RadioListTile<NetworkProxyMode>(
+                  value: NetworkProxyMode.system,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.useSystemProxy),
+                  subtitle: Text(l10n.systemProxySubtitle),
+                ),
+                RadioListTile<NetworkProxyMode>(
+                  value: NetworkProxyMode.none,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.noProxy),
+                  subtitle: Text(l10n.noProxySubtitle),
+                ),
+              ],
+            ),
           ),
         ],
       ),

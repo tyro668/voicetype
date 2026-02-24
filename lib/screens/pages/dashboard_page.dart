@@ -30,11 +30,12 @@ class _DashboardPageState extends State<DashboardPage> {
     final stats = await DashboardService.instance.computeStats(
       granularity: _granularity,
     );
-    if (mounted)
+    if (mounted) {
       setState(() {
         _stats = stats;
         if (showLoading) _loading = false;
       });
+    }
   }
 
   void _setGranularity(TrendGranularity g) {

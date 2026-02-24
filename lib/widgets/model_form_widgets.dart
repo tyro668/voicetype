@@ -49,7 +49,7 @@ class StyledDropdown<T> extends StatelessWidget {
     return SizedBox(
       height: 42,
       child: DropdownButtonFormField<T>(
-        value: value,
+        initialValue: value,
         isExpanded: true,
         hint: Text(hintText, style: TextStyle(fontSize: 14, color: cs.outline)),
         style: TextStyle(fontSize: 14, color: cs.onSurface),
