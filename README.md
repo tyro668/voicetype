@@ -18,7 +18,7 @@ flutter run  -d windows
 
 如果要在自己电脑上构建，使用以下的方式，如果要直接下载使用，在这里[下载安装文件](https://github.com/tyro668/voicetype/releases)。
 
-**注意：** mac上使用该应用需要自己去隐私与安全性中允许该应用
+**注意：** mac上使用该应用需要自己去隐私与安全性中允许该应用，如图所示：![mac](screenshots/mac_start.png)
 
 ### mac版本
 ```
