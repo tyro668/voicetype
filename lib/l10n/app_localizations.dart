@@ -1399,6 +1399,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to change Dock visibility'**
   String get showInDockFailed;
+
+  /// No description provided for @trayOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get trayOpen;
+
+  /// No description provided for @trayQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit'**
+  String get trayQuit;
+
+  /// No description provided for @recordingPathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording path copied to clipboard'**
+  String get recordingPathCopied;
+
+  /// No description provided for @openFolderFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open folder'**
+  String get openFolderFailed;
+
+  /// No description provided for @cleanupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleanup failed'**
+  String get cleanupFailed;
+
+  /// No description provided for @resetHotkeyDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Default ({key})'**
+  String resetHotkeyDefault(Object key);
 }
 
 class _AppLocalizationsDelegate

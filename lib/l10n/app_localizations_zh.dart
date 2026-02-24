@@ -675,4 +675,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get showInDockFailed => '修改 Dock 显示状态失败';
+
+  @override
+  String get trayOpen => '打开';
+
+  @override
+  String get trayQuit => '退出';
+
+  @override
+  String get recordingPathCopied => '录音路径已复制到剪贴板';
+
+  @override
+  String get openFolderFailed => '打开文件夹失败';
+
+  @override
+  String get cleanupFailed => '清理失败';
+
+  @override
+  String resetHotkeyDefault(Object key) {
+    return '恢复默认（$key）';
+  }
 }

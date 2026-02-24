@@ -160,10 +160,10 @@ class _GeneralPageState extends State<GeneralPage> {
         result = await Process.run('open', [_recordingsDirPath]);
       }
       if (result.exitCode != 0 && !Platform.isWindows) {
-        _showError('无法打开文件夹: ${result.stderr}');
+        _showError(AppLocalizations.of(context)!.openFolderFailed);
       }
     } catch (e) {
-      _showError('打开文件夹失败: $e');
+      _showError(AppLocalizations.of(context)!.openFolderFailed);
     }
   }
 
@@ -171,8 +171,8 @@ class _GeneralPageState extends State<GeneralPage> {
     await Clipboard.setData(ClipboardData(text: _recordingsDirPath));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('录音路径已复制到剪贴板'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.recordingPathCopied),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -211,7 +211,7 @@ class _GeneralPageState extends State<GeneralPage> {
       }
       await _loadRecordingsInfo();
     } catch (e) {
-      _showError('清理失败: $e');
+      _showError(AppLocalizations.of(context)!.cleanupFailed);
     }
   }
 
@@ -224,10 +224,10 @@ class _GeneralPageState extends State<GeneralPage> {
         result = await Process.run('open', [_logDirPath]);
       }
       if (result.exitCode != 0 && !Platform.isWindows) {
-        _showError('无法打开文件夹: ${result.stderr}');
+        _showError(AppLocalizations.of(context)!.openFolderFailed);
       }
     } catch (e) {
-      _showError('打开文件夹失败: $e');
+      _showError(AppLocalizations.of(context)!.openFolderFailed);
     }
   }
 
@@ -235,8 +235,8 @@ class _GeneralPageState extends State<GeneralPage> {
     await Clipboard.setData(ClipboardData(text: _logPath));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('日志路径已复制到剪贴板'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.logPathCopied),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -713,7 +713,7 @@ class _GeneralPageState extends State<GeneralPage> {
                 child: ElevatedButton.icon(
                   onPressed: _logPath.isNotEmpty ? _openLogDirectory : null,
                   icon: const Icon(Icons.folder_open_outlined, size: 18),
-                  label: const Text('打开日志文件夹'),
+                  label: Text(l10n.openLogDirectory),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _cs.primary,
                     foregroundColor: _cs.onPrimary,
@@ -728,7 +728,7 @@ class _GeneralPageState extends State<GeneralPage> {
               OutlinedButton.icon(
                 onPressed: _logPath.isNotEmpty ? _copyLogPath : null,
                 icon: const Icon(Icons.copy, size: 18),
-                label: const Text('复制路径'),
+                label: Text(l10n.copyLogPath),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _cs.onSurfaceVariant,
                   side: BorderSide(color: _cs.outline),
@@ -1211,7 +1211,7 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
           child: TextButton.icon(
             onPressed: () => widget.settings.resetHotkey(),
             icon: const Icon(Icons.restore, size: 16),
-            label: Text(Platform.isWindows ? '恢复默认（F2）' : '恢复默认（Fn）'),
+            label: Text(widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F2' : 'Fn')),
             style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),

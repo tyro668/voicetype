@@ -271,5 +271,13 @@
 
   "showInDock": "在 Dock 中显示",
   "showInDockDescription": "控制应用程序图标是否显示在 Dock 上。",
-  "showInDockFailed": "修改 Dock 显示状态失败"
+  "showInDockFailed": "修改 Dock 显示状态失败",
+
+  "trayOpen": "打开",
+  "trayQuit": "退出",
+
+  "recordingPathCopied": "录音路径已复制到剪贴板",
+  "openFolderFailed": "打开文件夹失败",
+  "cleanupFailed": "清理失败",
+  "resetHotkeyDefault": "恢复默认（{key}）"
 }

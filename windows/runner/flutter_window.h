@@ -82,6 +82,8 @@ class FlutterWindow : public Win32Window {
 
     bool tray_icon_initialized_ = false;
     bool exiting_from_tray_ = false;
+    std::wstring tray_label_open_ = L"\x6253\x5F00";   // 打开
+    std::wstring tray_label_quit_ = L"\x9000\x51FA";   // 退出
 
     HWND overlay_window_ = nullptr;
     std::string overlay_state_ = "idle";

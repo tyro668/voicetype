@@ -16,6 +16,9 @@ void main() {
 
   testWidgets('App renders', (WidgetTester tester) async {
     await tester.pumpWidget(const VoiceTypeApp());
+    // Drain the 10-second sqflite transaction lock timer
+    await tester.pump(const Duration(seconds: 11));
+    await tester.pumpAndSettle();
     expect(find.text('VoiceType'), findsOneWidget);
   });
 }

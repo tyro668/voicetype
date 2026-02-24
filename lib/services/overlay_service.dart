@@ -209,4 +209,20 @@ class OverlayService {
       return false;
     }
   }
+
+  /// 设置系统托盘菜单的本地化文本
+  static Future<void> setTrayLabels({
+    required String open,
+    required String quit,
+  }) async {
+    if (!_supportsNativeOverlay) return;
+    try {
+      await _channel.invokeMethod('setTrayLabels', {
+        'open': open,
+        'quit': quit,
+      });
+    } catch (e) {
+      // ignore — older native code may not support this method yet
+    }
+  }
 }

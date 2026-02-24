@@ -703,4 +703,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showInDockFailed => 'Failed to change Dock visibility';
+
+  @override
+  String get trayOpen => 'Open';
+
+  @override
+  String get trayQuit => 'Quit';
+
+  @override
+  String get recordingPathCopied => 'Recording path copied to clipboard';
+
+  @override
+  String get openFolderFailed => 'Failed to open folder';
+
+  @override
+  String get cleanupFailed => 'Cleanup failed';
+
+  @override
+  String resetHotkeyDefault(Object key) {
+    return 'Reset Default ($key)';
+  }
 }

@@ -276,5 +276,13 @@
 
   "showInDock": "Show in Dock",
   "showInDockDescription": "Show the application icon in the macOS Dock.",
-  "showInDockFailed": "Failed to change Dock visibility"
+  "showInDockFailed": "Failed to change Dock visibility",
+
+  "trayOpen": "Open",
+  "trayQuit": "Quit",
+
+  "recordingPathCopied": "Recording path copied to clipboard",
+  "openFolderFailed": "Failed to open folder",
+  "cleanupFailed": "Cleanup failed",
+  "resetHotkeyDefault": "Reset Default ({key})"
 }

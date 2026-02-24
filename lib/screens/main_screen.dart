@@ -335,6 +335,10 @@ class _MainScreenState extends State<MainScreen> {
       enhancing: l10n.overlayEnhancing,
       transcribeFailed: l10n.overlayTranscribeFailed,
     );
+    OverlayService.setTrayLabels(
+      open: l10n.trayOpen,
+      quit: l10n.trayQuit,
+    );
 
     return Scaffold(
       backgroundColor: _cs.surfaceContainerLow,

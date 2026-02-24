@@ -320,6 +320,35 @@ void FlutterWindow::HandleMethodCall(
     return;
   }
 
+  if (method == "setTrayLabels") {
+    if (args != nullptr) {
+      auto it_open = args->find(flutter::EncodableValue("open"));
+      if (it_open != args->end()) {
+        const auto* val = std::get_if<std::string>(&it_open->second);
+        if (val) {
+          int len = MultiByteToWideChar(CP_UTF8, 0, val->c_str(), -1, nullptr, 0);
+          if (len > 0) {
+            tray_label_open_.resize(len - 1);
+            MultiByteToWideChar(CP_UTF8, 0, val->c_str(), -1, &tray_label_open_[0], len);
+          }
+        }
+      }
+      auto it_quit = args->find(flutter::EncodableValue("quit"));
+      if (it_quit != args->end()) {
+        const auto* val = std::get_if<std::string>(&it_quit->second);
+        if (val) {
+          int len = MultiByteToWideChar(CP_UTF8, 0, val->c_str(), -1, nullptr, 0);
+          if (len > 0) {
+            tray_label_quit_.resize(len - 1);
+            MultiByteToWideChar(CP_UTF8, 0, val->c_str(), -1, &tray_label_quit_[0], len);
+          }
+        }
+      }
+    }
+    result->Success();
+    return;
+  }
+
   result->NotImplemented();
 }
 
@@ -692,8 +721,8 @@ void FlutterWindow::ShowTrayMenu() {
     return;
   }
 
-  AppendMenuW(menu, MF_STRING, kTrayMenuOpenId, L"打开");
-  AppendMenuW(menu, MF_STRING, kTrayMenuExitId, L"退出");
+  AppendMenuW(menu, MF_STRING, kTrayMenuOpenId, tray_label_open_.c_str());
+  AppendMenuW(menu, MF_STRING, kTrayMenuExitId, tray_label_quit_.c_str());
 
   POINT cursor{};
   GetCursorPos(&cursor);

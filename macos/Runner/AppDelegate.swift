@@ -188,6 +188,23 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
         } else {
           result(false)
         }
+      case "setTrayLabels":
+        if let args = call.arguments as? [String: Any] {
+          let openLabel = args["open"] as? String ?? "Open"
+          let quitLabel = args["quit"] as? String ?? "Quit"
+          if let menu = self?.statusItem?.menu {
+            // Item 0 = open, item 1 = separator, item 2 = quit
+            if menu.items.count > 0 {
+              menu.items[0].title = openLabel
+            }
+            if menu.items.count > 2 {
+              menu.items[2].title = quitLabel
+            }
+          }
+          result(nil)
+        } else {
+          result(nil)
+        }
       default:
         result(FlutterMethodNotImplemented)
       }
