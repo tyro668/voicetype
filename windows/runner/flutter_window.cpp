@@ -659,7 +659,7 @@ void FlutterWindow::InitializeTrayIcon() {
   nid.hIcon = static_cast<HICON>(LoadImageW(
       GetModuleHandle(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON,
       16, 16, LR_DEFAULTCOLOR));
-  wcscpy_s(nid.szTip, L"voicetype");
+  wcscpy_s(nid.szTip, L"VoiceType");
 
   tray_icon_initialized_ = Shell_NotifyIconW(NIM_ADD, &nid) == TRUE;
 }
