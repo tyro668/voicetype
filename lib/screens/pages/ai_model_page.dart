@@ -859,7 +859,11 @@ class _EditModelDialogState extends State<_EditModelDialog> {
   Future<void> _openModelFileLocation(String fileName) async {
     if (fileName.isEmpty) return;
     final dir = await LocalLlmService.defaultModelDir;
-    await Process.run('open', [dir]);
+    if (Platform.isWindows) {
+      await Process.run('explorer', [dir]);
+    } else {
+      await Process.run('open', [dir]);
+    }
   }
 
   bool get _canSubmit {

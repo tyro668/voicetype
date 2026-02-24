@@ -153,8 +153,13 @@ class _GeneralPageState extends State<GeneralPage> {
 
   Future<void> _openRecordingsDirectory() async {
     try {
-      final result = await Process.run('open', [_recordingsDirPath]);
-      if (result.exitCode != 0) {
+      final ProcessResult result;
+      if (Platform.isWindows) {
+        result = await Process.run('explorer', [_recordingsDirPath]);
+      } else {
+        result = await Process.run('open', [_recordingsDirPath]);
+      }
+      if (result.exitCode != 0 && !Platform.isWindows) {
         _showError('无法打开文件夹: ${result.stderr}');
       }
     } catch (e) {
@@ -212,8 +217,13 @@ class _GeneralPageState extends State<GeneralPage> {
 
   Future<void> _openLogDirectory() async {
     try {
-      final result = await Process.run('open', [_logDirPath]);
-      if (result.exitCode != 0) {
+      final ProcessResult result;
+      if (Platform.isWindows) {
+        result = await Process.run('explorer', [_logDirPath]);
+      } else {
+        result = await Process.run('open', [_logDirPath]);
+      }
+      if (result.exitCode != 0 && !Platform.isWindows) {
         _showError('无法打开文件夹: ${result.stderr}');
       }
     } catch (e) {

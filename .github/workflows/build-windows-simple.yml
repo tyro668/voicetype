@@ -1,0 +1,184 @@
+name: Build Windows Simple Version
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  FLUTTER_VERSION: '3.41.2'
+
+jobs:
+  build-windows-simple:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (Windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ env.FLUTTER_VERSION }}"
+          $zipUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_${version}-stable.zip"
+          $zipPath = "$env:RUNNER_TEMP/flutter.zip"
+          $installRoot = "$env:RUNNER_TEMP/flutter-sdk"
+
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath $installRoot -Force
+
+          $flutterBin = "$installRoot/flutter/bin"
+          "FLUTTER_BIN=$flutterBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$flutterBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify Flutter version
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" --version
+          & "$env:FLUTTER_BIN/dart.bat" --version
+
+      - name: Replace local model services with stubs
+        shell: pwsh
+        run: |
+          Copy-Item -Force "simple/whisper_cpp_service.dart" "lib/services/whisper_cpp_service.dart"
+          Copy-Item -Force "simple/local_llm_service.dart" "lib/services/local_llm_service.dart"
+          Write-Host "Replaced local model services with simple stubs"
+
+      - name: Patch pubspec.yaml to remove native dependencies
+        shell: pwsh
+        run: |
+          $content = Get-Content "pubspec.yaml" -Raw
+          # Remove whisper_flutter_new, llamadart, ffi dependencies
+          $content = $content -replace '(?m)^\s*whisper_flutter_new:.*\r?\n', ''
+          $content = $content -replace '(?m)^\s*llamadart:.*\r?\n', ''
+          $content = $content -replace '(?m)^\s*ffi:.*\r?\n', ''
+          Set-Content "pubspec.yaml" -Value $content -NoNewline
+          Write-Host "Patched pubspec.yaml - removed native dependencies"
+          Write-Host "--- pubspec.yaml dependencies section ---"
+          Select-String -Path "pubspec.yaml" -Pattern "dependencies" -Context 0,20
+
+      - name: Flutter doctor
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" doctor -v
+
+      - name: Get dependencies
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" pub get
+
+      - name: Analyze
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" analyze --no-fatal-infos
+
+      - name: Build Windows Release
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" build windows --release
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path "pubspec.yaml" -Pattern '^version:\s*([^\s+]+)'
+          $ver = if ($match.Matches.Count -gt 0) { $match.Matches[0].Groups[1].Value } else { "0.0.0" }
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "Version: $ver"
+
+      - name: Package release artifacts
+        shell: pwsh
+        id: package
+        run: |
+          $releaseDir = Get-ChildItem "build\windows" -Recurse -Directory |
+            Where-Object { $_.Name -eq 'Release' -and $_.FullName -match 'runner' } |
+            Select-Object -First 1
+          if (-not $releaseDir) {
+            throw "Release directory not found"
+          }
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $zipName = "voicetype-windows-simple-version.zip"
+          Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
+          echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
+          echo "Packaged: build\$zipName"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicetype-windows-simple-version
+          path: build/${{ steps.package.outputs.ZIP_NAME }}
+          retention-days: 30
+
+      - name: Check existing GitHub Release
+        id: check_release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              core.info(`Release ${tag} already exists (id=${data.id}), will upload asset to existing release.`);
+              core.setOutput('exists', 'true');
+              core.setOutput('release_id', data.id.toString());
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Release ${tag} not found, will create a new one.`);
+                core.setOutput('exists', 'false');
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Upload asset to existing release
+        if: startsWith(github.ref, 'refs/tags/') && steps.check_release.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const releaseId = parseInt('${{ steps.check_release.outputs.release_id }}');
+            const assetPath = 'build/${{ steps.package.outputs.ZIP_NAME }}';
+            const assetName = '${{ steps.package.outputs.ZIP_NAME }}';
+
+            // Delete existing asset with same name if present
+            const { data: assets } = await github.rest.repos.listReleaseAssets({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+            });
+            const existing = assets.find(a => a.name === assetName);
+            if (existing) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: existing.id,
+              });
+              core.info(`Deleted existing asset: ${assetName}`);
+            }
+
+            const data = fs.readFileSync(assetPath);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              name: assetName,
+              data: data,
+            });
+            core.info(`Uploaded ${assetName} to release`);
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') && steps.check_release.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/${{ steps.package.outputs.ZIP_NAME }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

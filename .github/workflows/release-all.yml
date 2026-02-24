@@ -173,9 +173,83 @@ jobs:
           path: build/${{ steps.package.outputs.ZIP_NAME }}
           retention-days: 7
 
+  build-windows-simple:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (Windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ env.FLUTTER_VERSION }}"
+          $zipUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_${version}-stable.zip"
+          $zipPath = "$env:RUNNER_TEMP/flutter.zip"
+          $installRoot = "$env:RUNNER_TEMP/flutter-sdk"
+
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath $installRoot -Force
+
+          $flutterBin = "$installRoot/flutter/bin"
+          "FLUTTER_BIN=$flutterBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$flutterBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Replace local model services with stubs
+        shell: pwsh
+        run: |
+          Copy-Item -Force "simple/whisper_cpp_service.dart" "lib/services/whisper_cpp_service.dart"
+          Copy-Item -Force "simple/local_llm_service.dart" "lib/services/local_llm_service.dart"
+
+      - name: Patch pubspec.yaml to remove native dependencies
+        shell: pwsh
+        run: |
+          $content = Get-Content "pubspec.yaml" -Raw
+          $content = $content -replace '(?m)^\s*whisper_flutter_new:.*\r?\n', ''
+          $content = $content -replace '(?m)^\s*llamadart:.*\r?\n', ''
+          $content = $content -replace '(?m)^\s*ffi:.*\r?\n', ''
+          Set-Content "pubspec.yaml" -Value $content -NoNewline
+
+      - name: Get dependencies
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" pub get
+
+      - name: Analyze
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" analyze --no-fatal-infos
+
+      - name: Build Windows Release
+        shell: pwsh
+        run: |
+          & "$env:FLUTTER_BIN/flutter.bat" build windows --release
+
+      - name: Package release artifacts
+        shell: pwsh
+        id: package
+        run: |
+          $releaseDir = Get-ChildItem "build\windows" -Recurse -Directory |
+            Where-Object { $_.Name -eq 'Release' -and $_.FullName -match 'runner' } |
+            Select-Object -First 1
+          if (-not $releaseDir) {
+            throw "Release directory not found"
+          }
+          $zipName = "voicetype-windows-simple-version.zip"
+          Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
+          echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows Simple artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-simple
+          path: build/${{ steps.package.outputs.ZIP_NAME }}
+          retention-days: 7
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-macos, build-windows]
+    needs: [build-macos, build-windows, build-windows-simple]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -191,6 +265,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-windows
+          path: release-assets
+
+      - name: Download Windows Simple artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows-simple
           path: release-assets
 
       - name: Check existing GitHub Release
