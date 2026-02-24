@@ -8,7 +8,7 @@ env:
 
 jobs:
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-14
     permissions:
       contents: write
 
@@ -79,6 +79,10 @@ jobs:
           APP_BIN="$APP_PATH/Contents/MacOS/$(basename "$APP_PATH" .app)"
           file "$APP_BIN"
 
+          # 关键 Flutter 资源存在性校验
+          test -f "$APP_PATH/Contents/Frameworks/App.framework/Resources/flutter_assets/AssetManifest.bin" || (echo "Missing flutter_assets" >&2; exit 1)
+          test -f "$APP_PATH/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS" || (echo "Missing FlutterMacOS framework" >&2; exit 1)
+
           # 对 CI 产物进行 ad-hoc 签名，降低下载后运行时动态库校验异常概率
           codesign --force --deep --sign - "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
@@ -87,7 +91,12 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           DMG_NAME="${APP_NAME}-macos-${VERSION}.dmg"
 
-          hdiutil create -volname "$APP_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "build/$DMG_NAME"
+          STAGE_DIR="$RUNNER_TEMP/dmg-stage"
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR"
+          cp -R "$APP_PATH" "$STAGE_DIR/"
+
+          hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE_DIR" -ov -format UDZO "build/$DMG_NAME"
 
           echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_OUTPUT"
           echo "DMG_PATH=build/$DMG_NAME" >> "$GITHUB_OUTPUT"
