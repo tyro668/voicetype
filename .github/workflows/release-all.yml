@@ -79,10 +79,6 @@ jobs:
           test -f "$APP_PATH/Contents/Frameworks/App.framework/Resources/flutter_assets/AssetManifest.bin" || (echo "Missing flutter_assets" >&2; exit 1)
           test -f "$APP_PATH/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS" || (echo "Missing FlutterMacOS framework" >&2; exit 1)
 
-          # 对 CI 产物进行 ad-hoc 签名，降低下载后运行时动态库校验异常概率
-          codesign --force --deep --sign - "$APP_PATH"
-          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-
           APP_NAME="$(basename "$APP_PATH" .app)"
           VERSION="${{ steps.version.outputs.VERSION }}"
           DMG_NAME="${APP_NAME}-macos-${VERSION}.dmg"
