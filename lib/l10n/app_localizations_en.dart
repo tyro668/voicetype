@@ -693,4 +693,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enhanceTotalTokens => 'Total Tokens';
+
+  @override
+  String get showInDock => 'Show in Dock';
+
+  @override
+  String get showInDockDescription =>
+      'Show the application icon in the macOS Dock.';
+
+  @override
+  String get showInDockFailed => 'Failed to change Dock visibility';
 }

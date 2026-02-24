@@ -165,6 +165,22 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
         } else {
           result(false)
         }
+      case "getShowInDock":
+        let policy = NSApp.activationPolicy()
+        result(policy == .regular)
+      case "setShowInDock":
+        if let args = call.arguments as? [String: Any],
+           let show = args["show"] as? Bool {
+          let policy: NSApplication.ActivationPolicy = show ? .regular : .accessory
+          let ok = NSApp.setActivationPolicy(policy)
+          if show {
+            NSApp.activate(ignoringOtherApps: true)
+          }
+          self?.log("[dock] setShowInDock show=\(show) ok=\(ok)")
+          result(ok)
+        } else {
+          result(false)
+        }
       default:
         result(FlutterMethodNotImplemented)
       }

@@ -1381,6 +1381,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total Tokens'**
   String get enhanceTotalTokens;
+
+  /// No description provided for @showInDock.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in Dock'**
+  String get showInDock;
+
+  /// No description provided for @showInDockDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the application icon in the macOS Dock.'**
+  String get showInDockDescription;
+
+  /// No description provided for @showInDockFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to change Dock visibility'**
+  String get showInDockFailed;
 }
 
 class _AppLocalizationsDelegate

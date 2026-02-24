@@ -184,4 +184,29 @@ class OverlayService {
     if (!_supportsNativeOverlay) return;
     await _channel.invokeMethod('unregisterHotkey');
   }
+
+  /// 获取是否在 Dock 上显示图标（仅 macOS）
+  static Future<bool> getShowInDock() async {
+    if (!_isMacOS) return true;
+    try {
+      final result = await _channel.invokeMethod<bool>('getShowInDock');
+      return result ?? true;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  /// 设置是否在 Dock 上显示图标（仅 macOS）
+  static Future<bool> setShowInDock(bool show) async {
+    if (!_isMacOS) return false;
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'setShowInDock',
+        {'show': show},
+      );
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

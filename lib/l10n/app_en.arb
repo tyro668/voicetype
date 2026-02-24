@@ -272,5 +272,9 @@
   "enhanceTokenUsage": "Text Enhancement Tokens",
   "enhanceInputTokens": "Input Tokens",
   "enhanceOutputTokens": "Output Tokens",
-  "enhanceTotalTokens": "Total Tokens"
+  "enhanceTotalTokens": "Total Tokens",
+
+  "showInDock": "Show in Dock",
+  "showInDockDescription": "Show the application icon in the macOS Dock.",
+  "showInDockFailed": "Failed to change Dock visibility"
 }

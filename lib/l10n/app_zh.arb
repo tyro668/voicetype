@@ -267,5 +267,9 @@
   "enhanceTokenUsage": "文本增强 Token 用量",
   "enhanceInputTokens": "输入 Token",
   "enhanceOutputTokens": "输出 Token",
-  "enhanceTotalTokens": "总 Token"
+  "enhanceTotalTokens": "总 Token",
+
+  "showInDock": "在 Dock 中显示",
+  "showInDockDescription": "控制应用程序图标是否显示在 Dock 上。",
+  "showInDockFailed": "修改 Dock 显示状态失败"
 }

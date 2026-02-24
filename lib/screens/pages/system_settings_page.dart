@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/network_settings.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/settings_provider.dart';
+import '../../database/app_database.dart';
 import '../../services/overlay_service.dart';
 
 class SystemSettingsPage extends StatefulWidget {
@@ -17,11 +19,14 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
 
   bool _launchAtLogin = false;
   bool _launchAtLoginLoading = true;
+  bool _showInDock = true;
+  bool _showInDockLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadLaunchAtLogin();
+    if (Platform.isMacOS) _loadShowInDock();
   }
 
   Future<void> _loadLaunchAtLogin() async {
@@ -58,6 +63,40 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
     }
   }
 
+  Future<void> _loadShowInDock() async {
+    final saved = await AppDatabase.instance.getSetting('show_in_dock');
+    final show = saved != 'false'; // 默认显示
+    if (mounted) {
+      setState(() {
+        _showInDock = show;
+        _showInDockLoading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleShowInDock(bool show) async {
+    setState(() => _showInDockLoading = true);
+    final ok = await OverlayService.setShowInDock(show);
+    if (ok) {
+      await AppDatabase.instance.setSetting('show_in_dock', show.toString());
+      setState(() {
+        _showInDock = show;
+        _showInDockLoading = false;
+      });
+    } else {
+      setState(() => _showInDockLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.showInDockFailed),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
@@ -82,6 +121,10 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
           ),
           const SizedBox(height: 12),
           _buildLaunchAtLoginSection(l10n),
+          if (Platform.isMacOS) ...[
+            const SizedBox(height: 12),
+            _buildShowInDockSection(l10n),
+          ],
           const SizedBox(height: 36),
 
           // ===== 网络设置 =====
@@ -151,6 +194,56 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
               value: _launchAtLogin,
               activeTrackColor: _cs.primary,
               onChanged: _toggleLaunchAtLogin,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShowInDockSection(AppLocalizations l10n) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cs.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.dock_outlined, size: 20, color: _cs.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.showInDock,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.showInDockDescription,
+                  style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          if (_showInDockLoading)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Switch.adaptive(
+              value: _showInDock,
+              activeTrackColor: _cs.primary,
+              onChanged: _toggleShowInDock,
             ),
         ],
       ),

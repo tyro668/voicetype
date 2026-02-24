@@ -666,4 +666,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get enhanceTotalTokens => '总 Token';
+
+  @override
+  String get showInDock => '在 Dock 中显示';
+
+  @override
+  String get showInDockDescription => '控制应用程序图标是否显示在 Dock 上。';
+
+  @override
+  String get showInDockFailed => '修改 Dock 显示状态失败';
 }
