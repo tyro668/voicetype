@@ -1,6 +1,7 @@
 import Cocoa
 import Carbon.HIToolbox
 import FlutterMacOS
+import ServiceManagement
 
 // 定义 Fn 键的 keyCode (kVK_Function = 63)
 let kVK_FunctionKey: UInt32 = 63
@@ -136,6 +137,34 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       case "unregisterHotkey":
         self?.unregisterHotkey()
         result(nil)
+      case "getLaunchAtLogin":
+        if #available(macOS 13.0, *) {
+          let status = SMAppService.mainApp.status
+          result(status == .enabled)
+        } else {
+          result(false)
+        }
+      case "setLaunchAtLogin":
+        if let args = call.arguments as? [String: Any],
+           let enabled = args["enabled"] as? Bool {
+          if #available(macOS 13.0, *) {
+            do {
+              if enabled {
+                try SMAppService.mainApp.register()
+              } else {
+                try SMAppService.mainApp.unregister()
+              }
+              result(true)
+            } catch {
+              self?.log("[launch] setLaunchAtLogin error: \(error)")
+              result(false)
+            }
+          } else {
+            result(false)
+          }
+        } else {
+          result(false)
+        }
       default:
         result(FlutterMethodNotImplemented)
       }

@@ -183,6 +183,12 @@
 
   "networkSettings": "Network",
   "networkSettingsDescription": "Configure the network proxy mode for the application.",
+  "systemSettings": "System",
+  "systemSettingsDescription": "Configure system-level settings such as startup behavior and network proxy.",
+  "launchAtLogin": "Launch at Login",
+  "launchAtLoginDescription": "Automatically start VoiceType when you log in.",
+  "launchAtLoginFailed": "Failed to enable launch at login",
+  "disableLaunchAtLoginFailed": "Failed to disable launch at login",
   "proxyConfig": "Proxy Configuration",
   "useSystemProxy": "Use System Proxy",
   "systemProxySubtitle": "Requests follow the system network proxy configuration.",

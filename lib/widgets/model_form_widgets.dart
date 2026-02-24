@@ -28,6 +28,74 @@ class FormFieldLabel extends StatelessWidget {
   }
 }
 
+/// 统一样式的下拉选择框
+class StyledDropdown<T> extends StatelessWidget {
+  final T? value;
+  final String hintText;
+  final List<StyledDropdownItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  const StyledDropdown({
+    super.key,
+    required this.value,
+    required this.hintText,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 42,
+      child: DropdownButtonFormField<T>(
+        value: value,
+        isExpanded: true,
+        hint: Text(hintText, style: TextStyle(fontSize: 14, color: cs.outline)),
+        style: TextStyle(fontSize: 14, color: cs.onSurface),
+        icon: Icon(Icons.unfold_more_rounded, size: 18, color: cs.onSurfaceVariant),
+        dropdownColor: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: cs.surfaceContainerHighest,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cs.primary, width: 1.5),
+          ),
+        ),
+        items: items
+            .map((item) => DropdownMenuItem<T>(
+                  value: item.value,
+                  child: Text(
+                    item.label,
+                    style: const TextStyle(fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ))
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+/// 下拉选项数据
+class StyledDropdownItem<T> {
+  final T value;
+  final String label;
+  const StyledDropdownItem({required this.value, required this.label});
+}
+
 /// 统一样式的文本输入框
 class StyledTextField extends StatelessWidget {
   final TextEditingController controller;

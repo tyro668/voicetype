@@ -489,6 +489,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure the network proxy mode for the application.';
 
   @override
+  String get systemSettings => 'System';
+
+  @override
+  String get systemSettingsDescription =>
+      'Configure system-level settings such as startup behavior and network proxy.';
+
+  @override
+  String get launchAtLogin => 'Launch at Login';
+
+  @override
+  String get launchAtLoginDescription =>
+      'Automatically start VoiceType when you log in.';
+
+  @override
+  String get launchAtLoginFailed => 'Failed to enable launch at login';
+
+  @override
+  String get disableLaunchAtLoginFailed => 'Failed to disable launch at login';
+
+  @override
   String get proxyConfig => 'Proxy Configuration';
 
   @override

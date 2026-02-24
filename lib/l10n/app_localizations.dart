@@ -998,6 +998,42 @@ abstract class AppLocalizations {
   /// **'Configure the network proxy mode for the application.'**
   String get networkSettingsDescription;
 
+  /// No description provided for @systemSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get systemSettings;
+
+  /// No description provided for @systemSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure system-level settings such as startup behavior and network proxy.'**
+  String get systemSettingsDescription;
+
+  /// No description provided for @launchAtLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch at Login'**
+  String get launchAtLogin;
+
+  /// No description provided for @launchAtLoginDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically start VoiceType when you log in.'**
+  String get launchAtLoginDescription;
+
+  /// No description provided for @launchAtLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to enable launch at login'**
+  String get launchAtLoginFailed;
+
+  /// No description provided for @disableLaunchAtLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to disable launch at login'**
+  String get disableLaunchAtLoginFailed;
+
   /// No description provided for @proxyConfig.
   ///
   /// In en, this message translates to:

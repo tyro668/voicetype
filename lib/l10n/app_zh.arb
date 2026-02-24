@@ -178,6 +178,12 @@
 
   "networkSettings": "网络设置",
   "networkSettingsDescription": "配置应用的网络代理模式。",
+  "systemSettings": "系统设置",
+  "systemSettingsDescription": "配置系统级设置，如开机启动和网络代理。",
+  "launchAtLogin": "开机启动",
+  "launchAtLoginDescription": "登录系统时自动启动 VoiceType。",
+  "launchAtLoginFailed": "启用开机启动失败",
+  "disableLaunchAtLoginFailed": "关闭开机启动失败",
   "proxyConfig": "代理配置",
   "useSystemProxy": "使用系统代理",
   "systemProxySubtitle": "请求遵循系统网络代理配置。",

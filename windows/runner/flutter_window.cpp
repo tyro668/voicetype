@@ -275,6 +275,51 @@ void FlutterWindow::HandleMethodCall(
     return;
   }
 
+  if (method == "getLaunchAtLogin") {
+    HKEY hKey;
+    bool enabled = false;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                      0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+      enabled = RegQueryValueExW(hKey, L"VoiceType", nullptr, nullptr,
+                                 nullptr, nullptr) == ERROR_SUCCESS;
+      RegCloseKey(hKey);
+    }
+    result->Success(flutter::EncodableValue(enabled));
+    return;
+  }
+
+  if (method == "setLaunchAtLogin") {
+    bool enabled = false;
+    if (args != nullptr) {
+      auto it = args->find(flutter::EncodableValue("enabled"));
+      if (it != args->end()) {
+        const auto* val = std::get_if<bool>(&it->second);
+        if (val) enabled = *val;
+      }
+    }
+    HKEY hKey;
+    bool ok = false;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                      0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS) {
+      if (enabled) {
+        wchar_t exe_path[MAX_PATH];
+        GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
+        std::wstring value = std::wstring(L"\"") + exe_path + L"\"";
+        ok = RegSetValueExW(hKey, L"VoiceType", 0, REG_SZ,
+                            reinterpret_cast<const BYTE*>(value.c_str()),
+                            static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t))) == ERROR_SUCCESS;
+      } else {
+        auto ret = RegDeleteValueW(hKey, L"VoiceType");
+        ok = (ret == ERROR_SUCCESS || ret == ERROR_FILE_NOT_FOUND);
+      }
+      RegCloseKey(hKey);
+    }
+    result->Success(flutter::EncodableValue(ok));
+    return;
+  }
+
   result->NotImplemented();
 }
 

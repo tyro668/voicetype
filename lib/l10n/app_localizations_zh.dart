@@ -468,6 +468,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkSettingsDescription => '配置应用的网络代理模式。';
 
   @override
+  String get systemSettings => '系统设置';
+
+  @override
+  String get systemSettingsDescription => '配置系统级设置，如开机启动和网络代理。';
+
+  @override
+  String get launchAtLogin => '开机启动';
+
+  @override
+  String get launchAtLoginDescription => '登录系统时自动启动 VoiceType。';
+
+  @override
+  String get launchAtLoginFailed => '启用开机启动失败';
+
+  @override
+  String get disableLaunchAtLoginFailed => '关闭开机启动失败';
+
+  @override
   String get proxyConfig => '代理配置';
 
   @override

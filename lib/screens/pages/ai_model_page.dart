@@ -409,11 +409,11 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   }
 
   Widget _buildVendorDropdown(AppLocalizations l10n) {
-    final items = <DropdownMenuItem<String>>[
+    final items = <StyledDropdownItem<String>>[
       ..._vendorOptions.map(
-        (p) => DropdownMenuItem(value: p.name, child: Text(p.name)),
+        (p) => StyledDropdownItem(value: p.name, label: p.name),
       ),
-      DropdownMenuItem(value: '__custom__', child: Text(l10n.custom)),
+      StyledDropdownItem(value: '__custom__', label: l10n.custom),
     ];
 
     String? currentValue;
@@ -423,67 +423,41 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       currentValue = _selectedVendor!.name;
     }
 
-    return Container(
-      width: double.infinity,
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: currentValue,
-          isExpanded: true,
-          hint: Text(l10n.selectVendor, style: const TextStyle(fontSize: 14)),
-          style: TextStyle(fontSize: 14, color: _cs.onSurface),
-          items: items,
-          onChanged: (value) {
-            setState(() {
-              if (value == '__custom__') {
-                _selectedVendor = null;
-                _selectedModel = null;
-                _isCustom = true;
-              } else {
-                _selectedVendor = _vendorOptions.firstWhere(
-                  (p) => p.name == value,
-                );
-                _selectedModel = null;
-                _isCustom = false;
-              }
-            });
-          },
-        ),
-      ),
+    return StyledDropdown<String>(
+      value: currentValue,
+      hintText: l10n.selectVendor,
+      items: items,
+      onChanged: (value) {
+        setState(() {
+          if (value == '__custom__') {
+            _selectedVendor = null;
+            _selectedModel = null;
+            _isCustom = true;
+          } else {
+            _selectedVendor = _vendorOptions.firstWhere(
+              (p) => p.name == value,
+            );
+            _selectedModel = null;
+            _isCustom = false;
+          }
+        });
+      },
     );
   }
 
   Widget _buildModelDropdown(AppLocalizations l10n) {
     final models = _selectedVendor?.models ?? [];
-    return Container(
-      width: double.infinity,
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedModel?.id,
-          isExpanded: true,
-          hint: Text(l10n.selectModel, style: const TextStyle(fontSize: 14)),
-          style: TextStyle(fontSize: 14, color: _cs.onSurface),
-          items: models
-              .map((m) => DropdownMenuItem(value: m.id, child: Text(m.id)))
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedModel = models.firstWhere((m) => m.id == value);
-            });
-          },
-        ),
-      ),
+    return StyledDropdown<String>(
+      value: _selectedModel?.id,
+      hintText: l10n.selectModel,
+      items: models
+          .map((m) => StyledDropdownItem(value: m.id, label: m.id))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _selectedModel = models.firstWhere((m) => m.id == value);
+        });
+      },
     );
   }
 

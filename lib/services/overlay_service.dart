@@ -154,6 +154,31 @@ class OverlayService {
     }
   }
 
+  /// 获取开机启动状态
+  static Future<bool> getLaunchAtLogin() async {
+    if (!_supportsNativeOverlay) return false;
+    try {
+      final result = await _channel.invokeMethod<bool>('getLaunchAtLogin');
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 设置开机启动
+  static Future<bool> setLaunchAtLogin(bool enabled) async {
+    if (!_supportsNativeOverlay) return false;
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'setLaunchAtLogin',
+        {'enabled': enabled},
+      );
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// 取消全局快捷键注册
   static Future<void> unregisterHotkey() async {
     if (!_supportsNativeOverlay) return;
