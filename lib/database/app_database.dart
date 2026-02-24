@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:floor/floor.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 import '../models/transcription.dart';
 import 'setting_dao.dart';
@@ -21,6 +24,21 @@ abstract class AppDatabase extends FloorDatabase {
   static AppDatabase? _instance;
   static bool _useInMemory = false;
 
+  static Future<String> _resolveDatabaseNameOrPath() async {
+    if (kIsWeb) return 'voicetype.db';
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+      final appSupportDir = await getApplicationSupportDirectory();
+      final dbDir = Directory(
+        p.join(appSupportDir.path, 'voicetype', 'databases'),
+      );
+      if (!await dbDir.exists()) {
+        await dbDir.create(recursive: true);
+      }
+      return p.join(dbDir.path, 'voicetype.db');
+    }
+    return 'voicetype.db';
+  }
+
   /// 获取数据库单例（首次调用会异步初始化）。
   static Future<AppDatabase> getInstance() async {
     if (_instance != null) return _instance!;
@@ -30,8 +48,9 @@ abstract class AppDatabase extends FloorDatabase {
           .addMigrations(_migrations)
           .build();
     } else {
+      final dbPath = await _resolveDatabaseNameOrPath();
       _instance = await $FloorAppDatabase
-          .databaseBuilder('voicetype.db')
+          .databaseBuilder(dbPath)
           .addMigrations(_migrations)
           .build();
     }
