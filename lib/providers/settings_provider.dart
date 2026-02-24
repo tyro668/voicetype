@@ -52,7 +52,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _aiEnhanceEnabled = false;
   AiEnhanceConfig _aiEnhanceConfig = AiEnhanceConfig.defaultConfig;
   final Map<String, String> _aiEnhanceDefaultModels = {};
-  bool _aiEnhanceUseCustomPrompt = true;
+  bool _aiEnhanceUseCustomPrompt = false;
   String _aiEnhanceDefaultPrompt = AiEnhanceConfig.defaultPrompt;
   int _minRecordingSeconds = 3;
   List<AiModelEntry> _aiModelEntries = [];
