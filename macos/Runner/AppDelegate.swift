@@ -20,6 +20,9 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   var hotKeyRef: EventHotKeyRef?
   var hotKeyHandler: EventHandlerRef?
   var registeredHotKeyCode: UInt32 = UInt32(kVK_F2)
+  var meetingHotKeyRef: EventHotKeyRef?
+  var registeredMeetingKeyCode: UInt32 = UInt32(kVK_F2)
+  var meetingHotKeyEnabled: Bool = false
   var lastActiveApp: NSRunningApplication?
   var previousFnPressedEventTap: Bool = false
   var previousFnPressedNSEvent: Bool = false
@@ -143,6 +146,22 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
         }
       case "unregisterHotkey":
         self?.unregisterHotkey()
+        result(nil)
+      case "registerMeetingHotkey":
+        if let args = call.arguments as? [String: Any],
+           let keyCode = args["keyCode"] as? Int {
+          let modifiers = args["modifiers"] as? Int ?? 0
+          let ok = self?.registerMeetingHotkey(
+            keyCode: UInt32(keyCode),
+            modifiers: UInt32(modifiers)
+          ) ?? false
+          result(ok)
+        } else {
+          self?.log("[hotkey] method registerMeetingHotkey invalid args=\(String(describing: call.arguments))")
+          result(false)
+        }
+      case "unregisterMeetingHotkey":
+        self?.unregisterMeetingHotkey()
         result(nil)
       case "getLaunchAtLogin":
         if #available(macOS 13.0, *) {
@@ -327,129 +346,36 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     // 兜底：NSEvent 全局/本地监听
     globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [self] event in
 
-      if self.hotKeyRef != nil {
-        return
-      }
-      // EventTap 可用时，不使用 NSEvent 兜底通道，避免重复/冲突触发
-      if self.registeredHotKeyCode == kVK_FunctionKey,
-         let tap = self.eventTap,
-         CGEvent.tapIsEnabled(tap: tap) {
-        return
-      }
-      self.captureActiveApplication()
       if self.methodChannel == nil {
         return
       }
+      self.captureActiveApplication()
 
-      let eventType: String
-      if event.type == .keyDown {
-        if UInt32(event.keyCode) != self.registeredHotKeyCode {
-          return
-        }
-        eventType = "down"
-      } else if event.type == .keyUp {
-        if UInt32(event.keyCode) != self.registeredHotKeyCode {
-          return
-        }
-        eventType = "up"
-      } else if event.type == .flagsChanged {
-        // Fn 键特殊处理：通过 function 标志位变化检测
-        if self.registeredHotKeyCode == kVK_FunctionKey {
-          let fnPressed = event.modifierFlags.contains(.function)
-          if UInt32(event.keyCode) != kVK_FunctionKey {
-            return
-          }
-          let now = CFAbsoluteTimeGetCurrent()
-          if fnPressed == self.previousFnPressedNSEvent {
-            if (now - self.lastFnDownTime) > 0.5 {
-              self.previousFnPressedNSEvent = !fnPressed
-            } else {
-              return
-            }
-          }
-          self.previousFnPressedNSEvent = fnPressed
-          if fnPressed {
-            self.lastFnDownTime = now
-          }
-          eventType = fnPressed ? "down" : "up"
-        } else if UInt32(event.keyCode) == self.registeredHotKeyCode {
-          eventType = event.modifierFlags.contains(.function) ? "down" : "up"
-        } else {
-          return
-        }
-      } else {
-        return
+      if let (emitKeyCode, eventType) = self.matchNSEvent(event) {
+        self.emitGlobalKeyEvent(
+          keyCode: emitKeyCode,
+          type: eventType,
+          isRepeat: event.type == .flagsChanged ? false : event.isARepeat,
+          source: "nsevent-global"
+        )
       }
-
-      self.emitGlobalKeyEvent(
-        keyCode: self.registeredHotKeyCode,
-        type: eventType,
-        isRepeat: event.type == .flagsChanged ? false : event.isARepeat,
-        source: "nsevent-global"
-      )
     }
 
     localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [self] event in
 
-      if self.hotKeyRef != nil {
-        return event
-      }
-      // EventTap 可用时，不使用 NSEvent 兜底通道，避免重复/冲突触发
-      if self.registeredHotKeyCode == kVK_FunctionKey,
-         let tap = self.eventTap,
-         CGEvent.tapIsEnabled(tap: tap) {
-        return event
-      }
-      self.captureActiveApplication()
       if self.methodChannel == nil {
         return event
       }
+      self.captureActiveApplication()
 
-      let eventType: String
-      if event.type == .keyDown {
-        if UInt32(event.keyCode) != self.registeredHotKeyCode {
-          return event
-        }
-        eventType = "down"
-      } else if event.type == .keyUp {
-        if UInt32(event.keyCode) != self.registeredHotKeyCode {
-          return event
-        }
-        eventType = "up"
-      } else if event.type == .flagsChanged {
-        if self.registeredHotKeyCode == kVK_FunctionKey {
-          let fnPressed = event.modifierFlags.contains(.function)
-          if UInt32(event.keyCode) != kVK_FunctionKey {
-            return event
-          }
-          let now = CFAbsoluteTimeGetCurrent()
-          if fnPressed == self.previousFnPressedNSEvent {
-            if (now - self.lastFnDownTime) > 0.5 {
-              self.previousFnPressedNSEvent = !fnPressed
-            } else {
-              return event
-            }
-          }
-          self.previousFnPressedNSEvent = fnPressed
-          if fnPressed {
-            self.lastFnDownTime = now
-          }
-          eventType = fnPressed ? "down" : "up"
-        } else if UInt32(event.keyCode) == self.registeredHotKeyCode {
-          eventType = event.modifierFlags.contains(.function) ? "down" : "up"
-        } else {
-          return event
-        }
-      } else {
-        return event
+      if let (emitKeyCode, eventType) = self.matchNSEvent(event) {
+        self.emitGlobalKeyEvent(
+          keyCode: emitKeyCode,
+          type: eventType,
+          isRepeat: event.type == .flagsChanged ? false : event.isARepeat,
+          source: "nsevent-local"
+        )
       }
-
-      self.emitGlobalKeyEvent(
-        keyCode: self.registeredHotKeyCode,
-        type: eventType,
-        isRepeat: event.type == .flagsChanged ? false : event.isARepeat,
-        source: "nsevent-local"
-      )
       return event
     }
 
@@ -481,10 +407,23 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           let kind = GetEventKind(event)
           let type = kind == UInt32(kEventHotKeyPressed) ? "down" : "up"
 
-          delegate.log("[hotkey] Carbon handler fired type=\(type) keyCode=\(delegate.registeredHotKeyCode)")
+          // Extract hotkey ID to distinguish voice vs meeting hotkey
+          var hotKeyID = EventHotKeyID()
+          GetEventParameter(event, EventParamName(kEventParamDirectObject),
+                           EventParamType(typeEventHotKeyID), nil,
+                           MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
+
+          let keyCode: UInt32
+          if hotKeyID.id == 2 {
+            keyCode = delegate.registeredMeetingKeyCode
+          } else {
+            keyCode = delegate.registeredHotKeyCode
+          }
+
+          delegate.log("[hotkey] Carbon handler fired type=\(type) keyCode=\(keyCode) hotKeyId=\(hotKeyID.id)")
 
           delegate.emitGlobalKeyEvent(
-            keyCode: delegate.registeredHotKeyCode,
+            keyCode: keyCode,
             type: type,
             isRepeat: false,
             source: "carbon"
@@ -573,6 +512,121 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     previousFnPressedNSEvent = false
   }
 
+  @discardableResult
+  func registerMeetingHotkey(keyCode: UInt32, modifiers: UInt32) -> Bool {
+    registeredMeetingKeyCode = keyCode
+    meetingHotKeyEnabled = true
+
+    // Fn 键不走 Carbon
+    if keyCode == kVK_FunctionKey {
+      if let meetingHotKeyRef = meetingHotKeyRef {
+        UnregisterEventHotKey(meetingHotKeyRef)
+        self.meetingHotKeyRef = nil
+      }
+      let tapOK = setupEventTap(preferHIDForFn: true, recreateIfNeeded: true)
+      setupNSEventFallbackMonitors()
+      return tapOK || (globalMonitor != nil || localMonitor != nil)
+    }
+
+    if let meetingHotKeyRef = meetingHotKeyRef {
+      UnregisterEventHotKey(meetingHotKeyRef)
+      self.meetingHotKeyRef = nil
+    }
+
+    let hotKeyID = EventHotKeyID(signature: fourCharCode("VTYM"), id: 2)
+    let status = RegisterEventHotKey(
+      keyCode,
+      modifiers,
+      hotKeyID,
+      GetEventDispatcherTarget(),
+      0,
+      &meetingHotKeyRef
+    )
+
+    if status != noErr {
+      log("[hotkey] failed to register Carbon meeting hotkey: \(status)")
+      let fallbackOK = setupEventTap()
+      setupNSEventFallbackMonitors()
+      return fallbackOK || (globalMonitor != nil || localMonitor != nil)
+    }
+
+    log("[hotkey] registered Carbon meeting hotkey keyCode=\(keyCode) modifiers=\(modifiers)")
+    return true
+  }
+
+  func unregisterMeetingHotkey() {
+    meetingHotKeyEnabled = false
+    if let meetingHotKeyRef = meetingHotKeyRef {
+      UnregisterEventHotKey(meetingHotKeyRef)
+      self.meetingHotKeyRef = nil
+    }
+  }
+
+  /// Helper: match NSEvent against registered hotkeys, return (keyCode, eventType) or nil
+  func matchNSEvent(_ event: NSEvent) -> (UInt32, String)? {
+    let kc = UInt32(event.keyCode)
+
+    // Determine which hotkeys should use NSEvent fallback (not handled by Carbon/EventTap)
+    let voiceUsesFallback: Bool = {
+      if hotKeyRef != nil { return false }
+      if registeredHotKeyCode == kVK_FunctionKey,
+         let tap = eventTap,
+         CGEvent.tapIsEnabled(tap: tap) { return false }
+      return true
+    }()
+    let meetingUsesFallback: Bool = {
+      if !meetingHotKeyEnabled { return false }
+      if meetingHotKeyRef != nil { return false }
+      if registeredMeetingKeyCode == kVK_FunctionKey,
+         let tap = eventTap,
+         CGEvent.tapIsEnabled(tap: tap) { return false }
+      return true
+    }()
+
+    let matchesVoice = voiceUsesFallback && kc == registeredHotKeyCode
+    let matchesMeeting = meetingUsesFallback && kc == registeredMeetingKeyCode
+
+    if event.type == .keyDown {
+      if matchesVoice { return (registeredHotKeyCode, "down") }
+      if matchesMeeting { return (registeredMeetingKeyCode, "down") }
+      return nil
+    } else if event.type == .keyUp {
+      if matchesVoice { return (registeredHotKeyCode, "up") }
+      if matchesMeeting { return (registeredMeetingKeyCode, "up") }
+      return nil
+    } else if event.type == .flagsChanged {
+      // Fn key special handling
+      let voiceIsFn = voiceUsesFallback && registeredHotKeyCode == kVK_FunctionKey
+      let meetingIsFn = meetingUsesFallback && registeredMeetingKeyCode == kVK_FunctionKey
+      if (voiceIsFn || meetingIsFn) && kc == kVK_FunctionKey {
+        let fnPressed = event.modifierFlags.contains(.function)
+        let now = CFAbsoluteTimeGetCurrent()
+        if fnPressed == previousFnPressedNSEvent {
+          if (now - lastFnDownTime) > 0.5 {
+            previousFnPressedNSEvent = !fnPressed
+          } else {
+            return nil
+          }
+        }
+        previousFnPressedNSEvent = fnPressed
+        if fnPressed { lastFnDownTime = now }
+        let emitKey = voiceIsFn ? registeredHotKeyCode : registeredMeetingKeyCode
+        return (emitKey, fnPressed ? "down" : "up")
+      }
+      // Non-Fn flagsChanged
+      if matchesVoice {
+        let fnPressed = event.modifierFlags.contains(.function)
+        return (registeredHotKeyCode, fnPressed ? "down" : "up")
+      }
+      if matchesMeeting {
+        let fnPressed = event.modifierFlags.contains(.function)
+        return (registeredMeetingKeyCode, fnPressed ? "down" : "up")
+      }
+      return nil
+    }
+    return nil
+  }
+
   func fourCharCode(_ string: String) -> OSType {
     var result: OSType = 0
     for char in string.utf8 {
@@ -631,34 +685,48 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       }
 
       // Carbon 热键可用时，不再通过 EventTap 转发，避免重复触发
-      if delegate.hotKeyRef != nil {
-        return Unmanaged.passUnretained(event)
-      }
+      // 但如果会议热键通过 Carbon 注册，仍需检查会议热键
+      let voiceUsesCarbon = delegate.hotKeyRef != nil
+      let meetingUsesCarbon = delegate.meetingHotKeyRef != nil
 
       delegate.captureActiveApplication()
       let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
       let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+
+      // Determine which registered hotkey matches
+      let matchesVoice = !voiceUsesCarbon && UInt32(keyCode) == delegate.registeredHotKeyCode
+      let matchesMeeting = !meetingUsesCarbon && delegate.meetingHotKeyEnabled && UInt32(keyCode) == delegate.registeredMeetingKeyCode
+
+      if !matchesVoice && !matchesMeeting {
+        // Check Fn key special case
+        if UInt32(keyCode) == kVK_FunctionKey && type == .flagsChanged {
+          let voiceIsFn = !voiceUsesCarbon && delegate.registeredHotKeyCode == kVK_FunctionKey
+          let meetingIsFn = !meetingUsesCarbon && delegate.meetingHotKeyEnabled && delegate.registeredMeetingKeyCode == kVK_FunctionKey
+          if !voiceIsFn && !meetingIsFn {
+            return Unmanaged.passUnretained(event)
+          }
+          // Fall through to flagsChanged handling below
+        } else {
+          return Unmanaged.passUnretained(event)
+        }
+      }
+
+      let emitKeyCode: UInt32
       let eventType: String
       if type == .keyDown {
-        if UInt32(keyCode) != delegate.registeredHotKeyCode {
-          return Unmanaged.passUnretained(event)
-        }
+        emitKeyCode = matchesVoice ? delegate.registeredHotKeyCode : delegate.registeredMeetingKeyCode
         eventType = "down"
       } else if type == .keyUp {
-        if UInt32(keyCode) != delegate.registeredHotKeyCode {
-          return Unmanaged.passUnretained(event)
-        }
+        emitKeyCode = matchesVoice ? delegate.registeredHotKeyCode : delegate.registeredMeetingKeyCode
         eventType = "up"
       } else if type == .flagsChanged {
         // Fn 键特殊处理：通过 maskSecondaryFn 标志位变化检测按下/释放
-        if delegate.registeredHotKeyCode == kVK_FunctionKey {
+        let voiceIsFn = !voiceUsesCarbon && delegate.registeredHotKeyCode == kVK_FunctionKey
+        let meetingIsFn = !meetingUsesCarbon && delegate.meetingHotKeyEnabled && delegate.registeredMeetingKeyCode == kVK_FunctionKey
+        if (voiceIsFn || meetingIsFn) && UInt32(keyCode) == kVK_FunctionKey {
           let fnPressed = event.flags.contains(.maskSecondaryFn)
-          if UInt32(keyCode) != kVK_FunctionKey {
-            return Unmanaged.passUnretained(event)
-          }
           let now = CFAbsoluteTimeGetCurrent()
           if fnPressed == delegate.previousFnPressedEventTap {
-            // 状态相同但距离上次 down 超过 0.5 秒，可能丢失了中间事件，强制重置
             if (now - delegate.lastFnDownTime) > 0.5 {
               delegate.previousFnPressedEventTap = !fnPressed
               delegate.log("[hotkey] EventTap Fn state reset (stale), fnPressed=\(fnPressed)")
@@ -670,9 +738,12 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           if fnPressed {
             delegate.lastFnDownTime = now
           }
+          // Emit for the hotkey that is set to Fn (prefer voice if both are Fn)
+          emitKeyCode = voiceIsFn ? delegate.registeredHotKeyCode : delegate.registeredMeetingKeyCode
           eventType = fnPressed ? "down" : "up"
-        } else if UInt32(keyCode) == delegate.registeredHotKeyCode {
+        } else if matchesVoice || matchesMeeting {
           let fnPressed = event.flags.contains(.maskSecondaryFn)
+          emitKeyCode = matchesVoice ? delegate.registeredHotKeyCode : delegate.registeredMeetingKeyCode
           eventType = fnPressed ? "down" : "up"
         } else {
           return Unmanaged.passUnretained(event)
@@ -682,7 +753,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       }
 
       delegate.emitGlobalKeyEvent(
-        keyCode: delegate.registeredHotKeyCode,
+        keyCode: emitKeyCode,
         type: eventType,
         isRepeat: type == .flagsChanged ? false : isRepeat,
         source: "event-tap"

@@ -6,6 +6,7 @@ import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
 import '../services/meeting_recording_service.dart';
 import '../services/meeting_export_service.dart';
+import '../services/overlay_service.dart';
 import '../services/log_service.dart';
 
 /// 会议记录状态管理
@@ -32,6 +33,14 @@ class MeetingProvider extends ChangeNotifier {
   String _error = '';
   String get error => _error;
 
+  /// Overlay 状态标签（国际化）
+  String _startingLabel = '准备中';
+  String _recordingLabel = '会议录音中';
+  String _processingLabel = '处理中';
+
+  /// 振幅监听
+  StreamSubscription<double>? _amplitudeSub;
+
   /// 事件流订阅
   StreamSubscription<MeetingSegment>? _segmentReadySub;
   StreamSubscription<MeetingSegment>? _segmentUpdatedSub;
@@ -40,6 +49,29 @@ class MeetingProvider extends ChangeNotifier {
 
   /// 音频波形流
   Stream<double> get amplitudeStream => _recordingService.amplitudeStream;
+
+  /// 设置 Overlay 状态标签（国际化）
+  void setOverlayStateLabels({
+    required String starting,
+    required String recording,
+    required String processing,
+  }) {
+    _startingLabel = starting;
+    _recordingLabel = recording;
+    _processingLabel = processing;
+  }
+
+  String get _durationStr {
+    final m = recordingDuration.inMinutes
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    final s = recordingDuration.inSeconds
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    return '$m:$s';
+  }
 
   MeetingProvider() {
     _loadMeetings();
@@ -97,6 +129,14 @@ class MeetingProvider extends ChangeNotifier {
     _currentSegments = [];
 
     try {
+      // 显示 overlay — starting 状态
+      unawaited(OverlayService.showOverlay(
+        state: 'starting',
+        duration: '00:00',
+        level: 0.0,
+        stateLabel: _startingLabel,
+      ));
+
       final meeting = await _recordingService.startMeeting(
         title: title,
         sttConfig: sttConfig,
@@ -105,10 +145,30 @@ class MeetingProvider extends ChangeNotifier {
         segmentSeconds: segmentSeconds,
       );
 
+      // 切换到 recording 状态
+      unawaited(OverlayService.showOverlay(
+        state: 'recording',
+        duration: '00:00',
+        level: 0.0,
+        stateLabel: _recordingLabel,
+      ));
+
+      // 监听音频振幅，实时更新 overlay
+      _amplitudeSub?.cancel();
+      _amplitudeSub = _recordingService.amplitudeStream.listen((level) {
+        OverlayService.updateOverlay(
+          state: 'recording',
+          duration: _durationStr,
+          level: level,
+          stateLabel: _recordingLabel,
+        );
+      });
+
       await _loadMeetings();
       notifyListeners();
       return meeting;
     } catch (e) {
+      unawaited(OverlayService.hideOverlay());
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -119,6 +179,10 @@ class MeetingProvider extends ChangeNotifier {
   Future<void> pauseMeeting() async {
     try {
       await _recordingService.pause();
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+      // 暂停时隐藏 overlay
+      unawaited(OverlayService.hideOverlay());
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -129,6 +193,23 @@ class MeetingProvider extends ChangeNotifier {
   Future<void> resumeMeeting() async {
     try {
       await _recordingService.resume();
+      // 恢复时重新显示 overlay
+      unawaited(OverlayService.showOverlay(
+        state: 'recording',
+        duration: _durationStr,
+        level: 0.0,
+        stateLabel: _recordingLabel,
+      ));
+      // 重新监听振幅
+      _amplitudeSub?.cancel();
+      _amplitudeSub = _recordingService.amplitudeStream.listen((level) {
+        OverlayService.updateOverlay(
+          state: 'recording',
+          duration: _durationStr,
+          level: level,
+          stateLabel: _recordingLabel,
+        );
+      });
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -138,10 +219,24 @@ class MeetingProvider extends ChangeNotifier {
   /// 结束录音
   Future<MeetingRecord> stopMeeting() async {
     try {
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+      // 切换到处理中状态
+      unawaited(OverlayService.showOverlay(
+        state: 'transcribing',
+        duration: _durationStr,
+        level: 0.0,
+        stateLabel: _processingLabel,
+      ));
+
       final meeting = await _recordingService.stopMeeting();
+
+      // 处理完成，隐藏 overlay
+      unawaited(OverlayService.hideOverlay());
       await _loadMeetings();
       return meeting;
     } catch (e) {
+      unawaited(OverlayService.hideOverlay());
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -151,11 +246,15 @@ class MeetingProvider extends ChangeNotifier {
   /// 取消录音
   Future<void> cancelMeeting() async {
     try {
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
       await _recordingService.cancelMeeting();
+      unawaited(OverlayService.hideOverlay());
       _currentSegments = [];
       await _loadMeetings();
       notifyListeners();
     } catch (e) {
+      unawaited(OverlayService.hideOverlay());
       _error = e.toString();
       notifyListeners();
     }
@@ -243,6 +342,7 @@ class MeetingProvider extends ChangeNotifier {
     _segmentUpdatedSub?.cancel();
     _statusSub?.cancel();
     _durationSub?.cancel();
+    _amplitudeSub?.cancel();
     _recordingService.dispose();
     super.dispose();
   }

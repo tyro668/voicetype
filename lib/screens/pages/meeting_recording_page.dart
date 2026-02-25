@@ -164,8 +164,6 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage> {
       ),
       body: Column(
         children: [
-          // 状态栏
-          _buildStatusBar(provider, l10n),
           // 分段内容列表
           Expanded(
             child: _isStarting
@@ -185,51 +183,6 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage> {
           ),
           // 底部控制栏
           _buildControlBar(provider, l10n),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBar(MeetingProvider provider, AppLocalizations l10n) {
-    Color barColor;
-    IconData barIcon;
-    String barText;
-
-    if (provider.isPaused) {
-      barColor = Colors.orange;
-      barIcon = Icons.pause_circle_outlined;
-      barText = l10n.meetingPaused;
-    } else if (provider.status == 'processing') {
-      barColor = Colors.blue;
-      barIcon = Icons.hourglass_top;
-      barText = l10n.meetingProcessing;
-    } else {
-      barColor = Colors.red;
-      barIcon = Icons.fiber_manual_record;
-      barText = l10n.meetingRecording;
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      color: barColor.withValues(alpha: 0.08),
-      child: Row(
-        children: [
-          Icon(barIcon, size: 14, color: barColor),
-          const SizedBox(width: 6),
-          Text(
-            barText,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: barColor,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '${l10n.meetingSegments}: ${provider.currentSegments.length}',
-            style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
-          ),
         ],
       ),
     );

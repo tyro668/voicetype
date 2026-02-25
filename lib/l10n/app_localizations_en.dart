@@ -65,6 +65,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure the hotkey for starting and stopping voice dictation.';
 
   @override
+  String get meetingHotkey => 'Meeting Recording Hotkey';
+
+  @override
+  String get meetingHotkeyDescription =>
+      'Configure the hotkey for starting and ending meeting recording. Press once to start, press again to end.';
+
+  @override
   String get pressKeyToSet => 'Press a key to set as hotkey';
 
   @override
@@ -901,4 +908,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meetingNotFound => 'Meeting record not found';
+
+  @override
+  String get meetingOverlayStarting => 'Meeting starting';
+
+  @override
+  String get meetingOverlayRecording => 'Meeting recording';
+
+  @override
+  String get meetingOverlayPaused => 'Meeting paused';
+
+  @override
+  String get meetingOverlayProcessing => 'Meeting processing';
 }

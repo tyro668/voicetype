@@ -206,6 +206,18 @@ abstract class AppLocalizations {
   /// **'Configure the hotkey for starting and stopping voice dictation.'**
   String get dictationHotkeyDescription;
 
+  /// No description provided for @meetingHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Recording Hotkey'**
+  String get meetingHotkey;
+
+  /// No description provided for @meetingHotkeyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure the hotkey for starting and ending meeting recording. Press once to start, press again to end.'**
+  String get meetingHotkeyDescription;
+
   /// No description provided for @pressKeyToSet.
   ///
   /// In en, this message translates to:
@@ -1777,6 +1789,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Meeting record not found'**
   String get meetingNotFound;
+
+  /// No description provided for @meetingOverlayStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting starting'**
+  String get meetingOverlayStarting;
+
+  /// No description provided for @meetingOverlayRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting recording'**
+  String get meetingOverlayRecording;
+
+  /// No description provided for @meetingOverlayPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting paused'**
+  String get meetingOverlayPaused;
+
+  /// No description provided for @meetingOverlayProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting processing'**
+  String get meetingOverlayProcessing;
 }
 
 class _AppLocalizationsDelegate

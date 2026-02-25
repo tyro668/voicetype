@@ -16,6 +16,7 @@ import '../services/network_client_service.dart';
 class SettingsProvider extends ChangeNotifier {
   static const _configKey = 'stt_provider_config';
   static const _hotkeyKey = 'hotkey';
+  static const _meetingHotkeyKey = 'meeting_hotkey';
   static const _activationModeKey = 'activation_mode';
   static const _aiEnhanceEnabledKey = 'ai_enhance_enabled';
   static const _aiEnhanceConfigKey = 'ai_enhance_config';
@@ -50,8 +51,16 @@ class SettingsProvider extends ChangeNotifier {
     return LogicalKeyboardKey.fn;
   }
 
+  static LogicalKeyboardKey get defaultMeetingHotkey {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return LogicalKeyboardKey.f3;
+    }
+    return LogicalKeyboardKey.f2;
+  }
+
   // 快捷键配置
   LogicalKeyboardKey _hotkey = defaultHotkey;
+  LogicalKeyboardKey _meetingHotkey = defaultMeetingHotkey;
   ActivationMode _activationMode = ActivationMode.tapToTalk;
 
   /// 每个服务商独立存储的 API Key（按 name 索引）
@@ -85,6 +94,7 @@ class SettingsProvider extends ChangeNotifier {
   List<SttProviderConfig> get sttPresets => _sttPresets;
   List<AiVendorPreset> get aiPresets => _aiPresets;
   LogicalKeyboardKey get hotkey => _hotkey;
+  LogicalKeyboardKey get meetingHotkey => _meetingHotkey;
   ActivationMode get activationMode => _activationMode;
   bool get aiEnhanceEnabled => _aiEnhanceEnabled;
   AiEnhanceConfig get aiEnhanceConfig => _aiEnhanceConfig;
@@ -239,6 +249,17 @@ class SettingsProvider extends ChangeNotifier {
         _hotkey == LogicalKeyboardKey.fn) {
       _hotkey = LogicalKeyboardKey.f2;
       await _saveSetting(_hotkeyKey, _hotkey.keyId.toString());
+    }
+
+    // 加载会议快捷键
+    final meetingHotkeyStr = await db.getSetting(_meetingHotkeyKey);
+    if (meetingHotkeyStr != null) {
+      _meetingHotkey = LogicalKeyboardKey(int.parse(meetingHotkeyStr));
+    }
+    if (defaultTargetPlatform == TargetPlatform.windows &&
+        _meetingHotkey == LogicalKeyboardKey.fn) {
+      _meetingHotkey = LogicalKeyboardKey.f3;
+      await _saveSetting(_meetingHotkeyKey, _meetingHotkey.keyId.toString());
     }
 
     // 加载激活模式
@@ -480,6 +501,18 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setMeetingHotkey(LogicalKeyboardKey key) async {
+    _meetingHotkey = key;
+    await _saveSetting(_meetingHotkeyKey, key.keyId.toString());
+    notifyListeners();
+  }
+
+  Future<void> resetMeetingHotkey() async {
+    _meetingHotkey = defaultMeetingHotkey;
+    await AppDatabase.instance.removeSetting(_meetingHotkeyKey);
+    notifyListeners();
+  }
+
   /// 设置激活模式
   Future<void> setActivationMode(ActivationMode mode) async {
     _activationMode = mode;
@@ -706,6 +739,13 @@ class SettingsProvider extends ChangeNotifier {
     return _hotkey.keyLabel.isNotEmpty
         ? _hotkey.keyLabel
         : _hotkey.debugName ?? 'Unknown';
+  }
+
+  /// 获取会议快捷键的显示名称
+  String get meetingHotkeyLabel {
+    return _meetingHotkey.keyLabel.isNotEmpty
+        ? _meetingHotkey.keyLabel
+        : _meetingHotkey.debugName ?? 'Unknown';
   }
 
   /// 设置语言

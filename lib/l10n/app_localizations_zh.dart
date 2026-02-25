@@ -63,6 +63,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dictationHotkeyDescription => '配置用于开始和停止语音听写的按键。';
 
   @override
+  String get meetingHotkey => '会议录音快捷键';
+
+  @override
+  String get meetingHotkeyDescription => '配置用于开始和结束会议录音的按键。按一次开始录音，再按一次结束。';
+
+  @override
   String get pressKeyToSet => '按下要设置为快捷键的按键';
 
   @override
@@ -866,4 +872,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get meetingNotFound => '会议记录不存在';
+
+  @override
+  String get meetingOverlayStarting => '会议启动中';
+
+  @override
+  String get meetingOverlayRecording => '会议录音中';
+
+  @override
+  String get meetingOverlayPaused => '会议暂停';
+
+  @override
+  String get meetingOverlayProcessing => '会议处理中';
 }

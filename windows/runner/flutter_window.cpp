@@ -275,6 +275,28 @@ void FlutterWindow::HandleMethodCall(
     return;
   }
 
+  if (method == "registerMeetingHotkey") {
+    int key_code = VK_F3;
+    if (args != nullptr) {
+      if (const auto key32 = GetMapValue<int32_t>(*args, "keyCode");
+          key32.has_value()) {
+        key_code = *key32;
+      } else if (const auto key64 = GetMapValue<int64_t>(*args, "keyCode");
+                 key64.has_value()) {
+        key_code = static_cast<int>(*key64);
+      }
+    }
+    const bool ok = RegisterMeetingHotkey(key_code);
+    result->Success(flutter::EncodableValue(ok));
+    return;
+  }
+
+  if (method == "unregisterMeetingHotkey") {
+    UnregisterMeetingHotkey();
+    result->Success();
+    return;
+  }
+
   if (method == "getLaunchAtLogin") {
     HKEY hKey;
     bool enabled = false;
@@ -353,42 +375,74 @@ void FlutterWindow::HandleMethodCall(
 }
 
 bool FlutterWindow::RegisterGlobalHotkey(int key_code) {
-  UnregisterGlobalHotkey();
-
   hotkey_key_code_ = key_code;
   hotkey_is_down_ = false;
   hotkey_enabled_ = true;
-  keyboard_hook_ = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc,
-                                     GetModuleHandle(nullptr), 0);
-  if (keyboard_hook_ == nullptr) {
-    hotkey_enabled_ = false;
-    return false;
-  }
-  return true;
+  EnsureKeyboardHook();
+  return keyboard_hook_ != nullptr;
 }
 
 void FlutterWindow::UnregisterGlobalHotkey() {
   hotkey_enabled_ = false;
   hotkey_is_down_ = false;
-  if (keyboard_hook_ != nullptr) {
-    UnhookWindowsHookEx(keyboard_hook_);
-    keyboard_hook_ = nullptr;
+  RemoveKeyboardHookIfUnused();
+}
+
+bool FlutterWindow::RegisterMeetingHotkey(int key_code) {
+  meeting_hotkey_key_code_ = key_code;
+  meeting_hotkey_is_down_ = false;
+  meeting_hotkey_enabled_ = true;
+  EnsureKeyboardHook();
+  return keyboard_hook_ != nullptr;
+}
+
+void FlutterWindow::UnregisterMeetingHotkey() {
+  meeting_hotkey_enabled_ = false;
+  meeting_hotkey_is_down_ = false;
+  RemoveKeyboardHookIfUnused();
+}
+
+void FlutterWindow::EnsureKeyboardHook() {
+  if (keyboard_hook_ != nullptr) return;
+  keyboard_hook_ = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc,
+                                     GetModuleHandle(nullptr), 0);
+}
+
+void FlutterWindow::RemoveKeyboardHookIfUnused() {
+  if (!hotkey_enabled_ && !meeting_hotkey_enabled_) {
+    if (keyboard_hook_ != nullptr) {
+      UnhookWindowsHookEx(keyboard_hook_);
+      keyboard_hook_ = nullptr;
+    }
   }
 }
 
 LRESULT CALLBACK FlutterWindow::LowLevelKeyboardProc(int n_code, WPARAM wparam,
                                                       LPARAM lparam) {
-  if (n_code == HC_ACTION && instance_ != nullptr &&
-      instance_->hotkey_enabled_ && lparam != 0) {
+  if (n_code == HC_ACTION && instance_ != nullptr && lparam != 0) {
     const auto* keyboard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lparam);
-    if (keyboard->vkCode == static_cast<DWORD>(instance_->hotkey_key_code_)) {
-      const bool is_key_down = (wparam == WM_KEYDOWN || wparam == WM_SYSKEYDOWN);
-      const bool is_key_up = (wparam == WM_KEYUP || wparam == WM_SYSKEYUP);
-      if (is_key_down || is_key_up) {
+    const DWORD vk = keyboard->vkCode;
+    const bool is_key_down = (wparam == WM_KEYDOWN || wparam == WM_SYSKEYDOWN);
+    const bool is_key_up = (wparam == WM_KEYUP || wparam == WM_SYSKEYUP);
+
+    if (is_key_down || is_key_up) {
+      // Check voice input hotkey
+      if (instance_->hotkey_enabled_ &&
+          vk == static_cast<DWORD>(instance_->hotkey_key_code_)) {
         const bool is_repeat = is_key_down && instance_->hotkey_is_down_;
         instance_->hotkey_is_down_ = is_key_down;
         instance_->EmitGlobalKeyEvent(
             instance_->hotkey_key_code_, is_key_down ? "down" : "up",
+            is_repeat);
+      }
+
+      // Check meeting hotkey
+      if (instance_->meeting_hotkey_enabled_ &&
+          vk == static_cast<DWORD>(instance_->meeting_hotkey_key_code_)) {
+        const bool is_repeat = is_key_down && instance_->meeting_hotkey_is_down_;
+        instance_->meeting_hotkey_is_down_ = is_key_down;
+        instance_->EmitGlobalKeyEvent(
+            instance_->meeting_hotkey_key_code_, is_key_down ? "down" : "up",
             is_repeat);
       }
     }

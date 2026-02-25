@@ -20,6 +20,8 @@
 
   "dictationHotkey": "听写快捷键",
   "dictationHotkeyDescription": "配置用于开始和停止语音听写的按键。",
+  "meetingHotkey": "会议录音快捷键",
+  "meetingHotkeyDescription": "配置用于开始和结束会议录音的按键。按一次开始录音，再按一次结束。",
   "pressKeyToSet": "按下要设置为快捷键的按键",
   "clickToChangeHotkey": "点击更改快捷键",
   "resetToDefault": "恢复默认",
@@ -340,5 +342,9 @@
   "meetingExportText": "导出为文本",
   "meetingExportMarkdown": "导出为 Markdown",
   "meetingExported": "已导出到剪贴板",
-  "meetingNotFound": "会议记录不存在"
+  "meetingNotFound": "会议记录不存在",
+  "meetingOverlayStarting": "会议启动中",
+  "meetingOverlayRecording": "会议录音中",
+  "meetingOverlayPaused": "会议暂停",
+  "meetingOverlayProcessing": "会议处理中"
 }

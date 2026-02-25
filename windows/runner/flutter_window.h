@@ -42,6 +42,10 @@ class FlutterWindow : public Win32Window {
 
     bool RegisterGlobalHotkey(int key_code);
     void UnregisterGlobalHotkey();
+    bool RegisterMeetingHotkey(int key_code);
+    void UnregisterMeetingHotkey();
+    void EnsureKeyboardHook();
+    void RemoveKeyboardHookIfUnused();
     static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM wparam,
                                                  LPARAM lparam);
     void EmitGlobalKeyEvent(int key_code, const std::string& type,
@@ -79,6 +83,10 @@ class FlutterWindow : public Win32Window {
     int hotkey_key_code_ = VK_F2;
     bool hotkey_enabled_ = false;
     bool hotkey_is_down_ = false;
+
+    int meeting_hotkey_key_code_ = VK_F3;
+    bool meeting_hotkey_enabled_ = false;
+    bool meeting_hotkey_is_down_ = false;
 
     bool tray_icon_initialized_ = false;
     bool exiting_from_tray_ = false;

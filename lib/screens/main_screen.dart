@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../models/provider_config.dart';
 import '../providers/recording_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/meeting_provider.dart';
 import '../services/log_service.dart';
 import '../services/overlay_service.dart';
 import 'pages/general_page.dart';
@@ -73,6 +74,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _didShowAccessibilityGuide = false;
   bool _didShowInputMonitoringGuide = false;
   LogicalKeyboardKey? _lastRegisteredHotkey;
+  LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
 
   List<_NavItem> _getNavItems(AppLocalizations l10n) => [
     _NavItem(icon: Icons.settings_outlined, label: l10n.generalSettings),
@@ -97,6 +99,7 @@ class _MainScreenState extends State<MainScreen> {
       _settingsProvider = settings;
       _settingsListener = () {
         _registerCurrentHotkey(settings);
+        _registerMeetingHotkey(settings);
         _ensureInputMonitoringPermissionIfNeeded(settings.hotkey);
       };
       settings.addListener(_settingsListener);
@@ -119,6 +122,19 @@ class _MainScreenState extends State<MainScreen> {
       if (settings.hotkey == LogicalKeyboardKey.fn) {
         _showInputMonitoringGuide();
       }
+    });
+  }
+
+  void _registerMeetingHotkey(SettingsProvider settings) {
+    if (settings.meetingHotkey == _lastRegisteredMeetingHotkey) return;
+    _lastRegisteredMeetingHotkey = settings.meetingHotkey;
+
+    final keyCode = _platformKeyCodeFor(settings.meetingHotkey);
+    if (keyCode == null) return;
+
+    LogService.info('HOTKEY', 'registering meeting hotkey keyCode=$keyCode');
+    OverlayService.registerMeetingHotkey(keyCode: keyCode).then((ok) {
+      LogService.info('HOTKEY', 'registerMeetingHotkey result=$ok');
     });
   }
 
@@ -279,11 +295,19 @@ class _MainScreenState extends State<MainScreen> {
     if (isRepeat) return;
 
     final settings = context.read<SettingsProvider>();
-    final recording = context.read<RecordingProvider>();
-
     final key = _platformKeyFromCode(keyCode);
     if (key == null) return;
+
+    // 会议快捷键处理
+    if (key == settings.meetingHotkey) {
+      _handleMeetingHotkey(type, settings);
+      return;
+    }
+
+    // 语音输入快捷键处理
     if (key != settings.hotkey) return;
+
+    final recording = context.read<RecordingProvider>();
 
     LogService.info('HOTKEY', 'hotkey type=$type state=${recording.state} busy=${recording.busy} mode=${settings.activationMode}');
 
@@ -331,6 +355,29 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  void _handleMeetingHotkey(String type, SettingsProvider settings) {
+    if (type != 'down') return;
+
+    final meeting = context.read<MeetingProvider>();
+    LogService.info('HOTKEY', 'meeting hotkey: isRecording=${meeting.isRecording}');
+
+    if (meeting.isRecording) {
+      // 正在录制 → 结束会议
+      meeting.stopMeeting();
+    } else {
+      // 未录制 → 开始新会议
+      if (!_hasValidSttModel(settings)) {
+        _promptSttConfig();
+        return;
+      }
+      meeting.startMeeting(
+        sttConfig: settings.config,
+        aiConfig: settings.effectiveAiEnhanceConfig,
+        aiEnhanceEnabled: settings.aiEnhanceEnabled,
+      );
+    }
+  }
+
   void _startVadIfEnabled(SettingsProvider settings, RecordingProvider recording) {
     if (!settings.vadEnabled) return;
     recording.onVadTriggered = () {
@@ -360,6 +407,11 @@ class _MainScreenState extends State<MainScreen> {
       transcribing: l10n.overlayTranscribing,
       enhancing: l10n.overlayEnhancing,
       transcribeFailed: l10n.overlayTranscribeFailed,
+    );
+    context.read<MeetingProvider>().setOverlayStateLabels(
+      starting: l10n.meetingOverlayStarting,
+      recording: l10n.meetingOverlayRecording,
+      processing: l10n.meetingOverlayProcessing,
     );
     OverlayService.setTrayLabels(
       open: l10n.trayOpen,

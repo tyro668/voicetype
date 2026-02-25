@@ -305,6 +305,24 @@ class _GeneralPageState extends State<GeneralPage> {
           _HotkeyCapture(settings: settings, l10n: l10n),
           const SizedBox(height: 36),
 
+          // ===== 会议快捷键 =====
+          Text(
+            l10n.meetingHotkey,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.meetingHotkeyDescription,
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _MeetingHotkeyCapture(settings: settings, l10n: l10n),
+          const SizedBox(height: 36),
+
           // ===== 权限设置 =====
           Text(
             l10n.permissions,
@@ -1355,6 +1373,115 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
             onPressed: () => widget.settings.resetHotkey(),
             icon: const Icon(Icons.restore, size: 16),
             label: Text(widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F2' : 'Fn')),
+            style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ==================== 会议快捷键捕获组件 ====================
+class _MeetingHotkeyCapture extends StatefulWidget {
+  final SettingsProvider settings;
+  final AppLocalizations l10n;
+  const _MeetingHotkeyCapture({required this.settings, required this.l10n});
+
+  @override
+  State<_MeetingHotkeyCapture> createState() => _MeetingHotkeyCaptureState();
+}
+
+class _MeetingHotkeyCaptureState extends State<_MeetingHotkeyCapture> {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
+  bool _listening = false;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() => _listening = true);
+            _focusNode.requestFocus();
+          },
+          child: KeyboardListener(
+            focusNode: _focusNode,
+            onKeyEvent: _listening
+                ? (event) {
+                    if (event is KeyDownEvent) {
+                      widget.settings.setMeetingHotkey(event.logicalKey);
+                      setState(() => _listening = false);
+                    }
+                  }
+                : null,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              decoration: BoxDecoration(
+                color: _cs.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _listening ? _cs.primary : _cs.outlineVariant,
+                  width: _listening ? 2 : 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _cs.secondaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _cs.shadow.withValues(alpha: 0.06),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      _listening ? '...' : widget.settings.meetingHotkeyLabel,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: _cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _listening
+                        ? widget.l10n.pressKeyToSet
+                        : widget.l10n.clickToChangeHotkey,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _listening ? _cs.primary : _cs.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => widget.settings.resetMeetingHotkey(),
+            icon: const Icon(Icons.restore, size: 16),
+            label: Text(widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F3' : 'F2')),
             style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),

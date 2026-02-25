@@ -25,6 +25,8 @@
 
   "dictationHotkey": "Dictation Hotkey",
   "dictationHotkeyDescription": "Configure the hotkey for starting and stopping voice dictation.",
+  "meetingHotkey": "Meeting Recording Hotkey",
+  "meetingHotkeyDescription": "Configure the hotkey for starting and ending meeting recording. Press once to start, press again to end.",
   "pressKeyToSet": "Press a key to set as hotkey",
   "clickToChangeHotkey": "Click to change hotkey",
   "resetToDefault": "Reset to Default",
@@ -345,5 +347,9 @@
   "meetingExportText": "Export as Text",
   "meetingExportMarkdown": "Export as Markdown",
   "meetingExported": "Exported to clipboard",
-  "meetingNotFound": "Meeting record not found"
+  "meetingNotFound": "Meeting record not found",
+  "meetingOverlayStarting": "Meeting starting",
+  "meetingOverlayRecording": "Meeting recording",
+  "meetingOverlayPaused": "Meeting paused",
+  "meetingOverlayProcessing": "Meeting processing"
 }
