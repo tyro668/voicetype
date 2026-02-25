@@ -695,4 +695,46 @@ class AppLocalizationsZh extends AppLocalizations {
   String resetHotkeyDefault(Object key) {
     return '恢复默认（$key）';
   }
+
+  @override
+  String get vadTitle => '智能静音检测';
+
+  @override
+  String get vadDescription => '录音时自动检测沉默，超过设定时间后自动停止录音并开始转录。';
+
+  @override
+  String get vadEnable => '启用智能静音检测';
+
+  @override
+  String get vadSilenceThreshold => '静音阈值';
+
+  @override
+  String get vadSilenceDuration => '静音等待时长';
+
+  @override
+  String get sceneModeTitle => '场景模式';
+
+  @override
+  String get sceneModeDescription => '选择当前场景，AI 将根据场景调整文本规整的风格和格式。';
+
+  @override
+  String get sceneModeLabel => '当前场景';
+
+  @override
+  String get promptTemplates => '模板列表';
+
+  @override
+  String get promptCreateTemplate => '创建模板';
+
+  @override
+  String get promptTemplateName => '模板名称';
+
+  @override
+  String get promptTemplateContent => '模板内容';
+
+  @override
+  String get promptTemplateSaved => '模板已保存';
+
+  @override
+  String get promptBuiltin => '内置';
 }

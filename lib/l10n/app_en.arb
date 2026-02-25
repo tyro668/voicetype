@@ -284,5 +284,22 @@
   "recordingPathCopied": "Recording path copied to clipboard",
   "openFolderFailed": "Failed to open folder",
   "cleanupFailed": "Cleanup failed",
-  "resetHotkeyDefault": "Reset Default ({key})"
+  "resetHotkeyDefault": "Reset Default ({key})",
+
+  "vadTitle": "Smart Silence Detection",
+  "vadDescription": "Automatically detect silence during recording and stop recording after the set duration.",
+  "vadEnable": "Enable Smart Silence Detection",
+  "vadSilenceThreshold": "Silence Threshold",
+  "vadSilenceDuration": "Silence Wait Duration",
+
+  "sceneModeTitle": "Scene Mode",
+  "sceneModeDescription": "Select the current scene. AI will adjust text formatting style accordingly.",
+  "sceneModeLabel": "Current Scene",
+
+  "promptTemplates": "Templates",
+  "promptCreateTemplate": "Create Template",
+  "promptTemplateName": "Template Name",
+  "promptTemplateContent": "Template Content",
+  "promptTemplateSaved": "Template saved",
+  "promptBuiltin": "Built-in"
 }

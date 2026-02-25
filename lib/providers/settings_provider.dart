@@ -6,7 +6,9 @@ import '../models/ai_enhance_config.dart';
 import '../models/ai_model_entry.dart';
 import '../models/ai_vendor_preset.dart';
 import '../models/network_settings.dart';
+import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
+import '../models/scene_mode.dart';
 import '../models/stt_model_entry.dart';
 import '../database/app_database.dart';
 import '../services/network_client_service.dart';
@@ -25,6 +27,12 @@ class SettingsProvider extends ChangeNotifier {
   static const _localeKey = 'locale';
   static const _networkProxyModeKey = 'network_proxy_mode';
   static const _themeModeKey = 'theme_mode';
+  static const _vadEnabledKey = 'vad_enabled';
+  static const _vadSilenceThresholdKey = 'vad_silence_threshold';
+  static const _vadSilenceDurationKey = 'vad_silence_duration';
+  static const _promptTemplatesKey = 'prompt_templates';
+  static const _activePromptTemplateIdKey = 'active_prompt_template_id';
+  static const _sceneModeKey = 'scene_mode';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -61,6 +69,18 @@ class SettingsProvider extends ChangeNotifier {
   NetworkProxyMode _networkProxyMode = NetworkProxyMode.none;
   ThemeMode _themeMode = ThemeMode.system;
 
+  // VAD settings
+  bool _vadEnabled = false;
+  double _vadSilenceThreshold = 0.05;
+  int _vadSilenceDurationSeconds = 3;
+
+  // Prompt template management
+  List<PromptTemplate> _promptTemplates = [];
+  String? _activePromptTemplateId;
+
+  // Scene mode
+  SceneMode _sceneMode = SceneMode.general;
+
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
   List<AiVendorPreset> get aiPresets => _aiPresets;
@@ -94,6 +114,28 @@ class SettingsProvider extends ChangeNotifier {
   NetworkProxyMode get networkProxyMode => _networkProxyMode;
   ThemeMode get themeMode => _themeMode;
 
+  // VAD getters
+  bool get vadEnabled => _vadEnabled;
+  double get vadSilenceThreshold => _vadSilenceThreshold;
+  int get vadSilenceDurationSeconds => _vadSilenceDurationSeconds;
+
+  // Prompt template getters
+  List<PromptTemplate> get promptTemplates =>
+      List.unmodifiable(_promptTemplates);
+  String? get activePromptTemplateId => _activePromptTemplateId;
+  PromptTemplate? get activePromptTemplate {
+    if (_activePromptTemplateId == null) return null;
+    try {
+      return _promptTemplates
+          .firstWhere((t) => t.id == _activePromptTemplateId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Scene mode getter
+  SceneMode get sceneMode => _sceneMode;
+
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
     final base = active != null
@@ -103,9 +145,23 @@ class SettingsProvider extends ChangeNotifier {
             model: active.model,
           )
         : _aiEnhanceConfig;
-    return _aiEnhanceUseCustomPrompt
-        ? base
-        : base.copyWith(prompt: _aiEnhanceDefaultPrompt);
+    // Priority: active template > custom prompt > default prompt
+    String resolvedPrompt;
+    final template = activePromptTemplate;
+    if (template != null) {
+      resolvedPrompt = template.content;
+    } else if (_aiEnhanceUseCustomPrompt) {
+      resolvedPrompt = base.prompt;
+    } else {
+      resolvedPrompt = _aiEnhanceDefaultPrompt;
+    }
+
+    // Append scene mode suffix if not general
+    if (_sceneMode != SceneMode.general) {
+      resolvedPrompt += _sceneMode.promptSuffix;
+    }
+
+    return base.copyWith(prompt: resolvedPrompt);
   }
 
   String? aiEnhanceDefaultModelFor(String baseUrl) =>
@@ -287,6 +343,62 @@ class SettingsProvider extends ChangeNotifier {
     final proxyModeStr = await db.getSetting(_networkProxyModeKey);
     _networkProxyMode = NetworkProxyModeX.fromStorage(proxyModeStr);
     NetworkClientService.setProxyMode(_networkProxyMode);
+
+    // 加载 VAD 设置
+    final vadEnabledStr = await db.getSetting(_vadEnabledKey);
+    if (vadEnabledStr != null) {
+      _vadEnabled = vadEnabledStr == 'true';
+    }
+    final vadThresholdStr = await db.getSetting(_vadSilenceThresholdKey);
+    if (vadThresholdStr != null) {
+      _vadSilenceThreshold = double.tryParse(vadThresholdStr) ?? 0.05;
+    }
+    final vadDurationStr = await db.getSetting(_vadSilenceDurationKey);
+    if (vadDurationStr != null) {
+      _vadSilenceDurationSeconds = int.tryParse(vadDurationStr) ?? 3;
+    }
+
+    // 加载 Prompt 模板
+    final templatesJson = await db.getSetting(_promptTemplatesKey);
+    if (templatesJson != null) {
+      try {
+        final list = json.decode(templatesJson) as List<dynamic>;
+        _promptTemplates = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => PromptTemplate.fromJson(e))
+            .toList();
+      } catch (_) {}
+    }
+    final builtins = await _loadBuiltinPromptTemplates();
+    final customTemplates = _promptTemplates
+        .where((t) => !t.isBuiltin)
+        .toList();
+    _promptTemplates = [
+      ...builtins,
+      ...customTemplates,
+    ];
+
+    final activeTemplateIdRaw = await db.getSetting(_activePromptTemplateIdKey);
+    final fallbackId = PromptTemplate.defaultBuiltinId;
+    final candidateId =
+        (activeTemplateIdRaw != null && activeTemplateIdRaw.trim().isNotEmpty)
+            ? activeTemplateIdRaw.trim()
+            : fallbackId;
+
+    final exists = _promptTemplates.any((t) => t.id == candidateId);
+    _activePromptTemplateId = exists ? candidateId : fallbackId;
+
+    await _savePromptTemplates();
+    await _saveSetting(
+      _activePromptTemplateIdKey,
+      _activePromptTemplateId ?? fallbackId,
+    );
+
+    // 加载场景模式
+    final sceneModeStr = await db.getSetting(_sceneModeKey);
+    if (sceneModeStr != null) {
+      _sceneMode = SceneMode.fromString(sceneModeStr);
+    }
 
     notifyListeners();
   }
@@ -619,6 +731,114 @@ class SettingsProvider extends ChangeNotifier {
       ThemeMode.system => 'system',
     };
     await _saveSetting(_themeModeKey, value);
+    notifyListeners();
+  }
+
+  // ===== VAD 设置 =====
+
+  Future<void> setVadEnabled(bool enabled) async {
+    _vadEnabled = enabled;
+    await _saveSetting(_vadEnabledKey, enabled.toString());
+    notifyListeners();
+  }
+
+  Future<void> setVadSilenceThreshold(double threshold) async {
+    _vadSilenceThreshold = threshold.clamp(0.01, 0.3);
+    await _saveSetting(
+      _vadSilenceThresholdKey,
+      _vadSilenceThreshold.toString(),
+    );
+    notifyListeners();
+  }
+
+  Future<void> setVadSilenceDuration(int seconds) async {
+    _vadSilenceDurationSeconds = seconds.clamp(1, 10);
+    await _saveSetting(
+      _vadSilenceDurationKey,
+      _vadSilenceDurationSeconds.toString(),
+    );
+    notifyListeners();
+  }
+
+  // ===== Prompt 模板管理 =====
+
+  Future<void> _savePromptTemplates() async {
+    await _saveSetting(
+      _promptTemplatesKey,
+      json.encode(_promptTemplates.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<List<PromptTemplate>> _loadBuiltinPromptTemplates() async {
+    final now = DateTime.now();
+    final templates = <PromptTemplate>[];
+
+    for (final def in PromptTemplate.builtinDefinitions) {
+      String content = '';
+      try {
+        content = await rootBundle.loadString(def.assetPath);
+      } catch (_) {}
+
+      if (content.trim().isEmpty && def.id == PromptTemplate.defaultBuiltinId) {
+        content = _aiEnhanceDefaultPrompt;
+      }
+
+      templates.add(
+        PromptTemplate(
+          id: def.id,
+          name: def.name,
+          summary: def.summary,
+          content: content,
+          isBuiltin: true,
+          createdAt: now,
+        ),
+      );
+    }
+
+    return templates;
+  }
+
+  Future<void> addPromptTemplate(PromptTemplate template) async {
+    _promptTemplates.add(template);
+    await _savePromptTemplates();
+    notifyListeners();
+  }
+
+  Future<void> updatePromptTemplate(PromptTemplate updated) async {
+    _promptTemplates = _promptTemplates.map((t) {
+      return t.id == updated.id ? updated : t;
+    }).toList();
+    await _savePromptTemplates();
+    notifyListeners();
+  }
+
+  Future<void> deletePromptTemplate(String id) async {
+    _promptTemplates.removeWhere((t) => t.id == id && !t.isBuiltin);
+    if (_activePromptTemplateId == id) {
+      _activePromptTemplateId = PromptTemplate.defaultBuiltinId;
+      await _saveSetting(
+        _activePromptTemplateIdKey,
+        PromptTemplate.defaultBuiltinId,
+      );
+    }
+    await _savePromptTemplates();
+    notifyListeners();
+  }
+
+  Future<void> setActivePromptTemplate(String? id) async {
+    final fallbackId = PromptTemplate.defaultBuiltinId;
+    final targetId = id ?? fallbackId;
+    _activePromptTemplateId =
+        _promptTemplates.any((t) => t.id == targetId) ? targetId : fallbackId;
+    await _saveSetting(_activePromptTemplateIdKey, _activePromptTemplateId!);
+    notifyListeners();
+  }
+
+  // ===== 场景模式 =====
+
+  Future<void> setSceneMode(SceneMode mode) async {
+    _sceneMode = mode;
+    await _saveSetting(_sceneModeKey, mode.name);
     notifyListeners();
   }
 

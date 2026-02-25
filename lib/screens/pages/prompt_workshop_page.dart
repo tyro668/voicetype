@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
-import '../../models/ai_enhance_config.dart';
+import '../../models/prompt_template.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/ai_enhance_service.dart';
 
@@ -18,39 +17,20 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
   late TabController _tabController;
-  final _promptController = TextEditingController();
   final _testInputController = TextEditingController();
   final _testOutputController = TextEditingController();
-  String _defaultPrompt = AiEnhanceConfig.defaultPrompt;
   bool _testing = false;
   String _testError = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settings = context.read<SettingsProvider>();
-      _promptController.text = settings.aiEnhanceConfig.prompt;
-    });
-    _loadDefaultPrompt();
-  }
-
-  Future<void> _loadDefaultPrompt() async {
-    try {
-      final prompt = await rootBundle.loadString(
-        'assets/prompts/default_prompt.md',
-      );
-      if (mounted) {
-        setState(() => _defaultPrompt = prompt);
-      }
-    } catch (_) {}
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _promptController.dispose();
     _testInputController.dispose();
     _testOutputController.dispose();
     super.dispose();
@@ -82,9 +62,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
           _buildTabs(l10n),
           const SizedBox(height: 16),
           if (_tabController.index == 0)
-            _buildCurrentTab(l10n)
-          else if (_tabController.index == 1)
-            _buildCustomTab(settings, l10n)
+            _buildTemplatesTab(settings, l10n)
           else
             _buildTestTab(settings, l10n),
         ],
@@ -108,8 +86,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontSize: 14),
         tabs: [
-          Tab(text: l10n.current),
-          Tab(text: l10n.custom),
+          Tab(text: l10n.promptTemplates),
           Tab(text: l10n.test),
         ],
         onTap: (_) => setState(() {}),
@@ -117,91 +94,285 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     );
   }
 
-  Widget _buildCurrentTab(AppLocalizations l10n) {
-    final settings = context.watch<SettingsProvider>();
-    final currentPrompt = settings.aiEnhanceUseCustomPrompt
-        ? settings.aiEnhanceConfig.prompt
-        : _defaultPrompt;
+  // ===== Tab 1: Templates =====
+
+  Widget _buildTemplatesTab(SettingsProvider settings, AppLocalizations l10n) {
+    final templates = settings.promptTemplates;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...templates.map((t) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _buildTemplateCard(t, settings, l10n),
+        )),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _showCreateTemplateDialog(settings, l10n),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(l10n.promptCreateTemplate),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTemplateCard(
+    PromptTemplate template,
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    final isActive = settings.activePromptTemplateId == template.id;
     return _buildCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.currentSystemPrompt,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              // ignore: deprecated_member_use
+              Radio<String?>(
+                value: template.id,
+                // ignore: deprecated_member_use
+                groupValue: settings.activePromptTemplateId,
+                // ignore: deprecated_member_use
+                onChanged: (_) =>
+                    settings.setActivePromptTemplate(template.id),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          template.name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                                isActive ? FontWeight.bold : FontWeight.w600,
+                            color: isActive ? _cs.primary : _cs.onSurface,
+                          ),
+                        ),
+                        if (template.isBuiltin) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              l10n.promptBuiltin,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _cs.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (isActive) ...[
+                          const SizedBox(width: 6),
+                          Icon(Icons.check_circle,
+                              size: 16, color: _cs.primary),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      template.summary,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _cs.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => _showPreviewTemplateDialog(template),
+                icon: Icon(Icons.visibility_outlined, size: 18, color: _cs.onSurfaceVariant),
+              ),
+              if (!template.isBuiltin)
+                PopupMenuButton<String>(
+                  onSelected: (action) {
+                    if (action == 'edit') {
+                      _showEditTemplateDialog(template, settings, l10n);
+                    } else if (action == 'delete') {
+                      settings.deletePromptTemplate(template.id);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit, size: 16),
+                          const SizedBox(width: 8),
+                          Text(l10n.edit),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 16, color: Colors.red.shade400),
+                          const SizedBox(width: 8),
+                          Text(l10n.delete, style: TextStyle(color: Colors.red.shade400)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
-          const SizedBox(height: 8),
-          _buildCodeBlock(currentPrompt),
         ],
       ),
     );
   }
 
-  Widget _buildCustomTab(SettingsProvider settings, AppLocalizations l10n) {
-    final useCustomPrompt = settings.aiEnhanceUseCustomPrompt;
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.customPromptTitle,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+  void _showPreviewTemplateDialog(PromptTemplate template) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(template.name),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              template.content,
+              style: const TextStyle(fontSize: 13, height: 1.5),
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                l10n.enableCustomPrompt,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              Switch(
-                value: useCustomPrompt,
-                onChanged: settings.setAiEnhanceUseCustomPrompt,
-              ),
-            ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(AppLocalizations.of(context)!.confirm),
           ),
-          Text(
-            useCustomPrompt
-                ? l10n.customPromptEnabled
-                : l10n.customPromptDisabled,
-            style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 12),
-          _buildLabeledField(
-            label: l10n.systemPrompt,
-            controller: _promptController,
-            hintText: AiEnhanceConfig.defaultPrompt,
+        ],
+      ),
+    );
+  }
+
+  void _showEditTemplateDialog(
+    PromptTemplate template,
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    final contentController = TextEditingController(text: template.content);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${l10n.edit}: ${template.name}'),
+        content: SizedBox(
+          width: 500,
+          child: TextField(
+            controller: contentController,
+            decoration: InputDecoration(
+              labelText: l10n.promptTemplateContent,
+              border: const OutlineInputBorder(),
+            ),
             maxLines: 10,
-            enabled: useCustomPrompt,
-            onChanged: settings.setAiEnhancePrompt,
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: useCustomPrompt ? () => _savePrompt(settings) : null,
-                icon: const Icon(Icons.save, size: 16),
-                label: Text(l10n.saveChanges),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _cs.onSurface,
-                  foregroundColor: _cs.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              settings.updatePromptTemplate(
+                template.copyWith(
+                  content: contentController.text,
+                  summary: PromptTemplate.defaultSummaryFromContent(
+                    contentController.text,
                   ),
                 ),
+              );
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.promptTemplateSaved),
+                  duration: const Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Text(l10n.saveChanges),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateTemplateDialog(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    final nameController = TextEditingController();
+    final contentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.promptCreateTemplate),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: l10n.promptTemplateName,
+                  border: const OutlineInputBorder(),
+                ),
               ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: useCustomPrompt
-                    ? () => _resetPrompt(settings)
-                    : null,
-                child: Text(l10n.restoreDefault),
+              const SizedBox(height: 12),
+              TextField(
+                controller: contentController,
+                decoration: InputDecoration(
+                  labelText: l10n.promptTemplateContent,
+                  border: const OutlineInputBorder(),
+                ),
+                maxLines: 6,
               ),
             ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.trim().isEmpty) return;
+              final template = PromptTemplate.create(
+                name: nameController.text.trim(),
+                content: contentController.text.trim(),
+              );
+              settings.addPromptTemplate(template);
+              Navigator.pop(ctx);
+            },
+            child: Text(l10n.confirm),
           ),
         ],
       ),
@@ -274,12 +445,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     });
 
     try {
-      final promptForTest = settings.aiEnhanceUseCustomPrompt
-          ? _promptController.text
-          : _defaultPrompt;
-      final config = settings.effectiveAiEnhanceConfig.copyWith(
-        prompt: promptForTest,
-      );
+      final config = settings.effectiveAiEnhanceConfig;
       final service = AiEnhanceService(config);
       final result = await service.enhance(_testInputController.text);
       _testOutputController.text = result.text;
@@ -296,22 +462,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
     }
   }
 
-  void _savePrompt(SettingsProvider settings) {
-    settings.setAiEnhancePrompt(_promptController.text);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('提示词已保存'),
-        duration: Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _resetPrompt(SettingsProvider settings) {
-    settings.setAiEnhancePrompt(_defaultPrompt);
-    _promptController.text = _defaultPrompt;
-  }
-
   Widget _buildCard({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -321,22 +471,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage>
         border: Border.all(color: _cs.outlineVariant),
       ),
       child: child,
-    );
-  }
-
-  Widget _buildCodeBlock(String text) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
-      ),
-      child: SelectableText(
-        text,
-        style: const TextStyle(fontSize: 12, height: 1.4),
-      ),
     );
   }
 

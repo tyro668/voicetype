@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/provider_config.dart';
+import '../../models/scene_mode.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/audio_recorder.dart';
 import '../../services/log_service.dart';
@@ -362,6 +363,42 @@ class _GeneralPageState extends State<GeneralPage> {
           _buildMinDuration(settings, l10n),
           const SizedBox(height: 36),
 
+          // ===== 智能静音检测 (VAD) =====
+          Text(
+            l10n.vadTitle,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.vadDescription,
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _buildVadSection(settings, l10n),
+          const SizedBox(height: 36),
+
+          // ===== 场景模式 =====
+          Text(
+            l10n.sceneModeTitle,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.sceneModeDescription,
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _buildSceneModeSelector(settings, l10n),
+          const SizedBox(height: 36),
+
           // ===== 语言设置 =====
           Text(
             l10n.language,
@@ -487,6 +524,112 @@ class _GeneralPageState extends State<GeneralPage> {
                 : null,
             color: _cs.primary,
             splashRadius: 18,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVadSection(SettingsProvider settings, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _cs.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.mic_off_outlined, size: 20, color: _cs.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.vadEnable,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+              ),
+              Switch(
+                value: settings.vadEnabled,
+                onChanged: (v) => settings.setVadEnabled(v),
+              ),
+            ],
+          ),
+          if (settings.vadEnabled) ...[
+            const SizedBox(height: 16),
+            Text(
+              '${l10n.vadSilenceThreshold}: ${settings.vadSilenceThreshold.toStringAsFixed(2)}',
+              style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+            ),
+            Slider(
+              value: settings.vadSilenceThreshold,
+              min: 0.01,
+              max: 0.3,
+              divisions: 29,
+              label: settings.vadSilenceThreshold.toStringAsFixed(2),
+              onChanged: (v) => settings.setVadSilenceThreshold(v),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${l10n.vadSilenceDuration}: ${settings.vadSilenceDurationSeconds} ${l10n.seconds}',
+              style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+            ),
+            Slider(
+              value: settings.vadSilenceDurationSeconds.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: '${settings.vadSilenceDurationSeconds} ${l10n.seconds}',
+              onChanged: (v) => settings.setVadSilenceDuration(v.round()),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSceneModeSelector(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _cs.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.category_outlined, size: 20, color: _cs.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              l10n.sceneModeLabel,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+          ),
+          DropdownButton<SceneMode>(
+            value: settings.sceneMode,
+            underline: const SizedBox(),
+            borderRadius: BorderRadius.circular(8),
+            items: SceneMode.values.map((mode) {
+              final label = l10n.localeName == 'zh' ? mode.label : mode.labelEn;
+              return DropdownMenuItem(value: mode, child: Text(label));
+            }).toList(),
+            onChanged: (mode) {
+              if (mode != null) settings.setSceneMode(mode);
+            },
           ),
         ],
       ),

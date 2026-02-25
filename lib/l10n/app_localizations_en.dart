@@ -723,4 +723,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String resetHotkeyDefault(Object key) {
     return 'Reset Default ($key)';
   }
+
+  @override
+  String get vadTitle => 'Smart Silence Detection';
+
+  @override
+  String get vadDescription =>
+      'Automatically detect silence during recording and stop recording after the set duration.';
+
+  @override
+  String get vadEnable => 'Enable Smart Silence Detection';
+
+  @override
+  String get vadSilenceThreshold => 'Silence Threshold';
+
+  @override
+  String get vadSilenceDuration => 'Silence Wait Duration';
+
+  @override
+  String get sceneModeTitle => 'Scene Mode';
+
+  @override
+  String get sceneModeDescription =>
+      'Select the current scene. AI will adjust text formatting style accordingly.';
+
+  @override
+  String get sceneModeLabel => 'Current Scene';
+
+  @override
+  String get promptTemplates => 'Templates';
+
+  @override
+  String get promptCreateTemplate => 'Create Template';
+
+  @override
+  String get promptTemplateName => 'Template Name';
+
+  @override
+  String get promptTemplateContent => 'Template Content';
+
+  @override
+  String get promptTemplateSaved => 'Template saved';
+
+  @override
+  String get promptBuiltin => 'Built-in';
 }

@@ -1435,6 +1435,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset Default ({key})'**
   String resetHotkeyDefault(Object key);
+
+  /// No description provided for @vadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart Silence Detection'**
+  String get vadTitle;
+
+  /// No description provided for @vadDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically detect silence during recording and stop recording after the set duration.'**
+  String get vadDescription;
+
+  /// No description provided for @vadEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Smart Silence Detection'**
+  String get vadEnable;
+
+  /// No description provided for @vadSilenceThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence Threshold'**
+  String get vadSilenceThreshold;
+
+  /// No description provided for @vadSilenceDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence Wait Duration'**
+  String get vadSilenceDuration;
+
+  /// No description provided for @sceneModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene Mode'**
+  String get sceneModeTitle;
+
+  /// No description provided for @sceneModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the current scene. AI will adjust text formatting style accordingly.'**
+  String get sceneModeDescription;
+
+  /// No description provided for @sceneModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Scene'**
+  String get sceneModeLabel;
+
+  /// No description provided for @promptTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Templates'**
+  String get promptTemplates;
+
+  /// No description provided for @promptCreateTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Template'**
+  String get promptCreateTemplate;
+
+  /// No description provided for @promptTemplateName.
+  ///
+  /// In en, this message translates to:
+  /// **'Template Name'**
+  String get promptTemplateName;
+
+  /// No description provided for @promptTemplateContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Template Content'**
+  String get promptTemplateContent;
+
+  /// No description provided for @promptTemplateSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Template saved'**
+  String get promptTemplateSaved;
+
+  /// No description provided for @promptBuiltin.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get promptBuiltin;
 }
 
 class _AppLocalizationsDelegate

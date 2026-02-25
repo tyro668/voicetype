@@ -46,7 +46,6 @@ dependencies:
   fl_chart: ^0.70.2
   whisper_flutter_new: ^1.0.1
   ffi: ^2.1.0
-  llamadart: ^0.6.2
 
 dev_dependencies:
   flutter_test:
@@ -82,6 +81,11 @@ flutter:
   assets:
     - assets/prompts/default_prompt.md
     - assets/prompts/local_model_prompt.md
+    - assets/prompts/template_punctuation.md
+    - assets/prompts/template_formal.md
+    - assets/prompts/template_colloquial.md
+    - assets/prompts/template_translate_en.md
+    - assets/prompts/template_meeting.md
     - assets/presets/models.json
 
   # To add assets to your application, add an assets section, like this:

@@ -9,6 +9,7 @@ import 'network_client_service.dart';
 
 class AiEnhanceService {
   static const _timeout = Duration(seconds: 30);
+  static const _streamTimeout = Duration(seconds: 60);
 
   final AiEnhanceConfig config;
 
@@ -160,6 +161,116 @@ class AiEnhanceService {
     } catch (e) {
       await LogService.error('AI', 'local enhance failed: $e');
       throw AiEnhanceException('AI增强失败 (本地模型): $e');
+    }
+  }
+
+  /// Streaming AI enhance using SSE (Server-Sent Events).
+  /// Yields text chunks as they arrive.
+  Stream<String> enhanceStream(String text) async* {
+    if (text.trim().isEmpty) {
+      yield text;
+      return;
+    }
+
+    // Local model: fall back to batch
+    if (_isLocalModel) {
+      final result = await _enhanceLocal(text);
+      yield result.text;
+      return;
+    }
+
+    await LogService.info(
+      'AI',
+      'start streaming enhance model=${config.model} baseUrl=${config.baseUrl}',
+    );
+
+    final apiKeyError = _apiKeyValidationMessage();
+    if (apiKeyError != null) {
+      await LogService.error('AI', 'api key validation failed: $apiKeyError');
+      throw AiEnhanceException('AI增强失败: $apiKeyError');
+    }
+
+    final resolvedPrompt =
+        (config.prompt.trim().isEmpty
+                ? AiEnhanceConfig.defaultPrompt
+                : config.prompt)
+            .replaceAll('{agentName}', config.agentName);
+
+    final uri = Uri.parse(
+      '${_normalizeBaseUrl(config.baseUrl)}/chat/completions',
+    );
+
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      throw AiEnhanceException('AI增强失败: 无效的端点 URL');
+    }
+
+    final bodyMap = {
+      'model': config.model,
+      'temperature': 0.2,
+      'stream': true,
+      'messages': [
+        {'role': 'system', 'content': resolvedPrompt},
+        {'role': 'user', 'content': _buildEnhanceUserMessage(text)},
+      ],
+    };
+
+    final httpClient = HttpClient();
+    httpClient.connectionTimeout = const Duration(seconds: 10);
+    try {
+      final request = await httpClient.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      final apiKey = config.apiKey.trim();
+      if (apiKey.isNotEmpty) {
+        request.headers.set('Authorization', 'Bearer $apiKey');
+      }
+      request.write(json.encode(bodyMap));
+
+      final response = await request.close().timeout(_streamTimeout);
+
+      if (response.statusCode != 200) {
+        final body = await response.transform(utf8.decoder).join();
+        await LogService.error('AI', 'streaming enhance failed: ${response.statusCode} $body');
+        throw AiEnhanceException('AI增强失败 (${response.statusCode})');
+      }
+
+      // Parse SSE stream
+      await for (final chunk in response.transform(utf8.decoder)) {
+        final lines = chunk.split('\n');
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty || trimmed == 'data: [DONE]') continue;
+          if (!trimmed.startsWith('data: ')) continue;
+
+          final jsonStr = trimmed.substring(6);
+          try {
+            final jsonData = json.decode(jsonStr) as Map<String, dynamic>;
+            final choices = jsonData['choices'] as List<dynamic>?;
+            if (choices != null && choices.isNotEmpty) {
+              final delta = choices.first['delta'] as Map<String, dynamic>?;
+              final content = delta?['content'] as String?;
+              if (content != null && content.isNotEmpty) {
+                yield content;
+              }
+            }
+          } catch (_) {
+            // Skip malformed SSE data lines
+          }
+        }
+      }
+
+      await LogService.info('AI', 'streaming enhance complete');
+    } on TimeoutException {
+      await LogService.error('AI', 'streaming enhance timeout');
+      throw AiEnhanceException('AI增强失败: 流式请求超时');
+    } on SocketException catch (e) {
+      await LogService.error('AI', 'streaming enhance socket error: ${e.message}');
+      throw AiEnhanceException('AI增强失败: 网络连接错误 - ${e.message}');
+    } catch (e) {
+      if (e is AiEnhanceException) rethrow;
+      await LogService.error('AI', 'streaming enhance error: $e');
+      throw AiEnhanceException('AI增强失败: $e');
+    } finally {
+      httpClient.close();
     }
   }
 

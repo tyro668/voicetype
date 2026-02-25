@@ -296,6 +296,7 @@ class _MainScreenState extends State<MainScreen> {
             aiEnhanceEnabled: settings.aiEnhanceEnabled,
             aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
             minRecordingSeconds: settings.minRecordingSeconds,
+            useStreaming: settings.aiEnhanceEnabled,
           );
         } else if (recording.state == RecordingState.idle) {
           if (!_hasValidSttModel(settings)) {
@@ -303,6 +304,7 @@ class _MainScreenState extends State<MainScreen> {
             return;
           }
           recording.startRecording();
+          _startVadIfEnabled(settings, recording);
         }
         // transcribing 状态下忽略
       }
@@ -314,15 +316,37 @@ class _MainScreenState extends State<MainScreen> {
           return;
         }
         recording.startRecording();
+        _startVadIfEnabled(settings, recording);
       } else if (type == 'up' && recording.state == RecordingState.recording) {
         recording.stopAndTranscribe(
           settings.config,
           aiEnhanceEnabled: settings.aiEnhanceEnabled,
           aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
           minRecordingSeconds: settings.minRecordingSeconds,
+          useStreaming: settings.aiEnhanceEnabled,
         );
       }
     }
+  }
+
+  void _startVadIfEnabled(SettingsProvider settings, RecordingProvider recording) {
+    if (!settings.vadEnabled) return;
+    recording.onVadTriggered = () {
+      if (recording.state == RecordingState.recording && !recording.busy) {
+        recording.stopAndTranscribe(
+          settings.config,
+          aiEnhanceEnabled: settings.aiEnhanceEnabled,
+          aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+          minRecordingSeconds: settings.minRecordingSeconds,
+          useStreaming: settings.aiEnhanceEnabled,
+        );
+      }
+    };
+    recording.startVad(
+      silenceThreshold: settings.vadSilenceThreshold,
+      silenceDurationSeconds: settings.vadSilenceDurationSeconds,
+      minRecordingSeconds: settings.minRecordingSeconds,
+    );
   }
 
   @override

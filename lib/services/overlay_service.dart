@@ -82,6 +82,16 @@ class OverlayService {
     await _channel.invokeMethod('insertText', {'text': text});
   }
 
+  /// Update the overlay with real-time streaming text.
+  static Future<void> updateOverlayText(String text) async {
+    if (!_supportsNativeOverlay) return;
+    try {
+      await _channel.invokeMethod('updateOverlayText', {'text': text});
+    } catch (_) {
+      // Fallback: native side may not support this yet
+    }
+  }
+
   /// 检查辅助功能权限
   static Future<bool> checkAccessibility() async {
     if (_isWindows) return true;

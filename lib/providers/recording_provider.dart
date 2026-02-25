@@ -13,6 +13,7 @@ import '../services/stt_service.dart';
 import '../services/overlay_service.dart';
 import '../services/log_service.dart';
 import '../services/token_stats_service.dart';
+import '../services/vad_service.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
@@ -31,6 +32,10 @@ class RecordingProvider extends ChangeNotifier {
   StreamSubscription<double>? _amplitudeSub;
   final List<Transcription> _history = [];
   Completer<void>? _stopCompleter;
+  VadService? _vadService;
+  StreamSubscription<void>? _vadSub;
+  // VAD auto-stop callback — set by the screen that owns the provider
+  void Function()? onVadTriggered;
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
   String _transcribingLabel = 'Transcribing';
@@ -184,14 +189,43 @@ class RecordingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Start VAD monitoring. Call after startRecording().
+  void startVad({
+    double silenceThreshold = 0.05,
+    int silenceDurationSeconds = 3,
+    int minRecordingSeconds = 3,
+  }) {
+    stopVad();
+    _vadService = VadService(
+      silenceThreshold: silenceThreshold,
+      silenceDuration: Duration(seconds: silenceDurationSeconds),
+      minRecordingDuration: Duration(seconds: minRecordingSeconds),
+    );
+    _vadSub = _vadService!.onSilenceDetected.listen((_) {
+      LogService.info('VAD', 'silence detected, triggering auto-stop');
+      onVadTriggered?.call();
+    });
+    _vadService!.start(_recorder.amplitudeStream);
+  }
+
+  /// Stop VAD monitoring.
+  void stopVad() {
+    _vadSub?.cancel();
+    _vadSub = null;
+    _vadService?.dispose();
+    _vadService = null;
+  }
+
   Future<void> stopAndTranscribe(
     SttProviderConfig config, {
     bool aiEnhanceEnabled = false,
     AiEnhanceConfig? aiEnhanceConfig,
     int minRecordingSeconds = 3,
+    bool useStreaming = false,
   }) async {
     if (_busy) return;
     _busy = true;
+    stopVad();
     try {
       _durationTimer?.cancel();
       _durationTimer = null;
@@ -228,6 +262,7 @@ class RecordingProvider extends ChangeNotifier {
           duration,
           aiEnhanceEnabled: aiEnhanceEnabled,
           aiEnhanceConfig: aiEnhanceConfig,
+          useStreaming: useStreaming,
         ),
       );
     } catch (e) {
@@ -250,6 +285,7 @@ class RecordingProvider extends ChangeNotifier {
     Duration duration, {
     required bool aiEnhanceEnabled,
     required AiEnhanceConfig? aiEnhanceConfig,
+    bool useStreaming = false,
   }) async {
     final sw = Stopwatch()..start();
     try {
@@ -306,6 +342,7 @@ class RecordingProvider extends ChangeNotifier {
         duration,
         aiEnhanceEnabled: aiEnhanceEnabled,
         aiEnhanceConfig: aiEnhanceConfig,
+        useStreaming: useStreaming,
       );
     } catch (e) {
       _error = '停止录音失败: $e';
@@ -341,6 +378,7 @@ class RecordingProvider extends ChangeNotifier {
     Duration duration, {
     required bool aiEnhanceEnabled,
     required AiEnhanceConfig? aiEnhanceConfig,
+    bool useStreaming = false,
   }) async {
     final sw = Stopwatch()..start();
     try {
@@ -358,16 +396,46 @@ class RecordingProvider extends ChangeNotifier {
             stateLabel: _enhancingLabel,
           ));
           final enhancer = AiEnhanceService(aiEnhanceConfig);
-          final enhanceResult = await enhancer.enhance(rawText);
-          finalText = enhanceResult.text;
-          // 累计 token 用量
-          if (enhanceResult.totalTokens > 0) {
+
+          if (useStreaming) {
+            // Streaming mode: show text in real-time on overlay
+            final buffer = StringBuffer();
             try {
-              await TokenStatsService.instance.addTokens(
-                promptTokens: enhanceResult.promptTokens,
-                completionTokens: enhanceResult.completionTokens,
-              );
-            } catch (_) {}
+              await for (final chunk in enhancer.enhanceStream(rawText)) {
+                buffer.write(chunk);
+                unawaited(OverlayService.updateOverlayText(
+                  buffer.toString(),
+                ));
+              }
+              finalText = buffer.toString().trim();
+              if (finalText.isEmpty) finalText = rawText;
+            } catch (e) {
+              await LogService.error('TRANSCRIBE', 'streaming enhance failed: $e, falling back to batch');
+              // Fallback to batch mode
+              final enhanceResult = await enhancer.enhance(rawText);
+              finalText = enhanceResult.text;
+              if (enhanceResult.totalTokens > 0) {
+                try {
+                  await TokenStatsService.instance.addTokens(
+                    promptTokens: enhanceResult.promptTokens,
+                    completionTokens: enhanceResult.completionTokens,
+                  );
+                } catch (_) {}
+              }
+            }
+          } else {
+            // Batch mode (original)
+            final enhanceResult = await enhancer.enhance(rawText);
+            finalText = enhanceResult.text;
+            // 累计 token 用量
+            if (enhanceResult.totalTokens > 0) {
+              try {
+                await TokenStatsService.instance.addTokens(
+                  promptTokens: enhanceResult.promptTokens,
+                  completionTokens: enhanceResult.completionTokens,
+                );
+              } catch (_) {}
+            }
           }
           await LogService.info('TRANSCRIBE', 'ai enhance done: ${sw.elapsedMilliseconds}ms');
         } catch (e) {
@@ -469,6 +537,7 @@ class RecordingProvider extends ChangeNotifier {
     _durationTimer?.cancel();
     _healthTimer?.cancel();
     _amplitudeSub?.cancel();
+    stopVad();
     _recorder.dispose();
     super.dispose();
   }

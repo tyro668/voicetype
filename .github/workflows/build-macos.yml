@@ -46,6 +46,13 @@ jobs:
         run: |
           "$FLUTTER_BIN/flutter" doctor -v
 
+      - name: Enable full local LLM for release build
+        run: |
+          cp full/local_llm_service.dart lib/services/local_llm_service.dart
+          if ! grep -qE '^\s*llamadart:' pubspec.yaml; then
+            sed -i.bak '/ffi: \^2.1.0/a\  llamadart: ^0.6.2' pubspec.yaml
+          fi
+
       - name: Get dependencies
         run: |
           "$FLUTTER_BIN/flutter" pub get

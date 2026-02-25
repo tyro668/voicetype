@@ -279,5 +279,22 @@
   "recordingPathCopied": "录音路径已复制到剪贴板",
   "openFolderFailed": "打开文件夹失败",
   "cleanupFailed": "清理失败",
-  "resetHotkeyDefault": "恢复默认（{key}）"
+  "resetHotkeyDefault": "恢复默认（{key}）",
+
+  "vadTitle": "智能静音检测",
+  "vadDescription": "录音时自动检测沉默，超过设定时间后自动停止录音并开始转录。",
+  "vadEnable": "启用智能静音检测",
+  "vadSilenceThreshold": "静音阈值",
+  "vadSilenceDuration": "静音等待时长",
+
+  "sceneModeTitle": "场景模式",
+  "sceneModeDescription": "选择当前场景，AI 将根据场景调整文本规整的风格和格式。",
+  "sceneModeLabel": "当前场景",
+
+  "promptTemplates": "模板列表",
+  "promptCreateTemplate": "创建模板",
+  "promptTemplateName": "模板名称",
+  "promptTemplateContent": "模板内容",
+  "promptTemplateSaved": "模板已保存",
+  "promptBuiltin": "内置"
 }
