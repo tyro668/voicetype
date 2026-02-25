@@ -737,4 +737,133 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get promptBuiltin => '内置';
+
+  @override
+  String get meetingMinutes => '会议记录';
+
+  @override
+  String get meetingNew => '新建会议';
+
+  @override
+  String get meetingRecording => '录制中';
+
+  @override
+  String get meetingPaused => '已暂停';
+
+  @override
+  String get meetingCompleted => '已完成';
+
+  @override
+  String get meetingEmpty => '暂无会议记录';
+
+  @override
+  String get meetingEmptyHint => '点击上方按钮开始新的会议录制';
+
+  @override
+  String get meetingStarting => '正在启动会议...';
+
+  @override
+  String get meetingTitleHint => '输入会议标题...';
+
+  @override
+  String get meetingPause => '暂停';
+
+  @override
+  String get meetingResume => '继续';
+
+  @override
+  String get meetingStop => '结束';
+
+  @override
+  String get meetingListening => '正在录音...';
+
+  @override
+  String get meetingListeningHint => '语音会自动分段处理并转为文字';
+
+  @override
+  String get meetingTranscribing => '语音转文字中';
+
+  @override
+  String get meetingEnhancing => '文字整理中';
+
+  @override
+  String get meetingWaitingProcess => '等待处理';
+
+  @override
+  String get meetingPending => '等待';
+
+  @override
+  String get meetingDone => '完成';
+
+  @override
+  String get meetingError => '失败';
+
+  @override
+  String get meetingSegmentError => '处理失败';
+
+  @override
+  String get meetingRetry => '重试';
+
+  @override
+  String get meetingNoContent => '无转写内容';
+
+  @override
+  String get meetingProcessing => '正在处理剩余分段...';
+
+  @override
+  String get meetingSegments => '分段数';
+
+  @override
+  String get meetingStopConfirmTitle => '结束会议';
+
+  @override
+  String get meetingStopConfirm => '确定要结束当前会议录制吗？系统会先处理完所有已录制的分段。';
+
+  @override
+  String get meetingCancelConfirmTitle => '取消会议';
+
+  @override
+  String get meetingCancelConfirm => '确定要取消并丢弃当前会议吗？此操作不可撤销。';
+
+  @override
+  String get meetingDeleteConfirmTitle => '删除会议';
+
+  @override
+  String get meetingDeleteConfirm => '确定要删除这条会议记录吗？此操作不可撤销。';
+
+  @override
+  String get meetingDate => '日期';
+
+  @override
+  String get meetingDuration => '时长';
+
+  @override
+  String get meetingTotalChars => '总字数';
+
+  @override
+  String get meetingTitle => '会议标题';
+
+  @override
+  String get meetingSaved => '已保存';
+
+  @override
+  String get meetingSummary => '会议摘要';
+
+  @override
+  String get meetingContent => '会议内容';
+
+  @override
+  String get meetingCopyAll => '复制全文';
+
+  @override
+  String get meetingExportText => '导出为文本';
+
+  @override
+  String get meetingExportMarkdown => '导出为 Markdown';
+
+  @override
+  String get meetingExported => '已导出到剪贴板';
+
+  @override
+  String get meetingNotFound => '会议记录不存在';
 }

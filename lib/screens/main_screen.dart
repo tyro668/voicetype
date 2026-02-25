@@ -13,6 +13,7 @@ import 'pages/stt_page.dart';
 import 'pages/ai_model_page.dart';
 import 'pages/prompt_workshop_page.dart';
 import 'pages/history_page.dart';
+import 'pages/meeting_list_page.dart';
 import 'pages/system_settings_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/about_page.dart';
@@ -79,6 +80,7 @@ class _MainScreenState extends State<MainScreen> {
     _NavItem(icon: Icons.psychology_outlined, label: l10n.textModelSettings),
     _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.promptWorkshop),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
+    _NavItem(icon: Icons.record_voice_over_outlined, label: l10n.meetingMinutes),
     _NavItem(icon: Icons.computer_outlined, label: l10n.systemSettings),
     _NavItem(icon: Icons.dashboard_outlined, label: l10n.dashboard),
     _NavItem(icon: Icons.info_outline, label: l10n.about),
@@ -467,9 +469,10 @@ class _MainScreenState extends State<MainScreen> {
       2 => const AiModelPage(),
       3 => const PromptWorkshopPage(),
       4 => const HistoryPage(),
-      5 => const SystemSettingsPage(),
-      6 => const DashboardPage(),
-      7 => const AboutPage(),
+      5 => const MeetingListPage(),
+      6 => const SystemSettingsPage(),
+      7 => const DashboardPage(),
+      8 => const AboutPage(),
       _ => const SizedBox(),
     };
   }

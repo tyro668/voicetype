@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'l10n/app_localizations.dart';
+import 'providers/meeting_provider.dart';
 import 'providers/recording_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/main_screen.dart';
@@ -15,6 +16,7 @@ class VoiceTypeApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsProvider()..load()),
         ChangeNotifierProvider(create: (_) => RecordingProvider()),
+        ChangeNotifierProvider(create: (_) => MeetingProvider()),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {

@@ -1519,6 +1519,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Built-in'**
   String get promptBuiltin;
+
+  /// No description provided for @meetingMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Minutes'**
+  String get meetingMinutes;
+
+  /// No description provided for @meetingNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New Meeting'**
+  String get meetingNew;
+
+  /// No description provided for @meetingRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get meetingRecording;
+
+  /// No description provided for @meetingPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get meetingPaused;
+
+  /// No description provided for @meetingCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get meetingCompleted;
+
+  /// No description provided for @meetingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No meeting records'**
+  String get meetingEmpty;
+
+  /// No description provided for @meetingEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click the button above to start a new meeting recording'**
+  String get meetingEmptyHint;
+
+  /// No description provided for @meetingStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting meeting...'**
+  String get meetingStarting;
+
+  /// No description provided for @meetingTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter meeting title...'**
+  String get meetingTitleHint;
+
+  /// No description provided for @meetingPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get meetingPause;
+
+  /// No description provided for @meetingResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get meetingResume;
+
+  /// No description provided for @meetingStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get meetingStop;
+
+  /// No description provided for @meetingListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening...'**
+  String get meetingListening;
+
+  /// No description provided for @meetingListeningHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio will be automatically segmented and transcribed'**
+  String get meetingListeningHint;
+
+  /// No description provided for @meetingTranscribing.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing'**
+  String get meetingTranscribing;
+
+  /// No description provided for @meetingEnhancing.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhancing text'**
+  String get meetingEnhancing;
+
+  /// No description provided for @meetingWaitingProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to process'**
+  String get meetingWaitingProcess;
+
+  /// No description provided for @meetingPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get meetingPending;
+
+  /// No description provided for @meetingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get meetingDone;
+
+  /// No description provided for @meetingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get meetingError;
+
+  /// No description provided for @meetingSegmentError.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing failed'**
+  String get meetingSegmentError;
+
+  /// No description provided for @meetingRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get meetingRetry;
+
+  /// No description provided for @meetingNoContent.
+  ///
+  /// In en, this message translates to:
+  /// **'No transcription content'**
+  String get meetingNoContent;
+
+  /// No description provided for @meetingProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing remaining segments...'**
+  String get meetingProcessing;
+
+  /// No description provided for @meetingSegments.
+  ///
+  /// In en, this message translates to:
+  /// **'Segments'**
+  String get meetingSegments;
+
+  /// No description provided for @meetingStopConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End Meeting'**
+  String get meetingStopConfirmTitle;
+
+  /// No description provided for @meetingStopConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to end the current meeting recording? All recorded segments will be processed first.'**
+  String get meetingStopConfirm;
+
+  /// No description provided for @meetingCancelConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Meeting'**
+  String get meetingCancelConfirmTitle;
+
+  /// No description provided for @meetingCancelConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to cancel and discard the current meeting? This action cannot be undone.'**
+  String get meetingCancelConfirm;
+
+  /// No description provided for @meetingDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Meeting'**
+  String get meetingDeleteConfirmTitle;
+
+  /// No description provided for @meetingDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this meeting record? This action cannot be undone.'**
+  String get meetingDeleteConfirm;
+
+  /// No description provided for @meetingDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get meetingDate;
+
+  /// No description provided for @meetingDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get meetingDuration;
+
+  /// No description provided for @meetingTotalChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Characters'**
+  String get meetingTotalChars;
+
+  /// No description provided for @meetingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Title'**
+  String get meetingTitle;
+
+  /// No description provided for @meetingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get meetingSaved;
+
+  /// No description provided for @meetingSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Summary'**
+  String get meetingSummary;
+
+  /// No description provided for @meetingContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Content'**
+  String get meetingContent;
+
+  /// No description provided for @meetingCopyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy All'**
+  String get meetingCopyAll;
+
+  /// No description provided for @meetingExportText.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as Text'**
+  String get meetingExportText;
+
+  /// No description provided for @meetingExportMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as Markdown'**
+  String get meetingExportMarkdown;
+
+  /// No description provided for @meetingExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported to clipboard'**
+  String get meetingExported;
+
+  /// No description provided for @meetingNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting record not found'**
+  String get meetingNotFound;
 }
 
 class _AppLocalizationsDelegate

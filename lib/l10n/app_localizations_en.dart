@@ -767,4 +767,138 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get promptBuiltin => 'Built-in';
+
+  @override
+  String get meetingMinutes => 'Meeting Minutes';
+
+  @override
+  String get meetingNew => 'New Meeting';
+
+  @override
+  String get meetingRecording => 'Recording';
+
+  @override
+  String get meetingPaused => 'Paused';
+
+  @override
+  String get meetingCompleted => 'Completed';
+
+  @override
+  String get meetingEmpty => 'No meeting records';
+
+  @override
+  String get meetingEmptyHint =>
+      'Click the button above to start a new meeting recording';
+
+  @override
+  String get meetingStarting => 'Starting meeting...';
+
+  @override
+  String get meetingTitleHint => 'Enter meeting title...';
+
+  @override
+  String get meetingPause => 'Pause';
+
+  @override
+  String get meetingResume => 'Resume';
+
+  @override
+  String get meetingStop => 'Stop';
+
+  @override
+  String get meetingListening => 'Listening...';
+
+  @override
+  String get meetingListeningHint =>
+      'Audio will be automatically segmented and transcribed';
+
+  @override
+  String get meetingTranscribing => 'Transcribing';
+
+  @override
+  String get meetingEnhancing => 'Enhancing text';
+
+  @override
+  String get meetingWaitingProcess => 'Waiting to process';
+
+  @override
+  String get meetingPending => 'Pending';
+
+  @override
+  String get meetingDone => 'Done';
+
+  @override
+  String get meetingError => 'Failed';
+
+  @override
+  String get meetingSegmentError => 'Processing failed';
+
+  @override
+  String get meetingRetry => 'Retry';
+
+  @override
+  String get meetingNoContent => 'No transcription content';
+
+  @override
+  String get meetingProcessing => 'Processing remaining segments...';
+
+  @override
+  String get meetingSegments => 'Segments';
+
+  @override
+  String get meetingStopConfirmTitle => 'End Meeting';
+
+  @override
+  String get meetingStopConfirm =>
+      'Are you sure you want to end the current meeting recording? All recorded segments will be processed first.';
+
+  @override
+  String get meetingCancelConfirmTitle => 'Cancel Meeting';
+
+  @override
+  String get meetingCancelConfirm =>
+      'Are you sure you want to cancel and discard the current meeting? This action cannot be undone.';
+
+  @override
+  String get meetingDeleteConfirmTitle => 'Delete Meeting';
+
+  @override
+  String get meetingDeleteConfirm =>
+      'Are you sure you want to delete this meeting record? This action cannot be undone.';
+
+  @override
+  String get meetingDate => 'Date';
+
+  @override
+  String get meetingDuration => 'Duration';
+
+  @override
+  String get meetingTotalChars => 'Total Characters';
+
+  @override
+  String get meetingTitle => 'Meeting Title';
+
+  @override
+  String get meetingSaved => 'Saved';
+
+  @override
+  String get meetingSummary => 'Meeting Summary';
+
+  @override
+  String get meetingContent => 'Meeting Content';
+
+  @override
+  String get meetingCopyAll => 'Copy All';
+
+  @override
+  String get meetingExportText => 'Export as Text';
+
+  @override
+  String get meetingExportMarkdown => 'Export as Markdown';
+
+  @override
+  String get meetingExported => 'Exported to clipboard';
+
+  @override
+  String get meetingNotFound => 'Meeting record not found';
 }
