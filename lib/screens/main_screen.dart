@@ -303,7 +303,7 @@ class _MainScreenState extends State<MainScreen> {
             _promptSttConfig();
             return;
           }
-          recording.startRecording();
+          recording.startRecording(settings.config);
           _startVadIfEnabled(settings, recording);
         }
         // transcribing 状态下忽略
@@ -315,7 +315,7 @@ class _MainScreenState extends State<MainScreen> {
           _promptSttConfig();
           return;
         }
-        recording.startRecording();
+        recording.startRecording(settings.config);
         _startVadIfEnabled(settings, recording);
       } else if (type == 'up' && recording.state == RecordingState.recording) {
         recording.stopAndTranscribe(

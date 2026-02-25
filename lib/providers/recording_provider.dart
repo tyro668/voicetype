@@ -18,6 +18,8 @@ import '../services/vad_service.dart';
 enum RecordingState { idle, recording, transcribing }
 
 class RecordingProvider extends ChangeNotifier {
+  static const Duration _segmentDuration = Duration(seconds: 10);
+
   final AudioRecorderService _recorder = AudioRecorderService();
   final HistoryDb _historyDb = HistoryDb.instance;
 
@@ -29,11 +31,21 @@ class RecordingProvider extends ChangeNotifier {
   Duration _recordingDuration = Duration.zero;
   Timer? _durationTimer;
   Timer? _healthTimer;
+  Timer? _segmentTimer;
   StreamSubscription<double>? _amplitudeSub;
   final List<Transcription> _history = [];
   Completer<void>? _stopCompleter;
+  Completer<void>? _segmentDrainCompleter;
   VadService? _vadService;
   StreamSubscription<void>? _vadSub;
+  final List<String> _segmentQueue = [];
+  final StringBuffer _rawTextBuffer = StringBuffer();
+  final StringBuffer _realtimeTextBuffer = StringBuffer();
+  bool _segmentWorkerRunning = false;
+  bool _segmentSwitching = false;
+  bool _sessionStopping = false;
+  int _sessionId = 0;
+  SttProviderConfig? _activeSttConfig;
   // VAD auto-stop callback — set by the screen that owns the provider
   void Function()? onVadTriggered;
   String _startingLabel = 'Starting';
@@ -80,11 +92,11 @@ class RecordingProvider extends ChangeNotifier {
     return '$m:$s';
   }
 
-  Future<void> startRecording() async {
+  Future<void> startRecording(SttProviderConfig config) async {
     if (_busy) return;
     _busy = true;
     try {
-      await _startRecordingInternal().timeout(
+      await _startRecordingInternal(config).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
           LogService.error('RECORDING', 'startRecording timed out after 15s');
@@ -103,7 +115,7 @@ class RecordingProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _startRecordingInternal() async {
+  Future<void> _startRecordingInternal(SttProviderConfig config) async {
     // 等待上一次 stop 操作完成，避免竞态
     if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
       await LogService.info('RECORDING', 'waiting for stopCompleter');
@@ -113,6 +125,17 @@ class RecordingProvider extends ChangeNotifier {
       );
     }
     _error = '';
+    _activeSttConfig = config;
+    _sessionId += 1;
+    _sessionStopping = false;
+    _segmentSwitching = false;
+    _segmentTimer?.cancel();
+    _segmentTimer = null;
+    _segmentQueue.clear();
+    _segmentDrainCompleter = null;
+    _rawTextBuffer.clear();
+    _realtimeTextBuffer.clear();
+    _transcribedText = '';
     _amplitudeSub?.cancel();
     _amplitudeSub = null;
 
@@ -186,7 +209,127 @@ class RecordingProvider extends ChangeNotifier {
       notifyListeners();
     });
 
+    _segmentTimer = Timer.periodic(_segmentDuration, (_) {
+      unawaited(_handleSegmentTick(_sessionId));
+    });
+
     notifyListeners();
+  }
+
+  Future<void> _handleSegmentTick(int sessionId) async {
+    if (_state != RecordingState.recording || _sessionStopping) return;
+    if (_segmentSwitching) return;
+    if (_activeSttConfig == null) return;
+    if (sessionId != _sessionId) return;
+
+    _segmentSwitching = true;
+    try {
+      await _rotateSegment(sessionId);
+    } catch (e) {
+      await LogService.error('SEGMENT', 'rotate segment failed: $e');
+    } finally {
+      _segmentSwitching = false;
+    }
+  }
+
+  Future<void> _rotateSegment(int sessionId) async {
+    if (sessionId != _sessionId || _sessionStopping) return;
+
+    final stopFuture = _recorder.stop();
+    final fallbackPath = _recorder.currentPath;
+
+    var path = await stopFuture.timeout(
+      const Duration(seconds: 20),
+      onTimeout: () => null,
+    );
+
+    if (path == null && fallbackPath != null) {
+      path = await _waitForFileReady(
+        fallbackPath,
+        const Duration(seconds: 20),
+      );
+    }
+
+    if (path != null) {
+      _enqueueSegmentPath(path, sessionId);
+    }
+
+    if (_sessionStopping || sessionId != _sessionId) return;
+
+    try {
+      await _recorder.startWithTimeout(const Duration(seconds: 2));
+    } catch (e) {
+      await LogService.info('SEGMENT', 'restart failed ($e), resetting and retrying');
+      try {
+        await _recorder.reset().timeout(const Duration(seconds: 3));
+      } catch (_) {}
+      await _recorder.startWithTimeout(const Duration(seconds: 2));
+    }
+  }
+
+  void _enqueueSegmentPath(String path, int sessionId) {
+    _segmentQueue.add(path);
+    _segmentDrainCompleter ??= Completer<void>();
+    if (!_segmentWorkerRunning) {
+      unawaited(_runSegmentWorker(sessionId));
+    }
+  }
+
+  Future<void> _runSegmentWorker(int sessionId) async {
+    if (_segmentWorkerRunning) return;
+    _segmentWorkerRunning = true;
+    try {
+      while (_segmentQueue.isNotEmpty) {
+        final path = _segmentQueue.removeAt(0);
+        final config = _activeSttConfig;
+        if (config == null) {
+          continue;
+        }
+        try {
+          final text = await SttService(config).transcribe(path);
+          if (sessionId == _sessionId) {
+            _appendRealtimeText(text);
+          }
+        } catch (e) {
+          await LogService.error('SEGMENT', 'segment transcribe failed: $e');
+        }
+      }
+    } finally {
+      _segmentWorkerRunning = false;
+      if (_segmentQueue.isEmpty) {
+        if (_segmentDrainCompleter != null &&
+            !_segmentDrainCompleter!.isCompleted) {
+          _segmentDrainCompleter!.complete();
+        }
+        _segmentDrainCompleter = null;
+      }
+    }
+  }
+
+  void _appendRealtimeText(String text) {
+    final normalized = text.trim();
+    if (normalized.isEmpty) return;
+
+    if (_rawTextBuffer.isNotEmpty) {
+      _rawTextBuffer.write('\n');
+      _realtimeTextBuffer.write('\n');
+    }
+    _rawTextBuffer.write(normalized);
+    _realtimeTextBuffer.write(normalized);
+    _transcribedText = _realtimeTextBuffer.toString();
+    unawaited(OverlayService.updateOverlayText(_transcribedText));
+    notifyListeners();
+  }
+
+  Future<void> _waitForSegmentDrain() async {
+    if (_segmentQueue.isEmpty && !_segmentWorkerRunning) {
+      return;
+    }
+    _segmentDrainCompleter ??= Completer<void>();
+    await _segmentDrainCompleter!.future.timeout(
+      const Duration(seconds: 60),
+      onTimeout: () {},
+    );
   }
 
   /// Start VAD monitoring. Call after startRecording().
@@ -225,12 +368,15 @@ class RecordingProvider extends ChangeNotifier {
   }) async {
     if (_busy) return;
     _busy = true;
+    _activeSttConfig ??= config;
     stopVad();
     try {
       _durationTimer?.cancel();
       _durationTimer = null;
       _healthTimer?.cancel();
       _healthTimer = null;
+      _segmentTimer?.cancel();
+      _segmentTimer = null;
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
 
@@ -238,6 +384,7 @@ class RecordingProvider extends ChangeNotifier {
 
       // 录音时长不足，忽略本次输入
       if (duration.inSeconds < minRecordingSeconds) {
+        _sessionStopping = true;
         _state = RecordingState.idle;
         unawaited(OverlayService.hideOverlay());
         _stopCompleter = Completer<void>();
@@ -289,6 +436,11 @@ class RecordingProvider extends ChangeNotifier {
   }) async {
     final sw = Stopwatch()..start();
     try {
+      _sessionStopping = true;
+      while (_segmentSwitching) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+
       await LogService.info('TRANSCRIBE', 'step1: stopping recorder...');
       final stopFuture = _recorder.stop();
       final fallbackPath = _recorder.currentPath;
@@ -323,21 +475,26 @@ class RecordingProvider extends ChangeNotifier {
       }
 
       if (path == null) {
-        _error = '录音文件获取失败';
-        await LogService.error('TRANSCRIBE', 'no audio file after ${sw.elapsedMilliseconds}ms');
-        await _recorder.reset();
-        unawaited(OverlayService.hideOverlay());
+        await LogService.info('TRANSCRIBE', 'final segment path unavailable, continue with queued segments');
+      } else {
+        _enqueueSegmentPath(path, _sessionId);
+      }
+
+      await _waitForSegmentDrain();
+
+      final rawText = _rawTextBuffer.toString().trim();
+      await LogService.info('TRANSCRIBE', 'segment collection done: ${sw.elapsedMilliseconds}ms, textLength=${rawText.length}');
+
+      if (rawText.isEmpty) {
+        _error = '转录结果为空';
+        await LogService.error('TRANSCRIBE', 'empty segment result after ${sw.elapsedMilliseconds}ms');
+        _showTranscribeFailedOverlay();
         notifyListeners();
         return;
       }
 
-      // 检查文件大小
-      final file = File(path);
-      final fileSize = await file.exists() ? await file.length() : -1;
-      await LogService.info('TRANSCRIBE', 'audio file ready: size=${fileSize}bytes, elapsed=${sw.elapsedMilliseconds}ms');
-
-      _transcribeInBackground(
-        path,
+      _finalizeTranscriptionFromRawText(
+        rawText,
         config,
         duration,
         aiEnhanceEnabled: aiEnhanceEnabled,
@@ -372,8 +529,8 @@ class RecordingProvider extends ChangeNotifier {
     return null;
   }
 
-  void _transcribeInBackground(
-    String path,
+  void _finalizeTranscriptionFromRawText(
+    String rawText,
     SttProviderConfig config,
     Duration duration, {
     required bool aiEnhanceEnabled,
@@ -382,10 +539,7 @@ class RecordingProvider extends ChangeNotifier {
   }) async {
     final sw = Stopwatch()..start();
     try {
-      await LogService.info('TRANSCRIBE', 'stt start: provider=${config.name} model=${config.model} baseUrl=${config.baseUrl}');
-      final sttService = SttService(config);
-      final rawText = await sttService.transcribe(path);
-      await LogService.info('TRANSCRIBE', 'stt done: ${sw.elapsedMilliseconds}ms, textLength=${rawText.length}, text="${rawText.length > 50 ? rawText.substring(0, 50) : rawText}"');
+      await LogService.info('TRANSCRIBE', 'finalize start: provider=${config.name} model=${config.model} rawTextLength=${rawText.length}');
       var finalText = rawText;
 
       if (aiEnhanceEnabled && aiEnhanceConfig != null) {
@@ -536,6 +690,7 @@ class RecordingProvider extends ChangeNotifier {
   void dispose() {
     _durationTimer?.cancel();
     _healthTimer?.cancel();
+    _segmentTimer?.cancel();
     _amplitudeSub?.cancel();
     stopVad();
     _recorder.dispose();
