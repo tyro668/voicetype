@@ -106,6 +106,14 @@ class MeetingProvider extends ChangeNotifier {
   Future<void> _loadMeetings() async {
     try {
       _meetings = await AppDatabase.instance.getAllMeetings();
+      // 修复因崩溃/异常导致的残留 recording/paused 状态
+      final activeId = _recordingService.currentMeeting?.id;
+      for (final m in _meetings) {
+        if (m.status != MeetingStatus.completed && m.id != activeId) {
+          m.status = MeetingStatus.completed;
+          await AppDatabase.instance.updateMeeting(m);
+        }
+      }
       notifyListeners();
     } catch (e) {
       await LogService.error('MEETING_PROVIDER', 'load meetings failed: $e');

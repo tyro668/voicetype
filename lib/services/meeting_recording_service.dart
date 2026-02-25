@@ -109,8 +109,16 @@ class MeetingRecordingService {
 
     await LogService.info('MEETING', 'starting meeting: ${meeting.id}');
 
-    // 开始第一段录音
-    await _startSegmentRecording();
+    // 开始第一段录音（如果失败则清理数据库中的会议记录）
+    try {
+      await _startSegmentRecording();
+    } catch (e) {
+      // 录音启动失败，清理已写入的会议记录
+      await db.deleteMeetingById(meeting.id);
+      _currentMeeting = null;
+      await LogService.error('MEETING', 'start recording failed, cleaned up: $e');
+      rethrow;
+    }
 
     // 启动计时器
     _recordingStartTime = now;

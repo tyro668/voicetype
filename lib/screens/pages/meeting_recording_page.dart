@@ -189,6 +189,59 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
           ),
         ),
         actions: [
+          // 暂停/继续 + 长按结束会议
+          if (provider.isRecording)
+            GestureDetector(
+              onLongPressStart: (_) => _startLongPress(),
+              onLongPressEnd: (_) => _cancelLongPress(),
+              onLongPressCancel: () => _cancelLongPress(),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 长按进度环
+                  if (_isLongPressing)
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        value: _longPressProgress,
+                        strokeWidth: 3,
+                        color: Colors.red,
+                        backgroundColor: Colors.red.withValues(alpha: 0.15),
+                      ),
+                    ),
+                  IconButton(
+                    onPressed: () {
+                      if (provider.isPaused) {
+                        provider.resumeMeeting();
+                      } else {
+                        provider.pauseMeeting();
+                      }
+                    },
+                    icon: Icon(
+                      _isLongPressing
+                          ? Icons.stop_rounded
+                          : provider.isPaused
+                              ? Icons.play_arrow_rounded
+                              : Icons.pause_rounded,
+                      size: 20,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: _isLongPressing
+                          ? Colors.red
+                          : provider.isPaused
+                              ? _cs.primary
+                              : Colors.orange,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(36, 36),
+                      padding: const EdgeInsets.all(6),
+                    ),
+                    tooltip: provider.isPaused ? l10n.meetingResume : l10n.meetingPause,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(width: 6),
           // 录音时长
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -234,8 +287,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                   )
                 : _buildTranscriptionArea(segments, provider, l10n),
           ),
-          // 底部单按钮控制栏
-          if (provider.isRecording) _buildBottomBar(provider, l10n),
+
         ],
       ),
     );
@@ -399,94 +451,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
     );
   }
 
-  /// 底部控制栏 — 仅一个暂停/继续按钮，长按结束
-  Widget _buildBottomBar(MeetingProvider provider, AppLocalizations l10n) {
-    final isPaused = provider.isPaused;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        border: Border(top: BorderSide(color: _cs.outlineVariant)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 长按进度条（仅在长按时显示）
-          if (_isLongPressing)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                children: [
-                  Text(
-                    l10n.meetingEndingConfirm,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.red.shade400,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: _longPressProgress,
-                      backgroundColor: _cs.surfaceContainerHighest,
-                      color: Colors.red,
-                      minHeight: 4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // 提示文字
-          if (!_isLongPressing)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                l10n.meetingLongPressToEnd,
-                style: TextStyle(fontSize: 12, color: _cs.outline),
-              ),
-            ),
-          // 单按钮
-          GestureDetector(
-            onLongPressStart: (_) => _startLongPress(),
-            onLongPressEnd: (_) => _cancelLongPress(),
-            onLongPressCancel: () => _cancelLongPress(),
-            child: SizedBox(
-              width: 200,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  if (isPaused) {
-                    provider.resumeMeeting();
-                  } else {
-                    provider.pauseMeeting();
-                  }
-                },
-                icon: Icon(
-                  isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                  size: 24,
-                ),
-                label: Text(
-                  isPaused ? l10n.meetingResume : l10n.meetingPause,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isPaused ? _cs.primary : Colors.orange,
-                  foregroundColor: isPaused ? _cs.onPrimary : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  elevation: 2,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _handleBack(MeetingProvider provider, AppLocalizations l10n) {
     if (provider.isRecording) {
