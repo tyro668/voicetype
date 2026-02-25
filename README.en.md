@@ -46,6 +46,7 @@ Windows (EXE):
 ```
 powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 ```
+
 ## Configure speech model
 
 Using GLM speech model is recommended. Visit [Zhipu](https://bigmodel.cn/usercenter), top up your account, create an API key, and configure it in the app.
@@ -96,7 +97,5 @@ Used to refine colloquial sentences into smoother text. There are online models 
 #### Local text enhancement model (testing)
 ![Local text model settings](screenshots/local_text_model.png)
 
-
 Recording effect
 ![Recording effect](screenshots/record.png)
-
