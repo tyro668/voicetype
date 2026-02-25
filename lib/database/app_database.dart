@@ -19,7 +19,7 @@ import 'transcription_entity.dart';
 part 'app_database.g.dart';
 
 /// 统一的 SQLite 数据库，使用 Floor ORM 管理历史记录和所有配置数据。
-@Database(version: 4, entities: [SettingEntity, TranscriptionEntity, MeetingEntity, MeetingSegmentEntity])
+@Database(version: 5, entities: [SettingEntity, TranscriptionEntity, MeetingEntity, MeetingSegmentEntity])
 abstract class AppDatabase extends FloorDatabase {
   SettingDao get settingDao;
   TranscriptionDao get transcriptionDao;
@@ -169,6 +169,11 @@ abstract class AppDatabase extends FloorDatabase {
         '`error_message` TEXT, '
         'PRIMARY KEY (`id`), '
         'FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`) ON DELETE CASCADE)',
+      );
+    }),
+    Migration(4, 5, (database) async {
+      await database.execute(
+        'ALTER TABLE meetings ADD COLUMN full_transcription TEXT',
       );
     }),
   ];

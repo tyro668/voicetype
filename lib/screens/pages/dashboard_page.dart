@@ -672,6 +672,60 @@ class _DashboardPageState extends State<DashboardPage> {
               cs: _cs,
             ),
           ],
+          if (_stats.meetingEnhanceTotalTokens > 0) ...[
+            const SizedBox(height: 20),
+            Text(
+              _l10n.meetingTokenUsage,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.arrow_upward_rounded,
+              iconColor: Colors.deepOrange,
+              label: _l10n.enhanceInputTokens,
+              value: _formatNumber(_stats.meetingEnhancePromptTokens),
+              cs: _cs,
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.arrow_downward_rounded,
+              iconColor: Colors.cyan,
+              label: _l10n.enhanceOutputTokens,
+              value: _formatNumber(_stats.meetingEnhanceCompletionTokens),
+              cs: _cs,
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.token_outlined,
+              iconColor: _cs.secondary,
+              label: _l10n.enhanceTotalTokens,
+              value: _formatNumber(_stats.meetingEnhanceTotalTokens),
+              cs: _cs,
+            ),
+          ],
+          if (_stats.allTotalTokens > 0 && _stats.meetingEnhanceTotalTokens > 0 && _stats.enhanceTotalTokens > 0) ...[
+            const SizedBox(height: 20),
+            Text(
+              _l10n.allTokenUsage,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _ActivityItem(
+              icon: Icons.token_outlined,
+              iconColor: _cs.primary,
+              label: _l10n.enhanceTotalTokens,
+              value: _formatNumber(_stats.allTotalTokens),
+              cs: _cs,
+            ),
+          ],
         ],
       ),
     );

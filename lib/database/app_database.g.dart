@@ -86,7 +86,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 4,
+      version: 5,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -106,7 +106,7 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `transcriptions` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `created_at` TEXT NOT NULL, `duration_ms` INTEGER NOT NULL, `provider` TEXT NOT NULL, `model` TEXT NOT NULL, `provider_config` TEXT NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `meetings` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `created_at` TEXT NOT NULL, `updated_at` TEXT NOT NULL, `status` TEXT NOT NULL, `summary` TEXT, `total_duration_ms` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `meetings` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `created_at` TEXT NOT NULL, `updated_at` TEXT NOT NULL, `status` TEXT NOT NULL, `summary` TEXT, `total_duration_ms` INTEGER NOT NULL, `full_transcription` TEXT, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `meeting_segments` (`id` TEXT NOT NULL, `meeting_id` TEXT NOT NULL, `segment_index` INTEGER NOT NULL, `start_time` TEXT NOT NULL, `duration_ms` INTEGER NOT NULL, `audio_file_path` TEXT, `transcription` TEXT, `enhanced_text` TEXT, `status` TEXT NOT NULL, `error_message` TEXT, FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`) ON UPDATE NO ACTION ON DELETE CASCADE, PRIMARY KEY (`id`))');
 
@@ -261,7 +261,8 @@ class _$MeetingDao extends MeetingDao {
                   'updated_at': item.updatedAt,
                   'status': item.status,
                   'summary': item.summary,
-                  'total_duration_ms': item.totalDurationMs
+                  'total_duration_ms': item.totalDurationMs,
+                  'full_transcription': item.fullTranscription
                 }),
         _meetingEntityUpdateAdapter = UpdateAdapter(
             database,
@@ -274,7 +275,8 @@ class _$MeetingDao extends MeetingDao {
                   'updated_at': item.updatedAt,
                   'status': item.status,
                   'summary': item.summary,
-                  'total_duration_ms': item.totalDurationMs
+                  'total_duration_ms': item.totalDurationMs,
+                  'full_transcription': item.fullTranscription
                 });
 
   final sqflite.DatabaseExecutor database;
@@ -298,7 +300,8 @@ class _$MeetingDao extends MeetingDao {
             updatedAt: row['updated_at'] as String,
             status: row['status'] as String,
             summary: row['summary'] as String?,
-            totalDurationMs: row['total_duration_ms'] as int));
+            totalDurationMs: row['total_duration_ms'] as int,
+            fullTranscription: row['full_transcription'] as String?));
   }
 
   @override
@@ -311,7 +314,8 @@ class _$MeetingDao extends MeetingDao {
             updatedAt: row['updated_at'] as String,
             status: row['status'] as String,
             summary: row['summary'] as String?,
-            totalDurationMs: row['total_duration_ms'] as int),
+            totalDurationMs: row['total_duration_ms'] as int,
+            fullTranscription: row['full_transcription'] as String?),
         arguments: [id]);
   }
 
@@ -326,7 +330,8 @@ class _$MeetingDao extends MeetingDao {
             updatedAt: row['updated_at'] as String,
             status: row['status'] as String,
             summary: row['summary'] as String?,
-            totalDurationMs: row['total_duration_ms'] as int),
+            totalDurationMs: row['total_duration_ms'] as int,
+            fullTranscription: row['full_transcription'] as String?),
         arguments: [status]);
   }
 

@@ -119,6 +119,9 @@ class DashboardService {
     // ── AI 增强 token 用量 ──
     final tokenStats = await TokenStatsService.instance.getTokens();
 
+    // ── 会议 AI 增强 token 用量 ──
+    final meetingTokenStats = await TokenStatsService.instance.getMeetingTokens();
+
     return DashboardStats(
       totalCount: totalCount,
       totalDurationMs: totalDurationMs,
@@ -145,6 +148,8 @@ class DashboardService {
       modelDistribution: modelDist,
       enhancePromptTokens: tokenStats.promptTokens,
       enhanceCompletionTokens: tokenStats.completionTokens,
+      meetingEnhancePromptTokens: meetingTokenStats.promptTokens,
+      meetingEnhanceCompletionTokens: meetingTokenStats.completionTokens,
     );
   }
 

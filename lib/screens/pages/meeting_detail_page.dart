@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
 import '../../providers/meeting_provider.dart';
-import '../../services/meeting_export_service.dart';
 
 /// 会议详情 / 编辑页面
 class MeetingDetailPage extends StatefulWidget {
@@ -21,11 +20,12 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
   MeetingRecord? _meeting;
-  List<MeetingSegment> _segments = [];
   bool _loading = true;
   final TextEditingController _titleController = TextEditingController();
-  int? _editingSegmentIndex;
-  final TextEditingController _editController = TextEditingController();
+
+  // 完整文稿编辑
+  bool _isEditingTranscription = false;
+  final TextEditingController _transcriptionController = TextEditingController();
 
   @override
   void initState() {
@@ -35,9 +35,8 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
 
   Future<void> _loadData() async {
     final provider = context.read<MeetingProvider>();
-    final db = await provider.getSegments(widget.meetingId);
+    await provider.refreshMeetings();
 
-    // Find meeting from provider's list
     final meetings = provider.meetings;
     MeetingRecord? meeting;
     for (final m in meetings) {
@@ -50,7 +49,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     if (mounted) {
       setState(() {
         _meeting = meeting;
-        _segments = db;
         _loading = false;
         _titleController.text = meeting?.title ?? '';
       });
@@ -60,7 +58,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
   @override
   void dispose() {
     _titleController.dispose();
-    _editController.dispose();
+    _transcriptionController.dispose();
     super.dispose();
   }
 
@@ -95,7 +93,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _cs.onSurface),
         ),
         actions: [
-          // 导出菜单
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: _cs.onSurfaceVariant),
             onSelected: (value) => _handleMenuAction(value, meeting, l10n),
@@ -161,8 +158,8 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
               _buildSummarySection(meeting, l10n),
               const SizedBox(height: 20),
             ],
-            // 分段列表
-            _buildSegmentsSection(l10n),
+            // 完整文稿
+            _buildFullTranscriptionSection(meeting, l10n),
           ],
         ),
       ),
@@ -170,6 +167,8 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
   }
 
   Widget _buildInfoCard(MeetingRecord meeting, String dateStr, AppLocalizations l10n) {
+    final charCount = (meeting.fullTranscription ?? '').length;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -194,16 +193,9 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
           ),
           const SizedBox(width: 32),
           _InfoItem(
-            icon: Icons.segment_outlined,
-            label: l10n.meetingSegments,
-            value: '${_segments.length}',
-            cs: _cs,
-          ),
-          const SizedBox(width: 32),
-          _InfoItem(
             icon: Icons.text_fields_outlined,
             label: l10n.meetingTotalChars,
-            value: '${_totalChars()}',
+            value: '$charCount',
             cs: _cs,
           ),
         ],
@@ -296,72 +288,14 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     );
   }
 
-  Widget _buildSegmentsSection(AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              l10n.meetingContent,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: _cs.onSurface,
-              ),
-            ),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: () async {
-                final text = MeetingExportService.getFullText(_segments);
-                await Clipboard.setData(ClipboardData(text: text));
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.copiedToClipboard),
-                      duration: const Duration(seconds: 1),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              icon: Icon(Icons.copy, size: 16, color: _cs.primary),
-              label: Text(l10n.meetingCopyAll),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ..._segments.asMap().entries.map((entry) {
-          final index = entry.key;
-          final segment = entry.value;
-          return _buildDetailSegmentCard(segment, l10n, index);
-        }),
-        if (_segments.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: _cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _cs.outlineVariant),
-            ),
-            child: Center(
-              child: Text(
-                l10n.meetingNoContent,
-                style: TextStyle(fontSize: 14, color: _cs.outline),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDetailSegmentCard(MeetingSegment segment, AppLocalizations l10n, int index) {
-    final isEditing = _editingSegmentIndex == index;
+  /// 完整文稿展示区域
+  Widget _buildFullTranscriptionSection(MeetingRecord meeting, AppLocalizations l10n) {
+    final hasFullText = meeting.fullTranscription != null &&
+        meeting.fullTranscription!.isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surface,
         borderRadius: BorderRadius.circular(12),
@@ -370,104 +304,116 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 头部
+          // 标题栏
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _cs.secondaryContainer,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '#${index + 1}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSecondaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.access_time, size: 14, color: _cs.outline),
-              const SizedBox(width: 4),
-              Text(
-                segment.formattedTimestamp,
-                style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-              ),
+              Icon(Icons.article_outlined, size: 18, color: _cs.onSurfaceVariant),
               const SizedBox(width: 8),
               Text(
-                segment.formattedOffset,
-                style: TextStyle(fontSize: 12, color: _cs.outline),
+                l10n.meetingFullTranscription,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: _cs.onSurface,
+                ),
               ),
               const Spacer(),
-              // 编辑按钮
-              if (!isEditing)
-                IconButton(
-                  icon: Icon(Icons.edit_outlined, size: 16, color: _cs.outline),
-                  tooltip: l10n.edit,
-                  onPressed: () {
-                    setState(() {
-                      _editingSegmentIndex = index;
-                      _editController.text = segment.displayText ?? '';
-                    });
-                  },
-                  constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.all(4),
-                ),
               // 复制按钮
+              if (hasFullText)
+                IconButton(
+                  icon: Icon(Icons.copy_outlined, size: 18, color: _cs.outline),
+                  tooltip: l10n.meetingCopyAll,
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: meeting.fullTranscription!),
+                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l10n.copiedToClipboard),
+                          duration: const Duration(seconds: 1),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              // 编辑按钮
               IconButton(
-                icon: Icon(Icons.copy_outlined, size: 16, color: _cs.outline),
-                tooltip: l10n.copy,
+                icon: Icon(
+                  _isEditingTranscription ? Icons.close : Icons.edit_outlined,
+                  size: 18,
+                  color: _cs.outline,
+                ),
+                tooltip: _isEditingTranscription ? l10n.cancel : l10n.edit,
                 onPressed: () {
-                  final text = segment.displayText ?? '';
-                  Clipboard.setData(ClipboardData(text: text));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.copiedToClipboard),
-                      duration: const Duration(seconds: 1),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  setState(() {
+                    if (_isEditingTranscription) {
+                      _isEditingTranscription = false;
+                    } else {
+                      _isEditingTranscription = true;
+                      _transcriptionController.text =
+                          meeting.fullTranscription ?? '';
+                    }
+                  });
                 },
-                constraints: const BoxConstraints(),
-                padding: const EdgeInsets.all(4),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          // 内容
-          if (isEditing)
+          const Divider(height: 20),
+          // 内容区
+          if (_isEditingTranscription)
             Column(
               children: [
                 TextField(
-                  controller: _editController,
+                  controller: _transcriptionController,
                   maxLines: null,
-                  style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
+                  minLines: 8,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _cs.onSurface,
+                    height: 1.8,
+                  ),
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.all(12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => setState(() => _editingSegmentIndex = null),
+                      onPressed: () {
+                        setState(() => _isEditingTranscription = false);
+                      },
                       child: Text(l10n.cancel),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () async {
-                        await context.read<MeetingProvider>().updateSegmentText(
-                          segment.id,
-                          _editController.text,
-                        );
+                        await context
+                            .read<MeetingProvider>()
+                            .updateMeetingFullTranscription(
+                              widget.meetingId,
+                              _transcriptionController.text,
+                            );
                         setState(() {
-                          segment.enhancedText = _editController.text;
-                          _editingSegmentIndex = null;
+                          meeting.fullTranscription =
+                              _transcriptionController.text;
+                          _isEditingTranscription = false;
                         });
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.meetingSaved),
+                              duration: const Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       },
                       child: Text(l10n.saveChanges),
                     ),
@@ -475,34 +421,38 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                 ),
               ],
             )
-          else if (segment.displayText != null && segment.displayText!.isNotEmpty)
+          else if (hasFullText)
             SelectableText(
-              segment.displayText!,
-              style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
+              meeting.fullTranscription!,
+              style: TextStyle(
+                fontSize: 14,
+                color: _cs.onSurface,
+                height: 1.8,
+              ),
             )
           else
-            Text(
-              l10n.meetingNoContent,
-              style: TextStyle(fontSize: 13, color: _cs.outline, fontStyle: FontStyle.italic),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  l10n.meetingNoContent,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _cs.outline,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             ),
         ],
       ),
     );
   }
 
-  int _totalChars() {
-    int count = 0;
-    for (final seg in _segments) {
-      final text = seg.displayText;
-      if (text != null) count += text.length;
-    }
-    return count;
-  }
-
   void _handleMenuAction(String action, MeetingRecord meeting, AppLocalizations l10n) async {
     switch (action) {
       case 'copy':
-        final text = MeetingExportService.getFullText(_segments);
+        final text = meeting.fullTranscription ?? '';
         await Clipboard.setData(ClipboardData(text: text));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -515,7 +465,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
         }
         break;
       case 'export_text':
-        final content = MeetingExportService.exportAsText(meeting, _segments);
+        final content = await context.read<MeetingProvider>().exportAsText(widget.meetingId);
         await Clipboard.setData(ClipboardData(text: content));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -528,7 +478,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
         }
         break;
       case 'export_md':
-        final content = MeetingExportService.exportAsMarkdown(meeting, _segments);
+        final content = await context.read<MeetingProvider>().exportAsMarkdown(widget.meetingId);
         await Clipboard.setData(ClipboardData(text: content));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

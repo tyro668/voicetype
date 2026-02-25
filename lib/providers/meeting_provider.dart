@@ -231,6 +231,24 @@ class MeetingProvider extends ChangeNotifier {
 
       final meeting = await _recordingService.stopMeeting();
 
+      // 合并所有分段文字为完整文稿
+      final segments = await AppDatabase.instance.getMeetingSegments(meeting.id);
+      segments.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
+
+      final buffer = StringBuffer();
+      for (final seg in segments) {
+        final text = (seg.enhancedText ?? seg.transcription ?? '').trim();
+        if (text.isNotEmpty) {
+          buffer.writeln(text);
+        }
+      }
+
+      final mergedText = buffer.toString().trim();
+      if (mergedText.isNotEmpty) {
+        meeting.fullTranscription = mergedText;
+        await AppDatabase.instance.updateMeeting(meeting);
+      }
+
       // 处理完成，隐藏 overlay
       unawaited(OverlayService.hideOverlay());
       await _loadMeetings();
@@ -287,6 +305,17 @@ class MeetingProvider extends ChangeNotifier {
     await _loadMeetings();
   }
 
+  /// 更新会议完整文稿
+  Future<void> updateMeetingFullTranscription(String meetingId, String text) async {
+    final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+    if (meeting == null) return;
+
+    meeting.fullTranscription = text;
+    meeting.updatedAt = DateTime.now();
+    await AppDatabase.instance.updateMeeting(meeting);
+    await _loadMeetings();
+  }
+
   /// 删除会议
   Future<void> deleteMeeting(String meetingId) async {
     await AppDatabase.instance.deleteMeetingById(meetingId);
@@ -297,23 +326,21 @@ class MeetingProvider extends ChangeNotifier {
   Future<String> exportAsText(String meetingId) async {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return '';
-    final segments = await AppDatabase.instance.getMeetingSegments(meetingId);
-    return MeetingExportService.exportAsText(meeting, segments);
+    return MeetingExportService.exportAsText(meeting);
   }
 
   /// 导出会议为 Markdown
   Future<String> exportAsMarkdown(String meetingId) async {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return '';
-    final segments = await AppDatabase.instance.getMeetingSegments(meetingId);
-    return MeetingExportService.exportAsMarkdown(meeting, segments);
+    return MeetingExportService.exportAsMarkdown(meeting);
   }
 
   /// 复制会议全文到剪贴板
   Future<void> copyFullText(String meetingId) async {
-    final segments = await AppDatabase.instance.getMeetingSegments(meetingId);
-    final text = MeetingExportService.getFullText(segments);
-    await MeetingExportService.copyToClipboard(text);
+    final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+    if (meeting == null) return;
+    await MeetingExportService.copyToClipboard(meeting.fullTranscription ?? '');
   }
 
   /// 重试失败的分段

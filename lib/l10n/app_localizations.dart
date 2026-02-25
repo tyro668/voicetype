@@ -1373,7 +1373,7 @@ abstract class AppLocalizations {
   /// No description provided for @enhanceTokenUsage.
   ///
   /// In en, this message translates to:
-  /// **'Text Enhancement Tokens'**
+  /// **'Voice Input Tokens'**
   String get enhanceTokenUsage;
 
   /// No description provided for @enhanceInputTokens.
@@ -1393,6 +1393,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total Tokens'**
   String get enhanceTotalTokens;
+
+  /// No description provided for @meetingTokenUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Recording Tokens'**
+  String get meetingTokenUsage;
+
+  /// No description provided for @allTokenUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'All Tokens Summary'**
+  String get allTokenUsage;
 
   /// No description provided for @showInDock.
   ///
@@ -1681,6 +1693,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Segments'**
   String get meetingSegments;
+
+  /// No description provided for @meetingLongPressToEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Long press to end meeting'**
+  String get meetingLongPressToEnd;
+
+  /// No description provided for @meetingEndingConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Ending meeting...'**
+  String get meetingEndingConfirm;
+
+  /// No description provided for @meetingRecordingSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording...'**
+  String get meetingRecordingSegment;
+
+  /// No description provided for @meetingFullTranscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Minutes'**
+  String get meetingFullTranscription;
 
   /// No description provided for @meetingStopConfirmTitle.
   ///

@@ -271,10 +271,12 @@
     }
   },
 
-  "enhanceTokenUsage": "Text Enhancement Tokens",
+  "enhanceTokenUsage": "Voice Input Tokens",
   "enhanceInputTokens": "Input Tokens",
   "enhanceOutputTokens": "Output Tokens",
   "enhanceTotalTokens": "Total Tokens",
+  "meetingTokenUsage": "Meeting Recording Tokens",
+  "allTokenUsage": "All Tokens Summary",
 
   "showInDock": "Show in Dock",
   "showInDockDescription": "Show the application icon in the macOS Dock.",
@@ -330,6 +332,10 @@
   "meetingNoContent": "No transcription content",
   "meetingProcessing": "Processing remaining segments...",
   "meetingSegments": "Segments",
+  "meetingLongPressToEnd": "Long press to end meeting",
+  "meetingEndingConfirm": "Ending meeting...",
+  "meetingRecordingSegment": "Recording...",
+  "meetingFullTranscription": "Meeting Minutes",
   "meetingStopConfirmTitle": "End Meeting",
   "meetingStopConfirm": "Are you sure you want to end the current meeting recording? All recorded segments will be processed first.",
   "meetingCancelConfirmTitle": "Cancel Meeting",

@@ -23,6 +23,8 @@ class MeetingRecord {
   MeetingStatus status;
   String? summary;
   Duration totalDuration;
+  /// 会议结束后合并的完整文稿
+  String? fullTranscription;
 
   MeetingRecord({
     required this.id,
@@ -32,6 +34,7 @@ class MeetingRecord {
     this.status = MeetingStatus.recording,
     this.summary,
     this.totalDuration = Duration.zero,
+    this.fullTranscription,
   });
 
   Map<String, dynamic> toJson() => {
@@ -42,6 +45,7 @@ class MeetingRecord {
     'status': status.name,
     'summary': summary,
     'totalDuration': totalDuration.inMilliseconds,
+    'fullTranscription': fullTranscription,
   };
 
   factory MeetingRecord.fromJson(Map<String, dynamic> json) => MeetingRecord(
@@ -52,6 +56,7 @@ class MeetingRecord {
     status: MeetingStatus.values.byName(json['status'] as String),
     summary: json['summary'] as String?,
     totalDuration: Duration(milliseconds: json['totalDuration'] as int),
+    fullTranscription: json['fullTranscription'] as String?,
   );
 
   /// 格式化总时长为 HH:mm:ss

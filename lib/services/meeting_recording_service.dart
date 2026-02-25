@@ -9,6 +9,7 @@ import 'audio_recorder.dart';
 import 'stt_service.dart';
 import 'ai_enhance_service.dart';
 import 'log_service.dart';
+import 'token_stats_service.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
 class MeetingRecordingService {
@@ -371,6 +372,14 @@ class MeetingRecordingService {
           final enhancer = AiEnhanceService(_aiConfig!);
           final result = await enhancer.enhance(rawText);
           segment.enhancedText = result.text;
+
+          // 记录会议 AI 增强 token 用量
+          if (result.promptTokens > 0 || result.completionTokens > 0) {
+            await TokenStatsService.instance.addMeetingTokens(
+              promptTokens: result.promptTokens,
+              completionTokens: result.completionTokens,
+            );
+          }
         } catch (e) {
           await LogService.error('MEETING', 'AI enhance failed for segment ${segment.segmentIndex}: $e');
           // 增强失败不影响转写结果

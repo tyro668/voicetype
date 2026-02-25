@@ -266,10 +266,12 @@
     }
   },
 
-  "enhanceTokenUsage": "文本增强 Token 用量",
+  "enhanceTokenUsage": "语音输入 Token 用量",
   "enhanceInputTokens": "输入 Token",
   "enhanceOutputTokens": "输出 Token",
   "enhanceTotalTokens": "总 Token",
+  "meetingTokenUsage": "会议记录 Token 用量",
+  "allTokenUsage": "全部 Token 汇总",
 
   "showInDock": "在 Dock 中显示",
   "showInDockDescription": "控制应用程序图标是否显示在 Dock 上。",
@@ -325,6 +327,10 @@
   "meetingNoContent": "无转写内容",
   "meetingProcessing": "正在处理剩余分段...",
   "meetingSegments": "分段数",
+  "meetingLongPressToEnd": "长按按钮结束会议",
+  "meetingEndingConfirm": "正在结束会议...",
+  "meetingRecordingSegment": "正在录音...",
+  "meetingFullTranscription": "会议纪要",
   "meetingStopConfirmTitle": "结束会议",
   "meetingStopConfirm": "确定要结束当前会议录制吗？系统会先处理完所有已录制的分段。",
   "meetingCancelConfirmTitle": "取消会议",

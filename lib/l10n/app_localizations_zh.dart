@@ -662,7 +662,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get enhanceTokenUsage => '文本增强 Token 用量';
+  String get enhanceTokenUsage => '语音输入 Token 用量';
 
   @override
   String get enhanceInputTokens => '输入 Token';
@@ -672,6 +672,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get enhanceTotalTokens => '总 Token';
+
+  @override
+  String get meetingTokenUsage => '会议记录 Token 用量';
+
+  @override
+  String get allTokenUsage => '全部 Token 汇总';
 
   @override
   String get showInDock => '在 Dock 中显示';
@@ -818,6 +824,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get meetingSegments => '分段数';
+
+  @override
+  String get meetingLongPressToEnd => '长按按钮结束会议';
+
+  @override
+  String get meetingEndingConfirm => '正在结束会议...';
+
+  @override
+  String get meetingRecordingSegment => '正在录音...';
+
+  @override
+  String get meetingFullTranscription => '会议纪要';
 
   @override
   String get meetingStopConfirmTitle => '结束会议';

@@ -22,6 +22,9 @@ class MeetingEntity {
   @ColumnInfo(name: 'total_duration_ms')
   final int totalDurationMs;
 
+  @ColumnInfo(name: 'full_transcription')
+  final String? fullTranscription;
+
   MeetingEntity({
     required this.id,
     required this.title,
@@ -30,6 +33,7 @@ class MeetingEntity {
     required this.status,
     this.summary,
     required this.totalDurationMs,
+    this.fullTranscription,
   });
 
   /// 转换为领域模型
@@ -41,6 +45,7 @@ class MeetingEntity {
     status: MeetingStatus.values.byName(status),
     summary: summary,
     totalDuration: Duration(milliseconds: totalDurationMs),
+    fullTranscription: fullTranscription,
   );
 
   /// 从领域模型创建
@@ -52,5 +57,6 @@ class MeetingEntity {
     status: m.status.name,
     summary: m.summary,
     totalDurationMs: m.totalDuration.inMilliseconds,
+    fullTranscription: m.fullTranscription,
   );
 }

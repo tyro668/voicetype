@@ -690,7 +690,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get enhanceTokenUsage => 'Text Enhancement Tokens';
+  String get enhanceTokenUsage => 'Voice Input Tokens';
 
   @override
   String get enhanceInputTokens => 'Input Tokens';
@@ -700,6 +700,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enhanceTotalTokens => 'Total Tokens';
+
+  @override
+  String get meetingTokenUsage => 'Meeting Recording Tokens';
+
+  @override
+  String get allTokenUsage => 'All Tokens Summary';
 
   @override
   String get showInDock => 'Show in Dock';
@@ -851,6 +857,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meetingSegments => 'Segments';
+
+  @override
+  String get meetingLongPressToEnd => 'Long press to end meeting';
+
+  @override
+  String get meetingEndingConfirm => 'Ending meeting...';
+
+  @override
+  String get meetingRecordingSegment => 'Recording...';
+
+  @override
+  String get meetingFullTranscription => 'Meeting Minutes';
 
   @override
   String get meetingStopConfirmTitle => 'End Meeting';

@@ -66,6 +66,10 @@ class DashboardStats {
   final int enhancePromptTokens;
   final int enhanceCompletionTokens;
 
+  // ── 会议 AI 增强 token 用量 ──
+  final int meetingEnhancePromptTokens;
+  final int meetingEnhanceCompletionTokens;
+
   const DashboardStats({
     required this.totalCount,
     required this.totalDurationMs,
@@ -92,6 +96,8 @@ class DashboardStats {
     required this.modelDistribution,
     required this.enhancePromptTokens,
     required this.enhanceCompletionTokens,
+    this.meetingEnhancePromptTokens = 0,
+    this.meetingEnhanceCompletionTokens = 0,
   });
 
   /// 空状态。
@@ -119,9 +125,19 @@ class DashboardStats {
     modelDistribution: {},
     enhancePromptTokens: 0,
     enhanceCompletionTokens: 0,
+    meetingEnhancePromptTokens: 0,
+    meetingEnhanceCompletionTokens: 0,
   );
 
   bool get isEmpty => totalCount == 0;
 
   int get enhanceTotalTokens => enhancePromptTokens + enhanceCompletionTokens;
+
+  int get meetingEnhanceTotalTokens =>
+      meetingEnhancePromptTokens + meetingEnhanceCompletionTokens;
+
+  /// 所有来源的总 token 数
+  int get allPromptTokens => enhancePromptTokens + meetingEnhancePromptTokens;
+  int get allCompletionTokens => enhanceCompletionTokens + meetingEnhanceCompletionTokens;
+  int get allTotalTokens => allPromptTokens + allCompletionTokens;
 }
