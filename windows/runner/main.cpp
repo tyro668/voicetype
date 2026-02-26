@@ -34,7 +34,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   int x = work_area.left + (screen_w - size.width) / 2;
   int y = work_area.top + (screen_h - size.height) / 2;
   Win32Window::Point origin(x, y);
-  if (!window.Create(L"Offhand", origin, size)) {
+  if (!window.Create(L"", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

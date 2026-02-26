@@ -473,23 +473,47 @@ class _MainScreenState extends State<MainScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
               child: Row(
                 children: [
-                  Icon(Icons.mic, color: _cs.primary, size: 22),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: _cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _cs.outlineVariant.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.mic_rounded,
+                      color: _cs.onSurfaceVariant,
+                      size: 14,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Flexible(
+                  Expanded(
                     child: Text(
                       l10n.appTitle,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
+                        letterSpacing: 0.0,
                       ),
                     ),
                   ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: _cs.outlineVariant,
               ),
             ),
             const SizedBox(height: 4),
@@ -539,6 +563,14 @@ class _MainScreenState extends State<MainScreen> {
               );
             }),
             const Spacer(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: _cs.outlineVariant,
+              ),
+            ),
             // 底部设置按钮
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
