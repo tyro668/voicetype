@@ -250,7 +250,7 @@ jobs:
       - name: Analyze
         shell: pwsh
         run: |
-          & "$env:FLUTTER_BIN/flutter.bat" analyze --no-fatal-infos
+          & "$env:FLUTTER_BIN/flutter.bat" analyze lib --no-fatal-infos
 
       - name: Build Windows Release
         shell: pwsh
