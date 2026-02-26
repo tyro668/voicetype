@@ -462,6 +462,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildSidebar() {
     final l10n = AppLocalizations.of(context)!;
     final navItems = _getNavItems(l10n);
+    final settings = context.watch<SettingsProvider>();
     return Container(
       width: 200,
       decoration: BoxDecoration(
@@ -562,6 +563,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               );
             }),
+            _buildPromptTemplateSelector(settings, l10n),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -608,6 +610,81 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromptTemplateSelector(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    final templates = settings.promptTemplates;
+    if (templates.isEmpty) return const SizedBox.shrink();
+
+    final activeTemplate = settings.activePromptTemplate ?? templates.first;
+    final activeTemplateId = templates.any(
+      (template) => template.id == settings.activePromptTemplateId,
+    )
+        ? settings.activePromptTemplateId
+        : activeTemplate.id;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      child: Material(
+        color: _cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+        child: PopupMenuButton<String>(
+          tooltip: l10n.promptTemplates,
+          initialValue: activeTemplateId,
+          onSelected: (templateId) {
+            if (templateId == settings.activePromptTemplateId) return;
+            settings.setActivePromptTemplate(templateId);
+          },
+          itemBuilder: (_) => templates.map((template) {
+            return CheckedPopupMenuItem<String>(
+              value: template.id,
+              checked: template.id == activeTemplateId,
+              child: SizedBox(
+                width: 180,
+                child: Text(
+                  template.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            );
+          }).toList(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_fix_high_outlined,
+                  size: 16,
+                  color: _cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    activeTemplate.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _cs.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: _cs.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

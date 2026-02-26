@@ -1,13 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/dashboard_stats.dart';
-import '../../providers/settings_provider.dart';
 import '../../services/dashboard_service.dart';
-import '../settings_screen.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -67,8 +64,6 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPromptTemplateQuickAccess(),
-          const SizedBox(height: 14),
           Container(
             width: 72,
             height: 72,
@@ -102,8 +97,6 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _buildHeroStats(),
           const SizedBox(height: 16),
-          _buildPromptTemplateQuickAccess(),
-          const SizedBox(height: 16),
           _buildPeriodAndActivityRow(),
           const SizedBox(height: 16),
           _buildTokenSection(),
@@ -114,107 +107,6 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 24),
         ],
       ),
-    );
-  }
-
-  Widget _buildPromptTemplateQuickAccess() {
-    final settings = context.watch<SettingsProvider>();
-    final templates = settings.promptTemplates;
-    if (templates.isEmpty) return const SizedBox.shrink();
-
-    final activeTemplate = settings.activePromptTemplate ?? templates.first;
-    final selectedId = templates.any((t) => t.id == settings.activePromptTemplateId)
-        ? settings.activePromptTemplateId
-        : activeTemplate.id;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              color: _cs.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(
-              Icons.auto_fix_high_outlined,
-              size: 13,
-              color: _cs.primary,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: selectedId,
-              isExpanded: true,
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              items: templates.map((template) {
-                return DropdownMenuItem<String>(
-                  value: template.id,
-                  child: Text(
-                    template.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-              onChanged: (id) {
-                if (id == null || id == settings.activePromptTemplateId) {
-                  return;
-                }
-                settings.setActivePromptTemplate(id);
-              },
-            ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: _openAiEnhanceHub,
-            icon: Icon(Icons.tune, size: 18, color: _cs.onSurfaceVariant),
-            tooltip: _l10n.settings,
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openAiEnhanceHub() {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final size = MediaQuery.of(ctx).size;
-        return Dialog(
-          insetPadding: const EdgeInsets.all(32),
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: SizedBox(
-            width: size.width * 0.95,
-            height: size.height * 0.9,
-            child: const SettingsScreen(initialIndex: 3),
-          ),
-        );
-      },
     );
   }
 
