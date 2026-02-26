@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:llamadart/llamadart.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'log_service.dart';
+import 'package:voicetype/services/log_service.dart';
 
 /// 可下载的本地 LLM 模型定义
 class LocalLlmModel {
@@ -81,8 +81,7 @@ class LocalLlmService {
         'assets/prompts/local_model_prompt.md',
       );
     } catch (_) {
-      _localPromptCache =
-          '你是文字编辑助手。清理语音转文字文本：删除语气词和重复词，修正标点，保持原意。直接输出结果。';
+      _localPromptCache = '你是文字编辑助手。清理语音转文字文本：删除语气词和重复词，修正标点，保持原意。直接输出结果。';
     }
     return _localPromptCache!;
   }
@@ -105,7 +104,10 @@ class LocalLlmService {
       final url = '$host/${model.fileName}';
       final hostLabel = Uri.parse(host).host;
 
-      await LogService.info('LOCAL_LLM', 'trying mirror ${i + 1}/${_kLlmModelHosts.length}: $url');
+      await LogService.info(
+        'LOCAL_LLM',
+        'trying mirror ${i + 1}/${_kLlmModelHosts.length}: $url',
+      );
       onStatus?.call('正在连接 $hostLabel ...');
 
       final client = HttpClient();
@@ -113,7 +115,9 @@ class LocalLlmService {
 
       try {
         final request = await client.getUrl(Uri.parse(url));
-        final response = await request.close().timeout(const Duration(seconds: 30));
+        final response = await request.close().timeout(
+          const Duration(seconds: 30),
+        );
 
         if (response.statusCode != 200) {
           await response.drain<void>();
@@ -139,14 +143,19 @@ class LocalLlmService {
           await sink.close();
         } catch (e) {
           await sink.close();
-          try { await File(tmpPath).delete(); } catch (_) {}
+          try {
+            await File(tmpPath).delete();
+          } catch (_) {}
           lastError = '$hostLabel: $e';
           client.close();
           continue;
         }
 
         await File(tmpPath).rename(filePath);
-        await LogService.info('LOCAL_LLM', 'download complete: $filePath ($receivedBytes bytes)');
+        await LogService.info(
+          'LOCAL_LLM',
+          'download complete: $filePath ($receivedBytes bytes)',
+        );
         client.close();
         return;
       } on TimeoutException {
@@ -164,7 +173,9 @@ class LocalLlmService {
       }
     }
 
-    try { await File(tmpPath).delete(); } catch (_) {}
+    try {
+      await File(tmpPath).delete();
+    } catch (_) {}
     throw LocalLlmException('所有下载源均失败，请检查网络连接\n最后错误: $lastError');
   }
 
@@ -222,10 +233,7 @@ class LocalLlmService {
   }) async {
     await loadModel(modelFileName);
 
-    final session = ChatSession(
-      _engine!,
-      systemPrompt: systemPrompt,
-    );
+    final session = ChatSession(_engine!, systemPrompt: systemPrompt);
 
     final buffer = StringBuffer();
     await for (final chunk in session.create([LlamaTextContent(userMessage)])) {
@@ -239,7 +247,9 @@ class LocalLlmService {
   }
 
   /// 检查本地模型可用性
-  static Future<LocalLlmCheckResult> checkAvailability(String modelFileName) async {
+  static Future<LocalLlmCheckResult> checkAvailability(
+    String modelFileName,
+  ) async {
     try {
       final modelPath = await modelFilePath(modelFileName);
       if (!await File(modelPath).exists()) {
@@ -249,10 +259,7 @@ class LocalLlmService {
         );
       }
 
-      return LocalLlmCheckResult(
-        ok: true,
-        message: '本地模型就绪 ($modelFileName)',
-      );
+      return LocalLlmCheckResult(ok: true, message: '本地模型就绪 ($modelFileName)');
     } catch (e) {
       return LocalLlmCheckResult(ok: false, message: '检查失败: $e');
     }
