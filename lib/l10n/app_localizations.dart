@@ -134,6 +134,12 @@ abstract class AppLocalizations {
   /// **'Prompt Settings'**
   String get promptWorkshop;
 
+  /// No description provided for @aiEnhanceHub.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Enhancement'**
+  String get aiEnhanceHub;
+
   /// No description provided for @history.
   ///
   /// In en, this message translates to:
@@ -1544,6 +1550,78 @@ abstract class AppLocalizations {
   /// **'Built-in'**
   String get promptBuiltin;
 
+  /// No description provided for @promptSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a template from the list to view details'**
+  String get promptSelectHint;
+
+  /// No description provided for @promptPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get promptPreview;
+
+  /// No description provided for @dictionarySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictionary'**
+  String get dictionarySettings;
+
+  /// No description provided for @dictionaryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Save commonly used words and phrases. The AI will prioritize using dictionary entries for more accurate output.'**
+  String get dictionaryDescription;
+
+  /// No description provided for @dictionaryAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Word'**
+  String get dictionaryAdd;
+
+  /// No description provided for @dictionaryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Word'**
+  String get dictionaryEdit;
+
+  /// No description provided for @dictionaryWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Word'**
+  String get dictionaryWord;
+
+  /// No description provided for @dictionaryWordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a commonly used word, e.g., technical terms, names'**
+  String get dictionaryWordHint;
+
+  /// No description provided for @dictionaryWordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get dictionaryWordDescription;
+
+  /// No description provided for @dictionaryWordDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief description of the word\'s meaning or usage context'**
+  String get dictionaryWordDescriptionHint;
+
+  /// No description provided for @dictionaryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictionary is empty'**
+  String get dictionaryEmpty;
+
+  /// No description provided for @dictionaryEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add commonly used words to help AI produce better output'**
+  String get dictionaryEmptyHint;
+
   /// No description provided for @meetingMinutes.
   ///
   /// In en, this message translates to:
@@ -1855,6 +1933,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Meeting processing'**
   String get meetingOverlayProcessing;
+
+  /// No description provided for @meetingRecordingBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting recording in progress'**
+  String get meetingRecordingBanner;
+
+  /// No description provided for @meetingReturnToRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to recording'**
+  String get meetingReturnToRecording;
+
+  /// No description provided for @meetingSegmentView.
+  ///
+  /// In en, this message translates to:
+  /// **'Segments'**
+  String get meetingSegmentView;
+
+  /// No description provided for @meetingMergedNoteView.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged Notes'**
+  String get meetingMergedNoteView;
+
+  /// No description provided for @meetingStreamingMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merging...'**
+  String get meetingStreamingMerge;
+
+  /// No description provided for @meetingDetailTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Details'**
+  String get meetingDetailTab;
+
+  /// No description provided for @meetingSummaryTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Summary'**
+  String get meetingSummaryTab;
+
+  /// No description provided for @meetingGeneratingSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating meeting summary...'**
+  String get meetingGeneratingSummary;
+
+  /// No description provided for @meetingNoSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'No meeting summary yet'**
+  String get meetingNoSummary;
+
+  /// No description provided for @meetingRegenerateSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get meetingRegenerateSummary;
+
+  /// No description provided for @addToDictionary.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Dictionary'**
+  String get addToDictionary;
+
+  /// No description provided for @addedToDictionary.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to dictionary'**
+  String get addedToDictionary;
 }
 
 class _AppLocalizationsDelegate

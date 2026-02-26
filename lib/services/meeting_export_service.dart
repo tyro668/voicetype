@@ -8,7 +8,9 @@ class MeetingExportService {
   static String exportAsText(MeetingRecord meeting) {
     final sb = StringBuffer();
     sb.writeln('会议记录: ${meeting.title}');
-    sb.writeln('日期: ${DateFormat('yyyy-MM-dd HH:mm').format(meeting.createdAt)}');
+    sb.writeln(
+      '日期: ${DateFormat('yyyy-MM-dd HH:mm').format(meeting.createdAt)}',
+    );
     sb.writeln('时长: ${meeting.formattedDuration}');
     sb.writeln('=' * 50);
 
@@ -32,7 +34,9 @@ class MeetingExportService {
     final sb = StringBuffer();
     sb.writeln('# ${meeting.title}');
     sb.writeln();
-    sb.writeln('- **日期**: ${DateFormat('yyyy-MM-dd HH:mm').format(meeting.createdAt)}');
+    sb.writeln(
+      '- **日期**: ${DateFormat('yyyy-MM-dd HH:mm').format(meeting.createdAt)}',
+    );
     sb.writeln('- **时长**: ${meeting.formattedDuration}');
     sb.writeln();
 

@@ -71,6 +71,10 @@ class LogService {
     await appendLog(message, level: 'INFO', tag: tag);
   }
 
+  static Future<void> warn(String tag, String message) async {
+    await appendLog(message, level: 'WARN', tag: tag);
+  }
+
   static Future<void> error(String tag, String message) async {
     await appendLog(message, level: 'ERROR', tag: tag);
   }

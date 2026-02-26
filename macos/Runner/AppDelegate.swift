@@ -291,10 +291,15 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   }
 
   func emitGlobalKeyEvent(keyCode: UInt32, type: String, isRepeat: Bool, source: String) {
+    // 获取当前修饰键状态（Cmd/Ctrl/Alt/Shift）
+    let flags = NSEvent.modifierFlags
+    let hasModifiers = !flags.intersection([.command, .control, .option, .shift]).isEmpty
+
     let payload: [String: Any] = [
       "keyCode": Int(keyCode),
       "type": type,
       "isRepeat": isRepeat,
+      "hasModifiers": hasModifiers,
     ]
 
     log("[hotkey] emit keyCode=\(keyCode) type=\(type) isRepeat=\(isRepeat) source=\(source)")

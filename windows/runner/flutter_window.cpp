@@ -456,12 +456,22 @@ void FlutterWindow::EmitGlobalKeyEvent(int key_code, const std::string& type,
     return;
   }
 
+  // 检测修饰键是否按下（Ctrl/Alt/Shift/Win）
+  const bool has_modifiers =
+      (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 ||
+      (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 ||
+      (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0 ||
+      (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
+      (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+
   flutter::EncodableMap payload;
   payload[flutter::EncodableValue("keyCode")] =
       flutter::EncodableValue(static_cast<int32_t>(key_code));
   payload[flutter::EncodableValue("type")] = flutter::EncodableValue(type);
   payload[flutter::EncodableValue("isRepeat")] =
       flutter::EncodableValue(is_repeat);
+  payload[flutter::EncodableValue("hasModifiers")] =
+      flutter::EncodableValue(has_modifiers);
   method_channel_->InvokeMethod("onGlobalKeyEvent",
                                 std::make_unique<flutter::EncodableValue>(
                                     std::move(payload)));

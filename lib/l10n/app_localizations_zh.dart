@@ -27,6 +27,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptWorkshop => '提示词设置';
 
   @override
+  String get aiEnhanceHub => '智能增强';
+
+  @override
   String get history => '历史记录';
 
   @override
@@ -751,6 +754,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptBuiltin => '内置';
 
   @override
+  String get promptSelectHint => '从左侧选择一个模板查看详情';
+
+  @override
+  String get promptPreview => '预览';
+
+  @override
+  String get dictionarySettings => '词典设置';
+
+  @override
+  String get dictionaryDescription => '保存常用词语，AI 会优先使用词典中的词语来生成更准确的输出。';
+
+  @override
+  String get dictionaryAdd => '添加词语';
+
+  @override
+  String get dictionaryEdit => '编辑词语';
+
+  @override
+  String get dictionaryWord => '词语';
+
+  @override
+  String get dictionaryWordHint => '输入常用词语，如专业术语、人名等';
+
+  @override
+  String get dictionaryWordDescription => '说明（选填）';
+
+  @override
+  String get dictionaryWordDescriptionHint => '简要说明该词语的含义或使用场景';
+
+  @override
+  String get dictionaryEmpty => '词典为空';
+
+  @override
+  String get dictionaryEmptyHint => '添加常用词语，帮助 AI 更好地输出';
+
+  @override
   String get meetingMinutes => '会议记录';
 
   @override
@@ -905,4 +944,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get meetingOverlayProcessing => '会议处理中';
+
+  @override
+  String get meetingRecordingBanner => '会议录音进行中';
+
+  @override
+  String get meetingReturnToRecording => '返回录音';
+
+  @override
+  String get meetingSegmentView => '分段视图';
+
+  @override
+  String get meetingMergedNoteView => '合并纪要';
+
+  @override
+  String get meetingStreamingMerge => '合并中...';
+
+  @override
+  String get meetingDetailTab => '会议详情';
+
+  @override
+  String get meetingSummaryTab => '会议总结';
+
+  @override
+  String get meetingGeneratingSummary => '正在生成会议总结...';
+
+  @override
+  String get meetingNoSummary => '暂无会议总结';
+
+  @override
+  String get meetingRegenerateSummary => '重新生成';
+
+  @override
+  String get addToDictionary => '加入提示词词典';
+
+  @override
+  String get addedToDictionary => '已加入词典';
 }

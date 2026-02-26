@@ -30,7 +30,7 @@ class AiEnhanceService {
     return null;
   }
 
-  Future<AiEnhanceResult> enhance(String text) async {
+  Future<AiEnhanceResult> enhance(String text, {Duration? timeout}) async {
     if (text.trim().isEmpty) return AiEnhanceResult(text: text);
 
     // 本地模型：直接通过 FFI 调用 llamadart
@@ -73,11 +73,12 @@ class AiEnhanceService {
       throw AiEnhanceException('AI增强失败: 无效的端点 URL');
     }
 
+    final effectiveTimeout = timeout ?? _timeout;
     final client = NetworkClientService.createClient();
     try {
       final response = await client
           .post(uri, headers: headers, body: body)
-          .timeout(_timeout);
+          .timeout(effectiveTimeout);
 
       await LogService.info(
         'AI',

@@ -11,7 +11,7 @@ class OverlayService {
   static bool get _supportsNativeOverlay => _isMacOS || _isWindows;
 
   /// 全局快捷键回调
-  static Function(int keyCode, String type, bool isRepeat)? onGlobalKeyEvent;
+  static Function(int keyCode, String type, bool isRepeat, bool hasModifiers)? onGlobalKeyEvent;
 
   static void init() {
     LogService.info('OVERLAY', 'init: setting method call handler');
@@ -22,10 +22,11 @@ class OverlayService {
         final keyCode = args['keyCode'] as int;
         final type = args['type'] as String;
         final isRepeat = args['isRepeat'] as bool;
+        final hasModifiers = args['hasModifiers'] as bool? ?? false;
         final hasCallback = onGlobalKeyEvent != null;
-        LogService.info('OVERLAY', 'onGlobalKeyEvent keyCode=$keyCode type=$type hasCallback=$hasCallback');
+        LogService.info('OVERLAY', 'onGlobalKeyEvent keyCode=$keyCode type=$type hasModifiers=$hasModifiers hasCallback=$hasCallback');
         try {
-          onGlobalKeyEvent?.call(keyCode, type, isRepeat);
+          onGlobalKeyEvent?.call(keyCode, type, isRepeat, hasModifiers);
         } catch (e) {
           LogService.error('OVERLAY', 'onGlobalKeyEvent callback error: $e');
         }

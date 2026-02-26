@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/meeting.dart';
+import '../models/merged_note.dart';
 import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
 import 'audio_recorder.dart';
 import 'stt_service.dart';
 import 'ai_enhance_service.dart';
 import 'log_service.dart';
+import 'sliding_window_merger.dart';
 import 'token_stats_service.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
@@ -71,6 +73,12 @@ class MeetingRecordingService {
   AiEnhanceConfig? _aiConfig;
   bool _aiEnhanceEnabled = false;
 
+  /// 滑动窗口合并器
+  SlidingWindowMerger? _merger;
+
+  /// 暴露合并器实例，供 MeetingProvider 监听其事件流
+  SlidingWindowMerger? get merger => _merger;
+
   /// 开始新的会议录音
   Future<MeetingRecord> startMeeting({
     String? title,
@@ -78,6 +86,7 @@ class MeetingRecordingService {
     AiEnhanceConfig? aiConfig,
     bool aiEnhanceEnabled = false,
     int? segmentSeconds,
+    int windowSize = 5,
   }) async {
     if (_isRecording) {
       throw MeetingRecordingException('已有会议正在录制中');
@@ -87,6 +96,15 @@ class MeetingRecordingService {
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
     if (segmentSeconds != null) segmentDurationSeconds = segmentSeconds;
+
+    // 创建滑动窗口合并器（需要 AI 配置）
+    if (_aiConfig != null) {
+      final clampedWindowSize = clampWindowSize(windowSize);
+      _merger = SlidingWindowMerger(
+        windowSize: clampedWindowSize,
+        aiConfig: _aiConfig!,
+      );
+    }
 
     final now = DateTime.now();
     final meeting = MeetingRecord(
@@ -154,6 +172,8 @@ class MeetingRecordingService {
     // 停止当前录音段并保存
     await _finalizeCurrentSegment();
 
+    _merger?.pause();
+
     _onStatusChanged.add('paused');
     await LogService.info('MEETING', 'meeting paused');
   }
@@ -168,6 +188,8 @@ class MeetingRecordingService {
     }
 
     _isPaused = false;
+
+    _merger?.resume();
 
     // 开始新的录音段
     await _startSegmentRecording();
@@ -202,6 +224,11 @@ class MeetingRecordingService {
     // 等待所有分段处理完成
     _onStatusChanged.add('processing');
     await _waitForProcessingComplete();
+
+    // 等待当前合并任务完成
+    if (_merger != null) {
+      await _waitForMergerComplete();
+    }
 
     // 更新会议状态
     final meeting = _currentMeeting!;
@@ -398,6 +425,12 @@ class MeetingRecordingService {
       await db.updateMeetingSegment(segment);
       _onSegmentUpdated.add(segment);
 
+      // 分段 STT 完成且转写非空时，通知合并器触发窗口合并
+      if (segment.transcription != null &&
+          segment.transcription!.trim().isNotEmpty) {
+        _notifyMerger();
+      }
+
       await LogService.info(
         'MEETING',
         'segment ${segment.segmentIndex} processed: ${rawText.length} chars',
@@ -436,9 +469,34 @@ class MeetingRecordingService {
     _startProcessingWorker();
   }
 
+  /// 通知合并器有新分段完成，传入当前会议的所有分段
+  void _notifyMerger() {
+    if (_merger == null || _currentMeeting == null) return;
+
+    // 从数据库异步获取所有分段并通知合并器
+    AppDatabase.instance
+        .getMeetingSegments(_currentMeeting!.id)
+        .then((segments) {
+      _merger?.onSegmentCompleted(segments);
+    }).catchError((e) {
+      LogService.error('MEETING', 'failed to fetch segments for merger: $e');
+    });
+  }
+
+  /// 等待合并器当前任务完成
+  Future<void> _waitForMergerComplete() async {
+    if (_merger == null) return;
+    // 轮询等待合并器完成当前任务
+    while (_merger!.isMerging) {
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
   void dispose() {
     _segmentTimer?.cancel();
     _durationTimer?.cancel();
+    _merger?.dispose();
+    _merger = null;
     _onSegmentReady.close();
     _onSegmentUpdated.close();
     _onStatusChanged.close();

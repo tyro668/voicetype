@@ -12,9 +12,10 @@ import '../services/overlay_service.dart';
 import 'pages/general_page.dart';
 import 'pages/stt_page.dart';
 import 'pages/ai_model_page.dart';
-import 'pages/prompt_workshop_page.dart';
+import 'pages/ai_enhance_hub_page.dart';
 import 'pages/history_page.dart';
 import 'pages/meeting_list_page.dart';
+import 'pages/meeting_recording_page.dart';
 import 'pages/system_settings_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/about_page.dart';
@@ -80,7 +81,7 @@ class _MainScreenState extends State<MainScreen> {
     _NavItem(icon: Icons.settings_outlined, label: l10n.generalSettings),
     _NavItem(icon: Icons.mic_outlined, label: l10n.voiceModelSettings),
     _NavItem(icon: Icons.psychology_outlined, label: l10n.textModelSettings),
-    _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.promptWorkshop),
+    _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.aiEnhanceHub),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
     _NavItem(icon: Icons.record_voice_over_outlined, label: l10n.meetingMinutes),
     _NavItem(icon: Icons.computer_outlined, label: l10n.systemSettings),
@@ -291,8 +292,11 @@ class _MainScreenState extends State<MainScreen> {
     return _macKeyCodeMap[keyCode];
   }
 
-  void _handleGlobalKeyEvent(int keyCode, String type, bool isRepeat) {
+  void _handleGlobalKeyEvent(int keyCode, String type, bool isRepeat, bool hasModifiers) {
     if (isRepeat) return;
+
+    // 单键快捷键：有修饰键（Cmd/Ctrl/Alt/Shift）按下时忽略
+    if (hasModifiers) return;
 
     final settings = context.read<SettingsProvider>();
     final key = _platformKeyFromCode(keyCode);
@@ -515,11 +519,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildContent() {
-    return switch (_selectedNav) {
+    final page = switch (_selectedNav) {
       0 => const GeneralPage(),
       1 => const SttPage(),
       2 => const AiModelPage(),
-      3 => const PromptWorkshopPage(),
+      3 => const AiEnhanceHubPage(),
       4 => const HistoryPage(),
       5 => const MeetingListPage(),
       6 => const SystemSettingsPage(),
@@ -527,6 +531,91 @@ class _MainScreenState extends State<MainScreen> {
       8 => const AboutPage(),
       _ => const SizedBox(),
     };
+
+    final meetingProvider = context.watch<MeetingProvider>();
+    if (!meetingProvider.isRecording) return page;
+
+    return Column(
+      children: [
+        _buildRecordingBanner(meetingProvider),
+        Expanded(child: page),
+      ],
+    );
+  }
+
+  Widget _buildRecordingBanner(MeetingProvider meetingProvider) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+    final duration = meetingProvider.recordingDuration;
+    final m = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final h = duration.inHours;
+    final timeStr = h > 0 ? '$h:$m:$s' : '$m:$s';
+
+    return Material(
+      color: Colors.red.withValues(alpha: 0.08),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                value: meetingProvider,
+                child: MeetingRecordingPage(
+                  sttConfig: settings.config,
+                  aiConfig: settings.effectiveAiEnhanceConfig,
+                  aiEnhanceEnabled: settings.aiEnhanceEnabled,
+                ),
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                l10n.meetingRecordingBanner,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                timeStr,
+                style: TextStyle(
+                  color: Colors.red.withValues(alpha: 0.7),
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                l10n.meetingReturnToRecording,
+                style: TextStyle(
+                  color: _cs.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 18, color: _cs.primary),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

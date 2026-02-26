@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import '../database/app_database.dart';
 import '../models/meeting.dart';
+import '../models/merged_note.dart';
 import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
 import '../services/meeting_recording_service.dart';
 import '../services/meeting_export_service.dart';
+import '../services/ai_enhance_service.dart';
 import '../services/overlay_service.dart';
 import '../services/log_service.dart';
+import '../services/token_stats_service.dart';
 
 /// 会议记录状态管理
 class MeetingProvider extends ChangeNotifier {
@@ -19,7 +23,8 @@ class MeetingProvider extends ChangeNotifier {
 
   /// 当前录制会议的分段列表
   List<MeetingSegment> _currentSegments = [];
-  List<MeetingSegment> get currentSegments => List.unmodifiable(_currentSegments);
+  List<MeetingSegment> get currentSegments =>
+      List.unmodifiable(_currentSegments);
 
   /// 录制状态
   bool get isRecording => _recordingService.isRecording;
@@ -33,6 +38,18 @@ class MeetingProvider extends ChangeNotifier {
   String _error = '';
   String get error => _error;
 
+  /// 合并纪要状态字段
+  String _mergedNote = '';
+  String _streamingText = '';
+  bool _isStreamingMerge = false;
+
+  /// 流式中返回 _streamingText，否则返回 _mergedNote
+  String get mergedNoteContent =>
+      _isStreamingMerge ? _streamingText : _mergedNote;
+
+  /// 是否正在流式合并
+  bool get isStreamingMerge => _isStreamingMerge;
+
   /// Overlay 状态标签（国际化）
   String _startingLabel = '准备中';
   String _recordingLabel = '会议录音中';
@@ -41,11 +58,19 @@ class MeetingProvider extends ChangeNotifier {
   /// 振幅监听
   StreamSubscription<double>? _amplitudeSub;
 
+  /// AI 增强配置（会议期间保留，用于结束时合并整理）
+  AiEnhanceConfig? _aiConfig;
+  bool _aiEnhanceEnabled = false;
+
   /// 事件流订阅
   StreamSubscription<MeetingSegment>? _segmentReadySub;
   StreamSubscription<MeetingSegment>? _segmentUpdatedSub;
   StreamSubscription<String>? _statusSub;
   StreamSubscription<Duration>? _durationSub;
+
+  /// 合并器事件流订阅
+  StreamSubscription<MergedNote>? _mergeCompletedSub;
+  StreamSubscription<MergeStreamEvent>? _streamChunkSub;
 
   /// 音频波形流
   Stream<double> get amplitudeStream => _recordingService.amplitudeStream;
@@ -102,6 +127,42 @@ class MeetingProvider extends ChangeNotifier {
     });
   }
 
+  /// 监听合并器的 onStreamChunk 和 onMergeCompleted 事件流
+  void _setupMergerListeners() {
+    // 先取消旧的订阅
+    _mergeCompletedSub?.cancel();
+    _streamChunkSub?.cancel();
+
+    final merger = _recordingService.merger;
+    if (merger == null) return;
+
+    _streamChunkSub = merger.onStreamChunk.listen((event) {
+      if (!event.isComplete) {
+        _streamingText += event.chunk;
+        _isStreamingMerge = true;
+        notifyListeners();
+      } else {
+        _isStreamingMerge = false;
+        notifyListeners();
+      }
+    });
+
+    _mergeCompletedSub = merger.onMergeCompleted.listen((note) {
+      _mergedNote = note.content;
+      _streamingText = '';
+      _isStreamingMerge = false;
+      notifyListeners();
+    });
+  }
+
+  /// 取消合并器事件流订阅
+  void _cancelMergerListeners() {
+    _mergeCompletedSub?.cancel();
+    _mergeCompletedSub = null;
+    _streamChunkSub?.cancel();
+    _streamChunkSub = null;
+  }
+
   /// 加载所有会议记录
   Future<void> _loadMeetings() async {
     try {
@@ -132,18 +193,28 @@ class MeetingProvider extends ChangeNotifier {
     AiEnhanceConfig? aiConfig,
     bool aiEnhanceEnabled = false,
     int segmentSeconds = 30,
+    int windowSize = 5,
   }) async {
     _error = '';
     _currentSegments = [];
+    _aiConfig = aiConfig;
+    _aiEnhanceEnabled = aiEnhanceEnabled;
+
+    // 重置合并纪要状态
+    _mergedNote = '';
+    _streamingText = '';
+    _isStreamingMerge = false;
 
     try {
       // 显示 overlay — starting 状态
-      unawaited(OverlayService.showOverlay(
-        state: 'starting',
-        duration: '00:00',
-        level: 0.0,
-        stateLabel: _startingLabel,
-      ));
+      unawaited(
+        OverlayService.showOverlay(
+          state: 'starting',
+          duration: '00:00',
+          level: 0.0,
+          stateLabel: _startingLabel,
+        ),
+      );
 
       final meeting = await _recordingService.startMeeting(
         title: title,
@@ -151,15 +222,21 @@ class MeetingProvider extends ChangeNotifier {
         aiConfig: aiConfig,
         aiEnhanceEnabled: aiEnhanceEnabled,
         segmentSeconds: segmentSeconds,
+        windowSize: windowSize,
       );
 
+      // 监听合并器事件流
+      _setupMergerListeners();
+
       // 切换到 recording 状态
-      unawaited(OverlayService.showOverlay(
-        state: 'recording',
-        duration: '00:00',
-        level: 0.0,
-        stateLabel: _recordingLabel,
-      ));
+      unawaited(
+        OverlayService.showOverlay(
+          state: 'recording',
+          duration: '00:00',
+          level: 0.0,
+          stateLabel: _recordingLabel,
+        ),
+      );
 
       // 监听音频振幅，实时更新 overlay
       _amplitudeSub?.cancel();
@@ -202,12 +279,14 @@ class MeetingProvider extends ChangeNotifier {
     try {
       await _recordingService.resume();
       // 恢复时重新显示 overlay
-      unawaited(OverlayService.showOverlay(
-        state: 'recording',
-        duration: _durationStr,
-        level: 0.0,
-        stateLabel: _recordingLabel,
-      ));
+      unawaited(
+        OverlayService.showOverlay(
+          state: 'recording',
+          duration: _durationStr,
+          level: 0.0,
+          stateLabel: _recordingLabel,
+        ),
+      );
       // 重新监听振幅
       _amplitudeSub?.cancel();
       _amplitudeSub = _recordingService.amplitudeStream.listen((level) {
@@ -229,18 +308,23 @@ class MeetingProvider extends ChangeNotifier {
     try {
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
+      _cancelMergerListeners();
       // 切换到处理中状态
-      unawaited(OverlayService.showOverlay(
-        state: 'transcribing',
-        duration: _durationStr,
-        level: 0.0,
-        stateLabel: _processingLabel,
-      ));
+      unawaited(
+        OverlayService.showOverlay(
+          state: 'transcribing',
+          duration: _durationStr,
+          level: 0.0,
+          stateLabel: _processingLabel,
+        ),
+      );
 
       final meeting = await _recordingService.stopMeeting();
 
       // 合并所有分段文字为完整文稿
-      final segments = await AppDatabase.instance.getMeetingSegments(meeting.id);
+      final segments = await AppDatabase.instance.getMeetingSegments(
+        meeting.id,
+      );
       segments.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
 
       final buffer = StringBuffer();
@@ -253,7 +337,24 @@ class MeetingProvider extends ChangeNotifier {
 
       final mergedText = buffer.toString().trim();
       if (mergedText.isNotEmpty) {
-        meeting.fullTranscription = mergedText;
+        // 使用大模型对合并文本进行整理
+        final polished = await _polishMergedText(mergedText);
+        meeting.fullTranscription = polished;
+
+        // 自动生成会议总结
+        final summary = await _generateSummary(polished);
+        if (summary.isNotEmpty) {
+          meeting.summary = summary;
+        }
+
+        // 如果标题仍是默认标题，则根据内容自动生成
+        if (_isDefaultTitle(meeting.title)) {
+          final autoTitle = await _generateTitle(polished);
+          if (autoTitle.isNotEmpty) {
+            meeting.title = autoTitle;
+          }
+        }
+
         await AppDatabase.instance.updateMeeting(meeting);
       }
 
@@ -269,11 +370,179 @@ class MeetingProvider extends ChangeNotifier {
     }
   }
 
+  /// 使用大模型整理合并后的会议文稿
+  Future<String> _polishMergedText(String rawText) async {
+    if (!_aiEnhanceEnabled || _aiConfig == null) {
+      return rawText;
+    }
+
+    try {
+      await LogService.info(
+        'MEETING',
+        'polishing merged text with LLM, length=${rawText.length}',
+      );
+
+      // 加载会议合并专用提示词
+      final mergePrompt = await rootBundle.loadString(
+        'assets/prompts/meeting_merge_prompt.md',
+      );
+
+      // 使用会议合并提示词覆盖默认提示词
+      final mergeConfig = _aiConfig!.copyWith(prompt: mergePrompt);
+      final enhancer = AiEnhanceService(mergeConfig);
+      final result = await enhancer.enhance(
+        rawText,
+        timeout: const Duration(seconds: 120),
+      );
+
+      // 记录 token 用量
+      if (result.promptTokens > 0 || result.completionTokens > 0) {
+        await TokenStatsService.instance.addMeetingTokens(
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+        );
+      }
+
+      await LogService.info(
+        'MEETING',
+        'polish complete, result length=${result.text.length}',
+      );
+
+      // 如果 LLM 返回了有效内容则使用，否则回退到原始合并文本
+      return result.text.trim().isNotEmpty ? result.text.trim() : rawText;
+    } catch (e) {
+      await LogService.error('MEETING', 'polish merged text failed: $e');
+      // 整理失败不影响基本功能，回退到原始合并文本
+      return rawText;
+    }
+  }
+
+  /// 使用大模型生成会议总结
+  Future<String> _generateSummary(String content) async {
+    if (!_aiEnhanceEnabled || _aiConfig == null) return '';
+
+    try {
+      await LogService.info(
+        'MEETING',
+        'generating summary from content, length=${content.length}',
+      );
+
+      // 加载会议总结专用提示词
+      final summaryPrompt = await rootBundle.loadString(
+        'assets/prompts/meeting_summary_prompt.md',
+      );
+
+      final summaryConfig = _aiConfig!.copyWith(prompt: summaryPrompt);
+      final enhancer = AiEnhanceService(summaryConfig);
+      final result = await enhancer.enhance(
+        content,
+        timeout: const Duration(seconds: 120),
+      );
+
+      // 记录 token 用量
+      if (result.promptTokens > 0 || result.completionTokens > 0) {
+        await TokenStatsService.instance.addMeetingTokens(
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+        );
+      }
+
+      await LogService.info(
+        'MEETING',
+        'summary generated, length=${result.text.length}',
+      );
+      return result.text.trim();
+    } catch (e) {
+      await LogService.error('MEETING', 'generate summary failed: $e');
+      return '';
+    }
+  }
+
+  /// 重新生成会议总结（供外部调用）
+  Future<void> regenerateSummary(String meetingId) async {
+    final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+    if (meeting == null) return;
+
+    final content = (meeting.fullTranscription ?? '').trim();
+    if (content.isEmpty) return;
+
+    // 读取当前 AI 配置
+    final config = _aiConfig;
+    if (config == null) return;
+
+    final oldEnabled = _aiEnhanceEnabled;
+    _aiEnhanceEnabled = true;
+    _aiConfig = config;
+
+    final summary = await _generateSummary(content);
+    if (summary.isNotEmpty) {
+      meeting.summary = summary;
+      meeting.updatedAt = DateTime.now();
+      await AppDatabase.instance.updateMeeting(meeting);
+      await _loadMeetings();
+    }
+
+    _aiEnhanceEnabled = oldEnabled;
+  }
+
+  /// 判断标题是否为系统默认生成的标题（格式：会议 M/D HH:mm）
+  bool _isDefaultTitle(String title) {
+    return RegExp(r'^会议 \d{1,2}/\d{1,2} \d{1,2}:\d{2}$').hasMatch(title.trim());
+  }
+
+  /// 使用大模型根据会议内容生成简短标题
+  Future<String> _generateTitle(String content) async {
+    if (!_aiEnhanceEnabled || _aiConfig == null) return '';
+
+    try {
+      await LogService.info('MEETING', 'generating title from content');
+
+      const titlePrompt =
+          '你是一个会议标题生成助手。根据用户提供的会议内容，生成一个简洁的会议标题。\n\n'
+          '## 规则\n'
+          '- 标题应概括会议的核心主题，不超过20个字\n'
+          '- 只输出标题本身，不要添加引号、书名号、前后缀或任何解释\n'
+          '- 使用与内容相同的语言';
+
+      final titleConfig = _aiConfig!.copyWith(prompt: titlePrompt);
+      final enhancer = AiEnhanceService(titleConfig);
+
+      // 只取前1500字作为上下文，避免 token 浪费
+      final snippet = content.length > 1500
+          ? content.substring(0, 1500)
+          : content;
+      final result = await enhancer.enhance(
+        snippet,
+        timeout: const Duration(seconds: 15),
+      );
+
+      final title = result.text
+          .trim()
+          .replaceAll(RegExp(r'^["""「」『』《》【】]+'), '')
+          .replaceAll(RegExp(r'["""「」『』《》【】]+$'), '')
+          .trim();
+
+      if (result.promptTokens > 0 || result.completionTokens > 0) {
+        await TokenStatsService.instance.addMeetingTokens(
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+        );
+      }
+
+      await LogService.info('MEETING', 'generated title: $title');
+      return title.length > 50 ? title.substring(0, 50) : title;
+    } catch (e) {
+      await LogService.error('MEETING', 'generate title failed: $e');
+      return '';
+    }
+  }
+
   /// 取消录音
   Future<void> cancelMeeting() async {
     try {
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
+      _cancelMergerListeners();
       await _recordingService.cancelMeeting();
       unawaited(OverlayService.hideOverlay());
       _currentSegments = [];
@@ -314,7 +583,10 @@ class MeetingProvider extends ChangeNotifier {
   }
 
   /// 更新会议完整文稿
-  Future<void> updateMeetingFullTranscription(String meetingId, String text) async {
+  Future<void> updateMeetingFullTranscription(
+    String meetingId,
+    String text,
+  ) async {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return;
 
@@ -378,6 +650,7 @@ class MeetingProvider extends ChangeNotifier {
     _statusSub?.cancel();
     _durationSub?.cancel();
     _amplitudeSub?.cancel();
+    _cancelMergerListeners();
     _recordingService.dispose();
     super.dispose();
   }

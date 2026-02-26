@@ -6,6 +6,7 @@ import '../models/ai_enhance_config.dart';
 import '../models/ai_model_entry.dart';
 import '../models/ai_vendor_preset.dart';
 import '../models/network_settings.dart';
+import '../models/dictionary_entry.dart';
 import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
 import '../models/scene_mode.dart';
@@ -34,6 +35,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _promptTemplatesKey = 'prompt_templates';
   static const _activePromptTemplateIdKey = 'active_prompt_template_id';
   static const _sceneModeKey = 'scene_mode';
+  static const _dictionaryEntriesKey = 'dictionary_entries';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -89,6 +91,9 @@ class SettingsProvider extends ChangeNotifier {
 
   // Scene mode
   SceneMode _sceneMode = SceneMode.general;
+
+  // Dictionary entries
+  List<DictionaryEntry> _dictionaryEntries = [];
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -146,6 +151,9 @@ class SettingsProvider extends ChangeNotifier {
   // Scene mode getter
   SceneMode get sceneMode => _sceneMode;
 
+  // Dictionary getter
+  List<DictionaryEntry> get dictionaryEntries => List.unmodifiable(_dictionaryEntries);
+
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
     final base = active != null
@@ -169,6 +177,12 @@ class SettingsProvider extends ChangeNotifier {
     // Append scene mode suffix if not general
     if (_sceneMode != SceneMode.general) {
       resolvedPrompt += _sceneMode.promptSuffix;
+    }
+
+    // Append dictionary words if available
+    final dictSuffix = dictionaryWordsForPrompt;
+    if (dictSuffix.isNotEmpty) {
+      resolvedPrompt += dictSuffix;
     }
 
     return base.copyWith(prompt: resolvedPrompt);
@@ -419,6 +433,18 @@ class SettingsProvider extends ChangeNotifier {
     final sceneModeStr = await db.getSetting(_sceneModeKey);
     if (sceneModeStr != null) {
       _sceneMode = SceneMode.fromString(sceneModeStr);
+    }
+
+    // 加载词典
+    final dictJson = await db.getSetting(_dictionaryEntriesKey);
+    if (dictJson != null) {
+      try {
+        final list = json.decode(dictJson) as List<dynamic>;
+        _dictionaryEntries = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => DictionaryEntry.fromJson(e))
+            .toList();
+      } catch (_) {}
     }
 
     notifyListeners();
@@ -880,6 +906,47 @@ class SettingsProvider extends ChangeNotifier {
     _sceneMode = mode;
     await _saveSetting(_sceneModeKey, mode.name);
     notifyListeners();
+  }
+
+  // ===== 词典管理 =====
+
+  Future<void> _saveDictionaryEntries() async {
+    await _saveSetting(
+      _dictionaryEntriesKey,
+      json.encode(_dictionaryEntries.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> addDictionaryEntry(DictionaryEntry entry) async {
+    _dictionaryEntries.add(entry);
+    await _saveDictionaryEntries();
+    notifyListeners();
+  }
+
+  Future<void> updateDictionaryEntry(DictionaryEntry updated) async {
+    _dictionaryEntries = _dictionaryEntries.map((e) {
+      return e.id == updated.id ? updated : e;
+    }).toList();
+    await _saveDictionaryEntries();
+    notifyListeners();
+  }
+
+  Future<void> deleteDictionaryEntry(String id) async {
+    _dictionaryEntries.removeWhere((e) => e.id == id);
+    await _saveDictionaryEntries();
+    notifyListeners();
+  }
+
+  /// Returns a formatted string of dictionary words for injection into AI prompts.
+  String get dictionaryWordsForPrompt {
+    if (_dictionaryEntries.isEmpty) return '';
+    final words = _dictionaryEntries.map((e) {
+      if (e.description != null && e.description!.isNotEmpty) {
+        return '${e.word}（${e.description}）';
+      }
+      return e.word;
+    }).join('、');
+    return '\n\n【词典参考】请在输出中优先使用以下词语：$words';
   }
 
   // ===== 通用持久化辅助 =====

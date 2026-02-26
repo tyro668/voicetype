@@ -172,9 +172,14 @@ abstract class AppDatabase extends FloorDatabase {
       );
     }),
     Migration(4, 5, (database) async {
-      await database.execute(
-        'ALTER TABLE meetings ADD COLUMN full_transcription TEXT',
-      );
+      // Guard: only add column if it doesn't already exist
+      final cols = await database.rawQuery('PRAGMA table_info(meetings)');
+      final hasCol = cols.any((c) => c['name'] == 'full_transcription');
+      if (!hasCol) {
+        await database.execute(
+          'ALTER TABLE meetings ADD COLUMN full_transcription TEXT',
+        );
+      }
     }),
   ];
 

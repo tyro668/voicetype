@@ -33,6 +33,9 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
   final ScrollController _scrollController = ScrollController();
   bool _isStarting = false;
 
+  /// 是否显示合并纪要视图（false = 分段视图）
+  bool _showMergedView = false;
+
   // 长按结束相关
   Timer? _longPressTimer;
   double _longPressProgress = 0.0;
@@ -254,6 +257,20 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                 ],
               ),
             ),
+          const SizedBox(width: 4),
+          // 停止会议按钮
+          if (provider.isRecording)
+            IconButton(
+              onPressed: () => _confirmEndMeeting(),
+              icon: const Icon(Icons.stop_rounded, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(36, 36),
+                padding: const EdgeInsets.all(6),
+              ),
+              tooltip: l10n.meetingStop,
+            ),
           const SizedBox(width: 6),
           // 录音时长
           Container(
@@ -285,7 +302,9 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
       ),
       body: Column(
         children: [
-          // 实时转写文字区域
+          // 视图切换栏
+          _buildViewToggle(l10n),
+          // 内容区域
           Expanded(
             child: _isStarting
                 ? Center(
@@ -298,13 +317,129 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                       ],
                     ),
                   )
-                : _buildTranscriptionArea(segments, provider, l10n),
+                : _showMergedView
+                    ? _buildMergedNoteArea(provider, l10n)
+                    : _buildTranscriptionArea(segments, provider, l10n),
           ),
 
         ],
       ),
       ), // end Scaffold / PopScope child
     ); // end PopScope
+  }
+
+  /// 分段视图 / 合并纪要 切换栏
+  Widget _buildViewToggle(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        border: Border(
+          bottom: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildToggleButton(
+            label: l10n.meetingSegmentView,
+            isSelected: !_showMergedView,
+            onTap: () => setState(() => _showMergedView = false),
+          ),
+          const SizedBox(width: 8),
+          _buildToggleButton(
+            label: l10n.meetingMergedNoteView,
+            isSelected: _showMergedView,
+            onTap: () => setState(() => _showMergedView = true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleButton({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? _cs.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? _cs.primary.withValues(alpha: 0.3)
+                : _cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color: isSelected ? _cs.onPrimaryContainer : _cs.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 合并纪要展示区域
+  Widget _buildMergedNoteArea(MeetingProvider provider, AppLocalizations l10n) {
+    final content = provider.mergedNoteContent;
+    final isStreaming = provider.isStreamingMerge;
+
+    if (content.isEmpty && !isStreaming) {
+      return Center(
+        child: Text(
+          l10n.meetingNoContent,
+          style: TextStyle(fontSize: 14, color: _cs.outline),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 流式加载指示器
+          if (isStreaming)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _cs.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.meetingStreamingMerge,
+                    style: TextStyle(fontSize: 13, color: _cs.primary),
+                  ),
+                ],
+              ),
+            ),
+          // 合并纪要文本
+          SelectableText(
+            content,
+            style: TextStyle(
+              fontSize: 14,
+              color: _cs.onSurface,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 实时转写文字滚动区域

@@ -27,6 +27,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptWorkshop => 'Prompt Settings';
 
   @override
+  String get aiEnhanceHub => 'AI Enhancement';
+
+  @override
   String get history => 'History';
 
   @override
@@ -782,6 +785,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptBuiltin => 'Built-in';
 
   @override
+  String get promptSelectHint =>
+      'Select a template from the list to view details';
+
+  @override
+  String get promptPreview => 'Preview';
+
+  @override
+  String get dictionarySettings => 'Dictionary';
+
+  @override
+  String get dictionaryDescription =>
+      'Save commonly used words and phrases. The AI will prioritize using dictionary entries for more accurate output.';
+
+  @override
+  String get dictionaryAdd => 'Add Word';
+
+  @override
+  String get dictionaryEdit => 'Edit Word';
+
+  @override
+  String get dictionaryWord => 'Word';
+
+  @override
+  String get dictionaryWordHint =>
+      'Enter a commonly used word, e.g., technical terms, names';
+
+  @override
+  String get dictionaryWordDescription => 'Description (optional)';
+
+  @override
+  String get dictionaryWordDescriptionHint =>
+      'Brief description of the word\'s meaning or usage context';
+
+  @override
+  String get dictionaryEmpty => 'Dictionary is empty';
+
+  @override
+  String get dictionaryEmptyHint =>
+      'Add commonly used words to help AI produce better output';
+
+  @override
   String get meetingMinutes => 'Meeting Minutes';
 
   @override
@@ -941,4 +985,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meetingOverlayProcessing => 'Meeting processing';
+
+  @override
+  String get meetingRecordingBanner => 'Meeting recording in progress';
+
+  @override
+  String get meetingReturnToRecording => 'Return to recording';
+
+  @override
+  String get meetingSegmentView => 'Segments';
+
+  @override
+  String get meetingMergedNoteView => 'Merged Notes';
+
+  @override
+  String get meetingStreamingMerge => 'Merging...';
+
+  @override
+  String get meetingDetailTab => 'Meeting Details';
+
+  @override
+  String get meetingSummaryTab => 'Meeting Summary';
+
+  @override
+  String get meetingGeneratingSummary => 'Generating meeting summary...';
+
+  @override
+  String get meetingNoSummary => 'No meeting summary yet';
+
+  @override
+  String get meetingRegenerateSummary => 'Regenerate';
+
+  @override
+  String get addToDictionary => 'Add to Dictionary';
+
+  @override
+  String get addedToDictionary => 'Added to dictionary';
 }
