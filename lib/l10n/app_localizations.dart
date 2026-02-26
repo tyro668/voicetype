@@ -1556,6 +1556,78 @@ abstract class AppLocalizations {
   /// **'Built-in'**
   String get promptBuiltin;
 
+  /// No description provided for @promptBuiltinDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Prompt'**
+  String get promptBuiltinDefaultName;
+
+  /// No description provided for @promptBuiltinDefaultSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'General text cleanup and readability enhancement'**
+  String get promptBuiltinDefaultSummary;
+
+  /// No description provided for @promptBuiltinPunctuationName.
+  ///
+  /// In en, this message translates to:
+  /// **'Punctuation Fix'**
+  String get promptBuiltinPunctuationName;
+
+  /// No description provided for @promptBuiltinPunctuationSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Only fix sentence breaks and punctuation, keep original meaning'**
+  String get promptBuiltinPunctuationSummary;
+
+  /// No description provided for @promptBuiltinFormalName.
+  ///
+  /// In en, this message translates to:
+  /// **'Formal Writing'**
+  String get promptBuiltinFormalName;
+
+  /// No description provided for @promptBuiltinFormalSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn colloquial text into formal written style'**
+  String get promptBuiltinFormalSummary;
+
+  /// No description provided for @promptBuiltinColloquialName.
+  ///
+  /// In en, this message translates to:
+  /// **'Colloquial Preserve'**
+  String get promptBuiltinColloquialName;
+
+  /// No description provided for @promptBuiltinColloquialSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Light correction while preserving natural spoken style'**
+  String get promptBuiltinColloquialSummary;
+
+  /// No description provided for @promptBuiltinTranslateEnName.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate to English'**
+  String get promptBuiltinTranslateEnName;
+
+  /// No description provided for @promptBuiltinTranslateEnSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate input into natural and fluent English'**
+  String get promptBuiltinTranslateEnSummary;
+
+  /// No description provided for @promptBuiltinMeetingName.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting Minutes'**
+  String get promptBuiltinMeetingName;
+
+  /// No description provided for @promptBuiltinMeetingSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize into structured meeting-note bullet points'**
+  String get promptBuiltinMeetingSummary;
+
   /// No description provided for @promptSelectHint.
   ///
   /// In en, this message translates to:
@@ -2042,11 +2114,53 @@ abstract class AppLocalizations {
   /// **'Local model calls whisper.cpp directly via FFI, just download the model file to use.'**
   String get localModelSttHint;
 
+  /// No description provided for @localSttTinyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiny (~75MB) - Fastest, suitable for daily use'**
+  String get localSttTinyDesc;
+
+  /// No description provided for @localSttBaseDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Base (~142MB) - Balanced speed and accuracy'**
+  String get localSttBaseDesc;
+
+  /// No description provided for @localSttSmallDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Small (~466MB) - Higher accuracy'**
+  String get localSttSmallDesc;
+
   /// No description provided for @localModelAiHint.
   ///
   /// In en, this message translates to:
   /// **'Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.'**
   String get localModelAiHint;
+
+  /// No description provided for @localAiQ5Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Qwen2.5 0.5B Q5_K_M (~400MB) - Recommended, balanced quality and speed'**
+  String get localAiQ5Desc;
+
+  /// No description provided for @localAiQ4Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Qwen2.5 0.5B Q4_K_M (~350MB) - Smaller and faster'**
+  String get localAiQ4Desc;
+
+  /// No description provided for @download.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get download;
+
+  /// No description provided for @downloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded'**
+  String get downloaded;
 
   /// No description provided for @customTemplateSummary.
   ///

@@ -15,6 +15,52 @@ class PromptWorkshopPage extends StatefulWidget {
 class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
+  String _localizedTemplateName(
+    PromptTemplate template,
+    AppLocalizations l10n,
+  ) {
+    if (!template.isBuiltin) return template.name;
+    switch (template.id) {
+      case PromptTemplate.defaultBuiltinId:
+        return l10n.promptBuiltinDefaultName;
+      case 'builtin_punctuation':
+        return l10n.promptBuiltinPunctuationName;
+      case 'builtin_formal':
+        return l10n.promptBuiltinFormalName;
+      case 'builtin_colloquial':
+        return l10n.promptBuiltinColloquialName;
+      case 'builtin_translate_en':
+        return l10n.promptBuiltinTranslateEnName;
+      case 'builtin_meeting':
+        return l10n.promptBuiltinMeetingName;
+      default:
+        return template.name;
+    }
+  }
+
+  String _localizedTemplateSummary(
+    PromptTemplate template,
+    AppLocalizations l10n,
+  ) {
+    if (!template.isBuiltin) return template.summary;
+    switch (template.id) {
+      case PromptTemplate.defaultBuiltinId:
+        return l10n.promptBuiltinDefaultSummary;
+      case 'builtin_punctuation':
+        return l10n.promptBuiltinPunctuationSummary;
+      case 'builtin_formal':
+        return l10n.promptBuiltinFormalSummary;
+      case 'builtin_colloquial':
+        return l10n.promptBuiltinColloquialSummary;
+      case 'builtin_translate_en':
+        return l10n.promptBuiltinTranslateEnSummary;
+      case 'builtin_meeting':
+        return l10n.promptBuiltinMeetingSummary;
+      default:
+        return template.summary;
+    }
+  }
+
   final _testInputController = TextEditingController();
   final _testOutputController = TextEditingController();
   bool _testing = false;
@@ -53,19 +99,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Left: template list
-        SizedBox(
-          width: 280,
-          child: _buildTemplateList(settings, l10n),
-        ),
+        SizedBox(width: 280, child: _buildTemplateList(settings, l10n)),
         // Divider
-        Container(
-          width: 1,
-          color: _cs.outlineVariant,
-        ),
+        Container(width: 1, color: _cs.outlineVariant),
         // Right: detail / test panel
-        Expanded(
-          child: _buildDetailPanel(settings, l10n),
-        ),
+        Expanded(child: _buildDetailPanel(settings, l10n)),
       ],
     );
   }
@@ -97,7 +135,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
           child: Row(
             children: [
-              Icon(Icons.description_outlined, size: 18, color: _cs.onSurfaceVariant),
+              Icon(
+                Icons.description_outlined,
+                size: 18,
+                color: _cs.onSurfaceVariant,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -127,9 +169,8 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             itemCount: templates.length,
-            itemBuilder: (_, i) => _buildTemplateListItem(
-              templates[i], settings, l10n,
-            ),
+            itemBuilder: (_, i) =>
+                _buildTemplateListItem(templates[i], settings, l10n),
           ),
         ),
       ],
@@ -147,9 +188,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(
-        color: isPreviewing
-            ? _cs.secondaryContainer
-            : Colors.transparent,
+        color: isPreviewing ? _cs.secondaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
@@ -181,10 +220,12 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                         children: [
                           Flexible(
                             child: Text(
-                              template.name,
+                              _localizedTemplateName(template, l10n),
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
                                 color: isActive ? _cs.primary : _cs.onSurface,
                               ),
                               maxLines: 1,
@@ -194,14 +235,20 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                           if (template.isBuiltin) ...[
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: _cs.primaryContainer,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 l10n.promptBuiltin,
-                                style: TextStyle(fontSize: 9, color: _cs.onPrimaryContainer),
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: _cs.onPrimaryContainer,
+                                ),
                               ),
                             ),
                           ],
@@ -209,8 +256,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        template.summary,
-                        style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
+                        _localizedTemplateSummary(template, l10n),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _cs.onSurfaceVariant,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -238,7 +288,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.touch_app_outlined, size: 40, color: _cs.outlineVariant),
+              Icon(
+                Icons.touch_app_outlined,
+                size: 40,
+                color: _cs.outlineVariant,
+              ),
               const SizedBox(height: 12),
               Text(
                 l10n.promptSelectHint,
@@ -283,7 +337,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                template.name,
+                _localizedTemplateName(template, l10n),
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
@@ -292,7 +346,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                template.summary,
+                _localizedTemplateSummary(template, l10n),
                 style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
               ),
             ],
@@ -303,7 +357,10 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           FilledButton.tonalIcon(
             onPressed: () => settings.setActivePromptTemplate(template.id),
             icon: const Icon(Icons.check, size: 16),
-            label: Text(l10n.useThisModel, style: const TextStyle(fontSize: 12)),
+            label: Text(
+              l10n.useThisModel,
+              style: const TextStyle(fontSize: 12),
+            ),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               minimumSize: Size.zero,
@@ -323,7 +380,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                 const SizedBox(width: 4),
                 Text(
                   l10n.inUse,
-                  style: TextStyle(fontSize: 12, color: _cs.primary, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _cs.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -357,7 +418,10 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                   children: [
                     Icon(Icons.delete, size: 16, color: Colors.red.shade400),
                     const SizedBox(width: 8),
-                    Text(l10n.delete, style: TextStyle(color: Colors.red.shade400)),
+                    Text(
+                      l10n.delete,
+                      style: TextStyle(color: Colors.red.shade400),
+                    ),
                   ],
                 ),
               ),
@@ -411,14 +475,22 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: selected ? _cs.onSecondaryContainer : _cs.onSurfaceVariant),
+              Icon(
+                icon,
+                size: 15,
+                color: selected
+                    ? _cs.onSecondaryContainer
+                    : _cs.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected ? _cs.onSecondaryContainer : _cs.onSurfaceVariant,
+                  color: selected
+                      ? _cs.onSecondaryContainer
+                      : _cs.onSurfaceVariant,
                 ),
               ),
             ],
@@ -528,7 +600,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                 )
               : SelectableText(
                   _testOutputController.text,
-                  style: TextStyle(fontSize: 13, color: _cs.onSurface, height: 1.5),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _cs.onSurface,
+                    height: 1.5,
+                  ),
                 ),
         ),
       ],
@@ -544,7 +620,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       children: [
         Row(
           children: [
-            Icon(Icons.description_outlined, size: 18, color: _cs.onSurfaceVariant),
+            Icon(
+              Icons.description_outlined,
+              size: 18,
+              color: _cs.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -576,9 +656,11 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
             final isActive = settings.activePromptTemplateId == t.id;
             final isPreviewing = _previewTemplateId == t.id;
             return ChoiceChip(
-              label: Text(t.name),
+              label: Text(_localizedTemplateName(t, l10n)),
               selected: isPreviewing,
-              avatar: isActive ? Icon(Icons.check_circle, size: 16, color: _cs.primary) : null,
+              avatar: isActive
+                  ? Icon(Icons.check_circle, size: 16, color: _cs.primary)
+                  : null,
               onSelected: (_) {
                 setState(() {
                   _previewTemplateId = t.id;

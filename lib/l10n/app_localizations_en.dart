@@ -788,6 +788,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptBuiltin => 'Built-in';
 
   @override
+  String get promptBuiltinDefaultName => 'Default Prompt';
+
+  @override
+  String get promptBuiltinDefaultSummary =>
+      'General text cleanup and readability enhancement';
+
+  @override
+  String get promptBuiltinPunctuationName => 'Punctuation Fix';
+
+  @override
+  String get promptBuiltinPunctuationSummary =>
+      'Only fix sentence breaks and punctuation, keep original meaning';
+
+  @override
+  String get promptBuiltinFormalName => 'Formal Writing';
+
+  @override
+  String get promptBuiltinFormalSummary =>
+      'Turn colloquial text into formal written style';
+
+  @override
+  String get promptBuiltinColloquialName => 'Colloquial Preserve';
+
+  @override
+  String get promptBuiltinColloquialSummary =>
+      'Light correction while preserving natural spoken style';
+
+  @override
+  String get promptBuiltinTranslateEnName => 'Translate to English';
+
+  @override
+  String get promptBuiltinTranslateEnSummary =>
+      'Translate input into natural and fluent English';
+
+  @override
+  String get promptBuiltinMeetingName => 'Meeting Minutes';
+
+  @override
+  String get promptBuiltinMeetingSummary =>
+      'Organize into structured meeting-note bullet points';
+
+  @override
   String get promptSelectHint =>
       'Select a template from the list to view details';
 
@@ -1042,8 +1084,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'Local model calls whisper.cpp directly via FFI, just download the model file to use.';
 
   @override
+  String get localSttTinyDesc =>
+      'Tiny (~75MB) - Fastest, suitable for daily use';
+
+  @override
+  String get localSttBaseDesc => 'Base (~142MB) - Balanced speed and accuracy';
+
+  @override
+  String get localSttSmallDesc => 'Small (~466MB) - Higher accuracy';
+
+  @override
   String get localModelAiHint =>
       'Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.';
+
+  @override
+  String get localAiQ5Desc =>
+      'Qwen2.5 0.5B Q5_K_M (~400MB) - Recommended, balanced quality and speed';
+
+  @override
+  String get localAiQ4Desc =>
+      'Qwen2.5 0.5B Q4_K_M (~350MB) - Smaller and faster';
+
+  @override
+  String get download => 'Download';
+
+  @override
+  String get downloaded => 'Downloaded';
 
   @override
   String get customTemplateSummary => 'Custom Template';

@@ -244,6 +244,20 @@ class _AddModelDialog extends StatefulWidget {
 class _AddModelDialogState extends State<_AddModelDialog> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
+  String _localizedSttLocalDescription(WhisperModel model) {
+    final l10n = widget.l10n;
+    switch (model.fileName) {
+      case 'ggml-tiny.bin':
+        return l10n.localSttTinyDesc;
+      case 'ggml-base.bin':
+        return l10n.localSttBaseDesc;
+      case 'ggml-small.bin':
+        return l10n.localSttSmallDesc;
+      default:
+        return model.description;
+    }
+  }
+
   SttProviderConfig? _selectedVendor;
   SttModel? _selectedModel;
   bool _isCustom = false;
@@ -443,7 +457,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                 ? () => setState(() {
                     _selectedModel = SttModel(
                       id: model.fileName,
-                      description: model.description,
+                      description: _localizedSttLocalDescription(model),
                     );
                   })
                 : null,
@@ -479,7 +493,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          model.description,
+                          _localizedSttLocalDescription(model),
                           style: TextStyle(
                             fontSize: 11,
                             color: _cs.onSurfaceVariant,
@@ -539,18 +553,21 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                         color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.check_circle,
                             size: 14,
                             color: Colors.green,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            '已下载',
-                            style: TextStyle(fontSize: 11, color: Colors.green),
+                            widget.l10n.downloaded,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.green,
+                            ),
                           ),
                         ],
                       ),
@@ -568,7 +585,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                     TextButton.icon(
                       onPressed: () => _downloadModel(model),
                       icon: const Icon(Icons.download, size: 16),
-                      label: const Text('下载', style: TextStyle(fontSize: 12)),
+                      label: Text(
+                        widget.l10n.download,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         minimumSize: Size.zero,
@@ -592,7 +612,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       _downloadStatus = '';
       _selectedModel = SttModel(
         id: model.fileName,
-        description: model.description,
+        description: _localizedSttLocalDescription(model),
       );
     });
 

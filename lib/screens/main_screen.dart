@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
+import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
 import '../providers/recording_provider.dart';
 import '../providers/settings_provider.dart';
@@ -63,6 +64,29 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
+
+  String _localizedTemplateName(
+    PromptTemplate template,
+    AppLocalizations l10n,
+  ) {
+    if (!template.isBuiltin) return template.name;
+    switch (template.id) {
+      case PromptTemplate.defaultBuiltinId:
+        return l10n.promptBuiltinDefaultName;
+      case 'builtin_punctuation':
+        return l10n.promptBuiltinPunctuationName;
+      case 'builtin_formal':
+        return l10n.promptBuiltinFormalName;
+      case 'builtin_colloquial':
+        return l10n.promptBuiltinColloquialName;
+      case 'builtin_translate_en':
+        return l10n.promptBuiltinTranslateEnName;
+      case 'builtin_meeting':
+        return l10n.promptBuiltinMeetingName;
+      default:
+        return template.name;
+    }
+  }
 
   int _selectedNav = 0;
   late VoidCallback _settingsListener;
@@ -481,7 +505,9 @@ class _MainScreenState extends State<MainScreen> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: _cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                      color: _cs.surfaceContainerHighest.withValues(
+                        alpha: 0.45,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _cs.outlineVariant.withValues(alpha: 0.7),
@@ -623,9 +649,10 @@ class _MainScreenState extends State<MainScreen> {
     if (templates.isEmpty) return const SizedBox.shrink();
 
     final activeTemplate = settings.activePromptTemplate ?? templates.first;
-    final activeTemplateId = templates.any(
-      (template) => template.id == settings.activePromptTemplateId,
-    )
+    final activeTemplateId =
+        templates.any(
+          (template) => template.id == settings.activePromptTemplateId,
+        )
         ? settings.activePromptTemplateId
         : activeTemplate.id;
 
@@ -648,7 +675,7 @@ class _MainScreenState extends State<MainScreen> {
               child: SizedBox(
                 width: 180,
                 child: Text(
-                  template.name,
+                  _localizedTemplateName(template, l10n),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -667,7 +694,7 @@ class _MainScreenState extends State<MainScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    activeTemplate.name,
+                    _localizedTemplateName(activeTemplate, l10n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -677,11 +704,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.expand_more,
-                  size: 16,
-                  color: _cs.onSurfaceVariant,
-                ),
+                Icon(Icons.expand_more, size: 16, color: _cs.onSurfaceVariant),
               ],
             ),
           ),

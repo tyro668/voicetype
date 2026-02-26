@@ -757,6 +757,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptBuiltin => '内置';
 
   @override
+  String get promptBuiltinDefaultName => '默认提示词';
+
+  @override
+  String get promptBuiltinDefaultSummary => '通用文本规整与可读性优化';
+
+  @override
+  String get promptBuiltinPunctuationName => '标点修正';
+
+  @override
+  String get promptBuiltinPunctuationSummary => '仅修正断句与标点，不改原意';
+
+  @override
+  String get promptBuiltinFormalName => '正式文书';
+
+  @override
+  String get promptBuiltinFormalSummary => '将口语文本调整为正式书面语';
+
+  @override
+  String get promptBuiltinColloquialName => '口语化保留';
+
+  @override
+  String get promptBuiltinColloquialSummary => '轻度纠错并保留自然口语风格';
+
+  @override
+  String get promptBuiltinTranslateEnName => '翻译为英文';
+
+  @override
+  String get promptBuiltinTranslateEnSummary => '将输入翻译为自然流畅英文';
+
+  @override
+  String get promptBuiltinMeetingName => '会议纪要';
+
+  @override
+  String get promptBuiltinMeetingSummary => '整理为结构化会议纪要要点';
+
+  @override
   String get promptSelectHint => '从左侧选择一个模板查看详情';
 
   @override
@@ -1000,8 +1036,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localModelSttHint => '本地模型通过 FFI 直接调用 whisper.cpp，只需下载模型文件即可使用';
 
   @override
+  String get localSttTinyDesc => 'Tiny (~75MB) - 速度最快，适合日常使用';
+
+  @override
+  String get localSttBaseDesc => 'Base (~142MB) - 平衡速度与准确率';
+
+  @override
+  String get localSttSmallDesc => 'Small (~466MB) - 更高准确率';
+
+  @override
   String get localModelAiHint =>
       '本地模型通过 FFI 直接调用 llama.cpp，无需联网即可使用，支持 macOS 和 Windows';
+
+  @override
+  String get localAiQ5Desc => 'Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐，质量与速度平衡';
+
+  @override
+  String get localAiQ4Desc => 'Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快';
+
+  @override
+  String get download => '下载';
+
+  @override
+  String get downloaded => '已下载';
 
   @override
   String get customTemplateSummary => '自定义模板';
