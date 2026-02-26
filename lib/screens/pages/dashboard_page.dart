@@ -52,8 +52,8 @@ class _DashboardPageState extends State<DashboardPage> {
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : _stats.isEmpty
-            ? _buildEmptyState()
-            : _buildContent();
+        ? _buildEmptyState()
+        : _buildContent();
   }
 
   // ─────────────── Empty State ───────────────
@@ -70,7 +70,11 @@ class _DashboardPageState extends State<DashboardPage> {
               color: _cs.primaryContainer.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.bar_chart_rounded, size: 40, color: _cs.primary.withValues(alpha: 0.5)),
+            child: Icon(
+              Icons.bar_chart_rounded,
+              size: 40,
+              color: _cs.primary.withValues(alpha: 0.5),
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -208,15 +212,29 @@ class _DashboardPageState extends State<DashboardPage> {
   // ─────────────── Period + Activity Row ───────────────
 
   Widget _buildPeriodAndActivityRow() {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(flex: 3, child: _buildPeriodCard()),
-          const SizedBox(width: 12),
-          Expanded(flex: 2, child: _buildActivityCard()),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 920;
+        if (compact) {
+          return Column(
+            children: [
+              _buildPeriodCard(),
+              const SizedBox(height: 12),
+              _buildActivityCard(),
+            ],
+          );
+        }
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: 5, child: _buildPeriodCard()),
+              const SizedBox(width: 12),
+              Expanded(flex: 4, child: _buildActivityCard()),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -246,30 +264,36 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Period tabs as chips
-          Row(
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: List.generate(tabs.length, (i) {
               final selected = _periodTab == i;
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Material(
-                  color: selected ? _cs.primary : Colors.transparent,
+              return Material(
+                color: selected ? _cs.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () => setState(() => _periodTab = i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: selected ? null : Border.all(color: _cs.outlineVariant),
-                      ),
-                      child: Text(
-                        tabs[i],
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                          color: selected ? _cs.onPrimary : _cs.onSurfaceVariant,
-                        ),
+                  onTap: () => setState(() => _periodTab = i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: selected
+                          ? null
+                          : Border.all(color: _cs.outlineVariant),
+                    ),
+                    child: Text(
+                      tabs[i],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: selected ? _cs.onPrimary : _cs.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -281,25 +305,31 @@ class _DashboardPageState extends State<DashboardPage> {
           // Stats in a row with dividers
           Row(
             children: [
-              _PeriodStat(
-                value: '$count',
-                label: _l10n.transcriptionCount,
-                color: _cs.primary,
-                cs: _cs,
+              Expanded(
+                child: _PeriodStat(
+                  value: '$count',
+                  label: _l10n.transcriptionCount,
+                  color: _cs.primary,
+                  cs: _cs,
+                ),
               ),
               _buildVerticalDivider(),
-              _PeriodStat(
-                value: _formatDuration(durationMs),
-                label: _l10n.recordingTime,
-                color: _cs.tertiary,
-                cs: _cs,
+              Expanded(
+                child: _PeriodStat(
+                  value: _formatDuration(durationMs),
+                  label: _l10n.recordingTime,
+                  color: _cs.tertiary,
+                  cs: _cs,
+                ),
               ),
               _buildVerticalDivider(),
-              _PeriodStat(
-                value: _formatNumber(chars),
-                label: _l10n.characters,
-                color: _cs.secondary,
-                cs: _cs,
+              Expanded(
+                child: _PeriodStat(
+                  value: _formatNumber(chars),
+                  label: _l10n.characters,
+                  color: _cs.secondary,
+                  cs: _cs,
+                ),
               ),
             ],
           ),
@@ -307,20 +337,39 @@ class _DashboardPageState extends State<DashboardPage> {
           // Averages row
           Divider(color: _cs.outlineVariant.withValues(alpha: 0.5), height: 1),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
             children: [
-              Icon(Icons.short_text_rounded, size: 14, color: _cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text(
-                '${_l10n.avgCharsPerSession}: ${_stats.avgCharsPerSession.toStringAsFixed(0)}',
-                style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.short_text_rounded,
+                    size: 14,
+                    color: _cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_l10n.avgCharsPerSession}: ${_stats.avgCharsPerSession.toStringAsFixed(0)}',
+                    style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+                  ),
+                ],
               ),
-              const SizedBox(width: 20),
-              Icon(Icons.av_timer_rounded, size: 14, color: _cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text(
-                '${_l10n.avgRecordingDuration}: ${_formatDuration(_stats.avgDurationMs.round())}',
-                style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.av_timer_rounded,
+                    size: 14,
+                    color: _cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_l10n.avgRecordingDuration}: ${_formatDuration(_stats.avgDurationMs.round())}',
+                    style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+                  ),
+                ],
               ),
             ],
           ),
@@ -333,7 +382,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       width: 1,
       height: 36,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
       color: _cs.outlineVariant.withValues(alpha: 0.5),
     );
   }
@@ -382,7 +431,12 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildActivityRow(IconData icon, Color color, String label, String value) {
+  Widget _buildActivityRow(
+    IconData icon,
+    Color color,
+    String label,
+    String value,
+  ) {
     return Row(
       children: [
         Container(
@@ -399,14 +453,22 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Text(
             label,
             style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: _cs.onSurface,
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurface,
+            ),
           ),
         ),
       ],
@@ -427,43 +489,78 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                _l10n.usageTrend,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _cs.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              ...TrendGranularity.values.map((g) {
-                final selected = _granularity == g;
-                return Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Material(
-                    color: selected ? _cs.secondaryContainer : Colors.transparent,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 540;
+              final chips = Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: TrendGranularity.values.map((g) {
+                  final selected = _granularity == g;
+                  return Material(
+                    color: selected
+                        ? _cs.secondaryContainer
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(6),
                       onTap: () => _setGranularity(g),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         child: Text(
                           granLabels[g]!,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                            color: selected ? _cs.onSecondaryContainer : _cs.onSurfaceVariant,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            color: selected
+                                ? _cs.onSecondaryContainer
+                                : _cs.onSurfaceVariant,
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  );
+                }).toList(),
+              );
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _l10n.usageTrend,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    chips,
+                  ],
                 );
-              }),
-            ],
+              }
+
+              return Row(
+                children: [
+                  Text(
+                    _l10n.usageTrend,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
+                  chips,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 20),
           SizedBox(height: 180, child: _buildBarChart()),
@@ -503,7 +600,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   ? const SizedBox.shrink()
                   : Text(
                       value.toInt().toString(),
-                      style: TextStyle(fontSize: 10, color: _cs.onSurfaceVariant),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _cs.onSurfaceVariant,
+                      ),
                     ),
             ),
           ),
@@ -512,7 +612,8 @@ class _DashboardPageState extends State<DashboardPage> {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final idx = value.toInt();
-                if (idx < 0 || idx >= data.length) return const SizedBox.shrink();
+                if (idx < 0 || idx >= data.length)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
@@ -523,8 +624,12 @@ class _DashboardPageState extends State<DashboardPage> {
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         gridData: FlGridData(
           drawVerticalLine: false,
@@ -541,7 +646,9 @@ class _DashboardPageState extends State<DashboardPage> {
               BarChartRodData(
                 toY: data[i].count.toDouble(),
                 width: _granularity == TrendGranularity.month ? 18 : 12,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(5),
+                ),
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
@@ -608,23 +715,35 @@ class _DashboardPageState extends State<DashboardPage> {
     return _Card(
       cs: _cs,
       child: _buildMiniPie(
-        title: hasProvider ? _l10n.providerDistribution : _l10n.modelDistribution,
-        data: hasProvider ? _stats.providerDistribution : _stats.modelDistribution,
+        title: hasProvider
+            ? _l10n.providerDistribution
+            : _l10n.modelDistribution,
+        data: hasProvider
+            ? _stats.providerDistribution
+            : _stats.modelDistribution,
       ),
     );
   }
 
-  Widget _buildMiniPie({required String title, required Map<String, int> data}) {
+  Widget _buildMiniPie({
+    required String title,
+    required Map<String, int> data,
+  }) {
     final total = data.values.fold<int>(0, (a, b) => a + b);
     final colors = _distributionColors;
-    final entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final entries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _cs.onSurfaceVariant),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _cs.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 12),
         Row(
@@ -679,7 +798,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             child: Text(
                               e.key,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _cs.onSurfaceVariant,
+                              ),
                             ),
                           ),
                           Text(
@@ -717,7 +839,10 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           // Summary row at top if both exist
           if (showAll) ...[
-            Row(
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   width: 30,
@@ -726,22 +851,35 @@ class _DashboardPageState extends State<DashboardPage> {
                     color: _cs.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.token_rounded, size: 15, color: _cs.primary),
+                  child: Icon(
+                    Icons.token_rounded,
+                    size: 15,
+                    color: _cs.primary,
+                  ),
                 ),
-                const SizedBox(width: 10),
                 Text(
                   _l10n.allTokenUsage,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _cs.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurfaceVariant,
+                  ),
                 ),
-                const Spacer(),
                 Text(
                   _formatNumber(_stats.allTotalTokens),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _cs.onSurface),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _cs.onSurface,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Divider(color: _cs.outlineVariant.withValues(alpha: 0.5), height: 1),
+            Divider(
+              color: _cs.outlineVariant.withValues(alpha: 0.5),
+              height: 1,
+            ),
             const SizedBox(height: 16),
           ],
           // Token blocks
@@ -752,8 +890,7 @@ class _DashboardPageState extends State<DashboardPage> {
               output: _stats.enhanceCompletionTokens,
               total: _stats.enhanceTotalTokens,
             ),
-          if (hasEnhance && hasMeeting)
-            const SizedBox(height: 16),
+          if (hasEnhance && hasMeeting) const SizedBox(height: 16),
           if (hasMeeting)
             _buildTokenBlock(
               title: _l10n.meetingTokenUsage,
@@ -776,20 +913,26 @@ class _DashboardPageState extends State<DashboardPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title + total on the right
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               title,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _cs.onSurface),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
             ),
-            const Spacer(),
             Text(
-              '${_l10n.enhanceTotalTokens}: ',
-              style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-            ),
-            Text(
-              _formatNumber(total),
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _cs.onSurface),
+              '${_l10n.enhanceTotalTokens}: ${_formatNumber(total)}',
+              style: TextStyle(
+                fontSize: 12,
+                color: _cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -801,19 +944,36 @@ class _DashboardPageState extends State<DashboardPage> {
             height: 8,
             child: Row(
               children: [
-                Expanded(flex: input, child: Container(color: Colors.orange.shade400)),
-                Expanded(flex: output > 0 ? output : 1, child: Container(color: Colors.teal.shade400)),
+                Expanded(
+                  flex: input,
+                  child: Container(color: Colors.orange.shade400),
+                ),
+                Expanded(
+                  flex: output > 0 ? output : 1,
+                  child: Container(color: Colors.teal.shade400),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 8),
         // Labels
-        Row(
+        Wrap(
+          spacing: 16,
+          runSpacing: 6,
           children: [
-            _TokenLabel(color: Colors.orange.shade400, label: _l10n.enhanceInputTokens, value: _formatNumber(input), cs: _cs),
-            const Spacer(),
-            _TokenLabel(color: Colors.teal.shade400, label: _l10n.enhanceOutputTokens, value: _formatNumber(output), cs: _cs),
+            _TokenLabel(
+              color: Colors.orange.shade400,
+              label: _l10n.enhanceInputTokens,
+              value: _formatNumber(input),
+              cs: _cs,
+            ),
+            _TokenLabel(
+              color: Colors.teal.shade400,
+              label: _l10n.enhanceOutputTokens,
+              value: _formatNumber(output),
+              cs: _cs,
+            ),
           ],
         ),
       ],
@@ -859,8 +1019,10 @@ class _DashboardPageState extends State<DashboardPage> {
   String _formatTimeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return _l10n.timeAgo('<1${_l10n.minuteShort}');
-    if (diff.inHours < 1) return _l10n.timeAgo('${diff.inMinutes}${_l10n.minuteShort}');
-    if (diff.inDays < 1) return _l10n.timeAgo('${diff.inHours}${_l10n.hourShort}');
+    if (diff.inHours < 1)
+      return _l10n.timeAgo('${diff.inMinutes}${_l10n.minuteShort}');
+    if (diff.inDays < 1)
+      return _l10n.timeAgo('${diff.inHours}${_l10n.hourShort}');
     if (diff.inDays < 30) return _l10n.timeAgo('${diff.inDays}d');
     return DateFormat('yyyy/M/d').format(dt);
   }
@@ -920,17 +1082,26 @@ class _PeriodStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: cs.onSurface,
-            letterSpacing: -0.3,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+              letterSpacing: -0.3,
+            ),
           ),
         ),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+        ),
       ],
     );
   }
@@ -956,7 +1127,10 @@ class _TokenLabel extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
         const SizedBox(width: 4),
         Text(

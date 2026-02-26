@@ -30,7 +30,7 @@ void OverlayWindow::ShutdownGdiPlus() {
 // 窗口类名
 // ============================================================================
 
-static constexpr const wchar_t kOverlayClassName[] = L"VoiceTypeOverlay";
+static constexpr const wchar_t kOverlayClassName[] = L"OffhandOverlay";
 
 // ============================================================================
 // 构造 / 析构
@@ -78,7 +78,7 @@ bool OverlayWindow::Create() {
   hwnd_ = CreateWindowEx(
       ex_style,
       kOverlayClassName,
-      L"VoiceType Overlay",
+      L"Offhand Overlay",
       style,
       0, 0, kOverlayWidth, kOverlayHeight,
       nullptr,  // 无父窗口，独立于主窗口

@@ -16,7 +16,8 @@ class AiEnhanceService {
   AiEnhanceService(this.config);
 
   /// Whether this config represents a local model (empty baseUrl + empty apiKey).
-  bool get _isLocalModel => config.baseUrl.trim().isEmpty && config.apiKey.trim().isEmpty;
+  bool get _isLocalModel =>
+      config.baseUrl.trim().isEmpty && config.apiKey.trim().isEmpty;
 
   String? _apiKeyValidationMessage() {
     if (_isLocalModel) return null; // local model doesn't need API key
@@ -167,7 +168,7 @@ class AiEnhanceService {
 
   /// Streaming AI enhance using SSE (Server-Sent Events).
   /// Yields text chunks as they arrive.
-  Stream<String> enhanceStream(String text) async* {
+  Stream<String> enhanceStream(String text, {Duration? timeout}) async* {
     if (text.trim().isEmpty) {
       yield text;
       return;
@@ -226,11 +227,14 @@ class AiEnhanceService {
       }
       request.write(json.encode(bodyMap));
 
-      final response = await request.close().timeout(_streamTimeout);
+      final response = await request.close().timeout(timeout ?? _streamTimeout);
 
       if (response.statusCode != 200) {
         final body = await response.transform(utf8.decoder).join();
-        await LogService.error('AI', 'streaming enhance failed: ${response.statusCode} $body');
+        await LogService.error(
+          'AI',
+          'streaming enhance failed: ${response.statusCode} $body',
+        );
         throw AiEnhanceException('AI增强失败 (${response.statusCode})');
       }
 
@@ -264,7 +268,10 @@ class AiEnhanceService {
       await LogService.error('AI', 'streaming enhance timeout');
       throw AiEnhanceException('AI增强失败: 流式请求超时');
     } on SocketException catch (e) {
-      await LogService.error('AI', 'streaming enhance socket error: ${e.message}');
+      await LogService.error(
+        'AI',
+        'streaming enhance socket error: ${e.message}',
+      );
       throw AiEnhanceException('AI增强失败: 网络连接错误 - ${e.message}');
     } catch (e) {
       if (e is AiEnhanceException) rethrow;
@@ -421,7 +428,10 @@ $text
     return headers;
   }
 
-  String _extractContentFromJson(Map<String, dynamic> jsonBody, String fallbackText) {
+  String _extractContentFromJson(
+    Map<String, dynamic> jsonBody,
+    String fallbackText,
+  ) {
     final choices = jsonBody['choices'] as List<dynamic>?;
     if (choices != null && choices.isNotEmpty) {
       final message = choices.first['message'] as Map<String, dynamic>?;
@@ -507,4 +517,3 @@ class AiEnhanceResult {
 
   int get totalTokens => promptTokens + completionTokens;
 }
-

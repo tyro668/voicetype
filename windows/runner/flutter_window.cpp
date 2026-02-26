@@ -303,7 +303,7 @@ void FlutterWindow::HandleMethodCall(
     if (RegOpenKeyExW(HKEY_CURRENT_USER,
                       L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
                       0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-      enabled = RegQueryValueExW(hKey, L"VoiceType", nullptr, nullptr,
+      enabled = RegQueryValueExW(hKey, L"Offhand", nullptr, nullptr,
                                  nullptr, nullptr) == ERROR_SUCCESS;
       RegCloseKey(hKey);
     }
@@ -329,11 +329,11 @@ void FlutterWindow::HandleMethodCall(
         wchar_t exe_path[MAX_PATH];
         GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
         std::wstring value = std::wstring(L"\"") + exe_path + L"\"";
-        ok = RegSetValueExW(hKey, L"VoiceType", 0, REG_SZ,
+        ok = RegSetValueExW(hKey, L"Offhand", 0, REG_SZ,
                             reinterpret_cast<const BYTE*>(value.c_str()),
                             static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t))) == ERROR_SUCCESS;
       } else {
-        auto ret = RegDeleteValueW(hKey, L"VoiceType");
+        auto ret = RegDeleteValueW(hKey, L"Offhand");
         ok = (ret == ERROR_SUCCESS || ret == ERROR_FILE_NOT_FOUND);
       }
       RegCloseKey(hKey);
@@ -496,7 +496,7 @@ void FlutterWindow::EnsureOverlayWindow() {
 
   overlay_window_ = CreateWindowExW(
       WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-      kOverlayWindowClassName, L"VoiceTypeOverlay", WS_POPUP, CW_USEDEFAULT,
+      kOverlayWindowClassName, L"OffhandOverlay", WS_POPUP, CW_USEDEFAULT,
       CW_USEDEFAULT, static_cast<int>(kOverlayWidth),
       static_cast<int>(kOverlayHeight), nullptr, nullptr, GetModuleHandle(nullptr),
       this);
@@ -752,7 +752,7 @@ void FlutterWindow::InitializeTrayIcon() {
   nid.hIcon = static_cast<HICON>(LoadImageW(
       GetModuleHandle(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON,
       16, 16, LR_DEFAULTCOLOR));
-  wcscpy_s(nid.szTip, L"VoiceType");
+  wcscpy_s(nid.szTip, L"Offhand");
 
   tray_icon_initialized_ = Shell_NotifyIconW(NIM_ADD, &nid) == TRUE;
 }

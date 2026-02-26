@@ -1,8 +1,10 @@
-# voicetype
+# Offhand
 
 [中文](README.zh-CN.md) | [English](README.md)
 
-This is a voice-to-text input application. After you configure a speech recognition model, it can convert your voice into text and automatically insert the result at the current cursor position of the active application.
+Speak freely, write unbound.
+
+Offhand is a voice-to-text input application. After you configure a speech recognition model, it can convert your voice into text and automatically insert the result at the current cursor position of the active application.
 
 ## Run in debug mode
 

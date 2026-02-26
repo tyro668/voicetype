@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "VoiceType",
+  "appTitle": "Offhand",
   "@appTitle": {
     "description": "The title of the application"
   },
@@ -176,7 +176,8 @@
   "searchHistory": "Search history...",
 
   "aboutSection": "About",
-  "appDescription": "A voice input tool that supports multiple cloud LLMs and local Whisper models, converting speech to text quickly.",
+  "appDescription": "Offhand is a voice input tool that supports multiple cloud LLMs and local Whisper models, turning speech into text instantly.",
+  "appSlogan": "Speak freely, write unbound.",
   "version": "Version",
   "checkForUpdates": "Check for Updates",
   "openSourceLicenses": "Open Source Licenses",
@@ -189,7 +190,7 @@
   "systemSettings": "System",
   "systemSettingsDescription": "Configure system-level settings such as startup behavior and network proxy.",
   "launchAtLogin": "Launch at Login",
-  "launchAtLoginDescription": "Automatically start VoiceType when you log in.",
+  "launchAtLoginDescription": "Automatically start Offhand when you log in.",
   "launchAtLoginFailed": "Failed to enable launch at login",
   "disableLaunchAtLoginFailed": "Failed to disable launch at login",
   "proxyConfig": "Proxy Configuration",
@@ -199,9 +200,9 @@
   "noProxySubtitle": "All requests connect directly without any proxy.",
 
   "inputMonitoringRequired": "Input Monitoring Required",
-  "inputMonitoringDescription": "The Fn global hotkey requires enabling VoiceType in \"System Settings > Privacy & Security > Input Monitoring\".",
+  "inputMonitoringDescription": "The Fn global hotkey requires enabling Offhand in \"System Settings > Privacy & Security > Input Monitoring\".",
   "accessibilityRequired": "Accessibility Permission Required",
-  "accessibilityDescription": "To enable automatic text input, VoiceType needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".",
+  "accessibilityDescription": "To enable automatic text input, Offhand needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".",
   "later": "Later",
   "openSettings": "Open Settings",
   "pleaseConfigureSttModel": "Please configure a speech recognition model first",
@@ -384,5 +385,8 @@
   "meetingNoSummary": "No meeting summary yet",
   "meetingRegenerateSummary": "Regenerate",
   "addToDictionary": "Add to Dictionary",
-  "addedToDictionary": "Added to dictionary"
+  "addedToDictionary": "Added to dictionary",
+
+  "home": "Home",
+  "settings": "Settings"
 }

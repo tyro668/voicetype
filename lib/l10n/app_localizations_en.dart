@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'VoiceType';
+  String get appTitle => 'Offhand';
 
   @override
   String get loading => 'Loading...';
@@ -474,7 +474,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appDescription =>
-      'A voice input tool that supports multiple cloud LLMs and local Whisper models, converting speech to text quickly.';
+      'Offhand is a voice input tool that supports multiple cloud LLMs and local Whisper models, turning speech into text instantly.';
+
+  @override
+  String get appSlogan => 'Speak freely, write unbound.';
 
   @override
   String get version => 'Version';
@@ -510,7 +513,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get launchAtLoginDescription =>
-      'Automatically start VoiceType when you log in.';
+      'Automatically start Offhand when you log in.';
 
   @override
   String get launchAtLoginFailed => 'Failed to enable launch at login';
@@ -540,14 +543,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inputMonitoringDescription =>
-      'The Fn global hotkey requires enabling VoiceType in \"System Settings > Privacy & Security > Input Monitoring\".';
+      'The Fn global hotkey requires enabling Offhand in \"System Settings > Privacy & Security > Input Monitoring\".';
 
   @override
   String get accessibilityRequired => 'Accessibility Permission Required';
 
   @override
   String get accessibilityDescription =>
-      'To enable automatic text input, VoiceType needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".';
+      'To enable automatic text input, Offhand needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".';
 
   @override
   String get later => 'Later';
@@ -1021,4 +1024,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addedToDictionary => 'Added to dictionary';
+
+  @override
+  String get home => 'Home';
+
+  @override
+  String get settings => 'Settings';
 }

@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'VoiceType';
+  String get appTitle => '释手';
 
   @override
   String get loading => '加载中...';
@@ -453,7 +453,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutSection => '关于';
 
   @override
-  String get appDescription => '一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，将语音快速转换为文字。';
+  String get appDescription => '释手是一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，让所想即所写。';
+
+  @override
+  String get appSlogan => '言之所至，释手而书。';
 
   @override
   String get version => '版本';
@@ -486,7 +489,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get launchAtLogin => '开机启动';
 
   @override
-  String get launchAtLoginDescription => '登录系统时自动启动 VoiceType。';
+  String get launchAtLoginDescription => '登录系统时自动启动 释手。';
 
   @override
   String get launchAtLoginFailed => '启用开机启动失败';
@@ -514,14 +517,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inputMonitoringDescription =>
-      'Fn 全局快捷键需要在「系统设置 > 隐私与安全性 > 输入监控」中勾选 VoiceType。';
+      'Fn 全局快捷键需要在「系统设置 > 隐私与安全性 > 输入监控」中勾选 释手。';
 
   @override
   String get accessibilityRequired => '需要辅助功能权限';
 
   @override
   String get accessibilityDescription =>
-      '为实现自动输入，需要在「系统设置 > 隐私与安全性 > 辅助功能」中勾选 VoiceType。';
+      '为实现自动输入，需要在「系统设置 > 隐私与安全性 > 辅助功能」中勾选 释手。';
 
   @override
   String get later => '稍后';
@@ -980,4 +983,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get addedToDictionary => '已加入词典';
+
+  @override
+  String get home => '首页';
+
+  @override
+  String get settings => '设置';
 }

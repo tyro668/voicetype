@@ -19,6 +19,6 @@ void main() {
     // Drain the 10-second sqflite transaction lock timer
     await tester.pump(const Duration(seconds: 11));
     await tester.pumpAndSettle();
-    expect(find.text('VoiceType'), findsOneWidget);
+    expect(find.text('Offhand'), findsOneWidget);
   });
 }

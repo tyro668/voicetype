@@ -25,9 +25,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"VoiceType", origin, size)) {
+  // 将窗口居中显示在屏幕上
+  RECT work_area;
+  SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0);
+  int screen_w = work_area.right - work_area.left;
+  int screen_h = work_area.bottom - work_area.top;
+  int x = work_area.left + (screen_w - size.width) / 2;
+  int y = work_area.top + (screen_h - size.height) / 2;
+  Win32Window::Point origin(x, y);
+  if (!window.Create(L"Offhand", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

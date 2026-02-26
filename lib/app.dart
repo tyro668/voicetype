@@ -21,7 +21,8 @@ class VoiceTypeApp extends StatelessWidget {
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
           return MaterialApp(
-            title: 'VoiceType',
+            onGenerateTitle: (context) =>
+                AppLocalizations.of(context)?.appTitle ?? 'Offhand',
             debugShowCheckedModeBanner: false,
             themeMode: settings.themeMode,
             theme: ThemeData(

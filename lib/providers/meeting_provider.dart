@@ -485,6 +485,53 @@ class MeetingProvider extends ChangeNotifier {
     _aiEnhanceEnabled = oldEnabled;
   }
 
+  /// 流式重新生成会议总结，逐块返回文本
+  Stream<String> regenerateSummaryStream(
+    String meetingId, {
+    required AiEnhanceConfig aiConfig,
+  }) async* {
+    final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+    if (meeting == null) return;
+
+    final content = (meeting.fullTranscription ?? '').trim();
+    if (content.isEmpty) return;
+
+    await LogService.info(
+      'MEETING',
+      'streaming summary regeneration, content length=${content.length}',
+    );
+
+    final summaryPrompt = await rootBundle.loadString(
+      'assets/prompts/meeting_summary_prompt.md',
+    );
+
+    final summaryConfig = aiConfig.copyWith(prompt: summaryPrompt);
+    final enhancer = AiEnhanceService(summaryConfig);
+
+    final buffer = StringBuffer();
+    await for (final chunk in enhancer.enhanceStream(
+      content,
+      timeout: const Duration(seconds: 120),
+    )) {
+      buffer.write(chunk);
+      yield chunk;
+    }
+
+    // 流式结束后持久化
+    final fullSummary = buffer.toString().trim();
+    if (fullSummary.isNotEmpty) {
+      meeting.summary = fullSummary;
+      meeting.updatedAt = DateTime.now();
+      await AppDatabase.instance.updateMeeting(meeting);
+      await _loadMeetings();
+    }
+
+    await LogService.info(
+      'MEETING',
+      'streaming summary complete, length=${fullSummary.length}',
+    );
+  }
+
   /// 判断标题是否为系统默认生成的标题（格式：会议 M/D HH:mm）
   bool _isDefaultTitle(String title) {
     return RegExp(r'^会议 \d{1,2}/\d{1,2} \d{1,2}:\d{2}$').hasMatch(title.trim());

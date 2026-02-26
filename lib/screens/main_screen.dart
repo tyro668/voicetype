@@ -9,16 +9,11 @@ import '../providers/settings_provider.dart';
 import '../providers/meeting_provider.dart';
 import '../services/log_service.dart';
 import '../services/overlay_service.dart';
-import 'pages/general_page.dart';
-import 'pages/stt_page.dart';
-import 'pages/ai_model_page.dart';
-import 'pages/ai_enhance_hub_page.dart';
 import 'pages/history_page.dart';
 import 'pages/meeting_list_page.dart';
 import 'pages/meeting_recording_page.dart';
-import 'pages/system_settings_page.dart';
 import 'pages/dashboard_page.dart';
-import 'pages/about_page.dart';
+import 'settings_screen.dart';
 
 /// macOS keyCode 到 Flutter LogicalKeyboardKey 的映射
 const _macKeyCodeMap = <int, LogicalKeyboardKey>{
@@ -77,16 +72,14 @@ class _MainScreenState extends State<MainScreen> {
   LogicalKeyboardKey? _lastRegisteredHotkey;
   LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
 
+  /// 主导航项（首页 / 历史记录 / 会议记录）
   List<_NavItem> _getNavItems(AppLocalizations l10n) => [
-    _NavItem(icon: Icons.settings_outlined, label: l10n.generalSettings),
-    _NavItem(icon: Icons.mic_outlined, label: l10n.voiceModelSettings),
-    _NavItem(icon: Icons.psychology_outlined, label: l10n.textModelSettings),
-    _NavItem(icon: Icons.auto_fix_high_outlined, label: l10n.aiEnhanceHub),
+    _NavItem(icon: Icons.home_outlined, label: l10n.home),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
-    _NavItem(icon: Icons.record_voice_over_outlined, label: l10n.meetingMinutes),
-    _NavItem(icon: Icons.computer_outlined, label: l10n.systemSettings),
-    _NavItem(icon: Icons.dashboard_outlined, label: l10n.dashboard),
-    _NavItem(icon: Icons.info_outline, label: l10n.about),
+    _NavItem(
+      icon: Icons.record_voice_over_outlined,
+      label: l10n.meetingMinutes,
+    ),
   ];
 
   @override
@@ -238,10 +231,32 @@ class _MainScreenState extends State<MainScreen> {
     return true;
   }
 
+  void _openSettings() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final size = MediaQuery.of(ctx).size;
+        return Dialog(
+          insetPadding: const EdgeInsets.all(32),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: SizedBox(
+            width: size.width * 0.95,
+            height: size.height * 0.9,
+            child: const SettingsScreen(),
+          ),
+        );
+      },
+    );
+  }
+
   void _promptSttConfig() {
     OverlayService.showMainWindow();
     if (!mounted) return;
-    setState(() => _selectedNav = 1);
+    // 打开设置界面，定位到语音模型页面
+    _openSettings();
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.removeCurrentSnackBar();
@@ -292,7 +307,12 @@ class _MainScreenState extends State<MainScreen> {
     return _macKeyCodeMap[keyCode];
   }
 
-  void _handleGlobalKeyEvent(int keyCode, String type, bool isRepeat, bool hasModifiers) {
+  void _handleGlobalKeyEvent(
+    int keyCode,
+    String type,
+    bool isRepeat,
+    bool hasModifiers,
+  ) {
     if (isRepeat) return;
 
     // 单键快捷键：有修饰键（Cmd/Ctrl/Alt/Shift）按下时忽略
@@ -313,7 +333,10 @@ class _MainScreenState extends State<MainScreen> {
 
     final recording = context.read<RecordingProvider>();
 
-    LogService.info('HOTKEY', 'hotkey type=$type state=${recording.state} busy=${recording.busy} mode=${settings.activationMode}');
+    LogService.info(
+      'HOTKEY',
+      'hotkey type=$type state=${recording.state} busy=${recording.busy} mode=${settings.activationMode}',
+    );
 
     if (recording.busy) return;
 
@@ -363,7 +386,10 @@ class _MainScreenState extends State<MainScreen> {
     if (type != 'down') return;
 
     final meeting = context.read<MeetingProvider>();
-    LogService.info('HOTKEY', 'meeting hotkey: isRecording=${meeting.isRecording}');
+    LogService.info(
+      'HOTKEY',
+      'meeting hotkey: isRecording=${meeting.isRecording}',
+    );
 
     if (meeting.isRecording) {
       // 正在录制 → 结束会议
@@ -382,7 +408,10 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  void _startVadIfEnabled(SettingsProvider settings, RecordingProvider recording) {
+  void _startVadIfEnabled(
+    SettingsProvider settings,
+    RecordingProvider recording,
+  ) {
     if (!settings.vadEnabled) return;
     recording.onVadTriggered = () {
       if (recording.state == RecordingState.recording && !recording.busy) {
@@ -417,10 +446,7 @@ class _MainScreenState extends State<MainScreen> {
       recording: l10n.meetingOverlayRecording,
       processing: l10n.meetingOverlayProcessing,
     );
-    OverlayService.setTrayLabels(
-      open: l10n.trayOpen,
-      quit: l10n.trayQuit,
-    );
+    OverlayService.setTrayLabels(open: l10n.trayOpen, quit: l10n.trayQuit);
 
     return Scaffold(
       backgroundColor: _cs.surfaceContainerLow,
@@ -454,7 +480,7 @@ class _MainScreenState extends State<MainScreen> {
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      'VoiceType',
+                      l10n.appTitle,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 16,
@@ -512,6 +538,43 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               );
             }),
+            const Spacer(),
+            // 底部设置按钮
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: _openSettings,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.settings_outlined,
+                          size: 18,
+                          color: _cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          l10n.settings,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: _cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -519,16 +582,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildContent() {
-    final page = switch (_selectedNav) {
-      0 => const GeneralPage(),
-      1 => const SttPage(),
-      2 => const AiModelPage(),
-      3 => const AiEnhanceHubPage(),
-      4 => const HistoryPage(),
-      5 => const MeetingListPage(),
-      6 => const SystemSettingsPage(),
-      7 => const DashboardPage(),
-      8 => const AboutPage(),
+    final Widget page = switch (_selectedNav) {
+      0 => const DashboardPage(),
+      1 => const HistoryPage(),
+      2 => const MeetingListPage(),
       _ => const SizedBox(),
     };
 

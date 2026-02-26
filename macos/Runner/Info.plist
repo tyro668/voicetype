@@ -27,11 +27,11 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>VoiceType 需要使用麦克风来录制语音并转换为文字</string>
+	<string>释手 需要使用麦克风来录制语音并转换为文字</string>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>VoiceType 需要辅助功能权限来监听全局快捷键（如 Fn 键）以启动语音输入</string>
+	<string>释手 需要辅助功能权限来监听全局快捷键（如 Fn 键）以启动语音输入</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>VoiceType 需要控制其他应用以自动插入转换后的文字</string>
+	<string>释手 需要控制其他应用以自动插入转换后的文字</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>

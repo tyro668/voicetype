@@ -1,6 +1,6 @@
 {
   "@@locale": "zh",
-  "appTitle": "VoiceType",
+  "appTitle": "释手",
   "loading": "加载中...",
   "generalSettings": "通用设置",
   "voiceModelSettings": "语音模型",
@@ -171,7 +171,8 @@
   "searchHistory": "搜索历史记录...",
 
   "aboutSection": "关于",
-  "appDescription": "一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，将语音快速转换为文字。",
+  "appDescription": "释手是一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，让所想即所写。",
+  "appSlogan": "言之所至，释手而书。",
   "version": "版本",
   "checkForUpdates": "检查更新",
   "openSourceLicenses": "开源许可证",
@@ -184,7 +185,7 @@
   "systemSettings": "系统设置",
   "systemSettingsDescription": "配置系统级设置，如开机启动和网络代理。",
   "launchAtLogin": "开机启动",
-  "launchAtLoginDescription": "登录系统时自动启动 VoiceType。",
+  "launchAtLoginDescription": "登录系统时自动启动 释手。",
   "launchAtLoginFailed": "启用开机启动失败",
   "disableLaunchAtLoginFailed": "关闭开机启动失败",
   "proxyConfig": "代理配置",
@@ -194,9 +195,9 @@
   "noProxySubtitle": "所有请求直连，不走任何代理。",
 
   "inputMonitoringRequired": "需要输入监控权限",
-  "inputMonitoringDescription": "Fn 全局快捷键需要在「系统设置 > 隐私与安全性 > 输入监控」中勾选 VoiceType。",
+  "inputMonitoringDescription": "Fn 全局快捷键需要在「系统设置 > 隐私与安全性 > 输入监控」中勾选 释手。",
   "accessibilityRequired": "需要辅助功能权限",
-  "accessibilityDescription": "为实现自动输入，需要在「系统设置 > 隐私与安全性 > 辅助功能」中勾选 VoiceType。",
+  "accessibilityDescription": "为实现自动输入，需要在「系统设置 > 隐私与安全性 > 辅助功能」中勾选 释手。",
   "later": "稍后",
   "openSettings": "打开设置",
   "pleaseConfigureSttModel": "请先配置语音转换模型",
@@ -379,5 +380,8 @@
   "meetingNoSummary": "暂无会议总结",
   "meetingRegenerateSummary": "重新生成",
   "addToDictionary": "加入提示词词典",
-  "addedToDictionary": "已加入词典"
+  "addedToDictionary": "已加入词典",
+
+  "home": "首页",
+  "settings": "设置"
 }

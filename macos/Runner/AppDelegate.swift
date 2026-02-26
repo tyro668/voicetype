@@ -239,7 +239,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     if let button = item.button {
       if #available(macOS 11.0, *) {
-        button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "VoiceType")
+        button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Offhand")
       } else {
         button.title = "VT"
       }

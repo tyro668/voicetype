@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// The title of the application
   ///
   /// In en, this message translates to:
-  /// **'VoiceType'**
+  /// **'Offhand'**
   String get appTitle;
 
   /// No description provided for @loading.
@@ -971,8 +971,14 @@ abstract class AppLocalizations {
   /// No description provided for @appDescription.
   ///
   /// In en, this message translates to:
-  /// **'A voice input tool that supports multiple cloud LLMs and local Whisper models, converting speech to text quickly.'**
+  /// **'Offhand is a voice input tool that supports multiple cloud LLMs and local Whisper models, turning speech into text instantly.'**
   String get appDescription;
+
+  /// No description provided for @appSlogan.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak freely, write unbound.'**
+  String get appSlogan;
 
   /// No description provided for @version.
   ///
@@ -1037,7 +1043,7 @@ abstract class AppLocalizations {
   /// No description provided for @launchAtLoginDescription.
   ///
   /// In en, this message translates to:
-  /// **'Automatically start VoiceType when you log in.'**
+  /// **'Automatically start Offhand when you log in.'**
   String get launchAtLoginDescription;
 
   /// No description provided for @launchAtLoginFailed.
@@ -1091,7 +1097,7 @@ abstract class AppLocalizations {
   /// No description provided for @inputMonitoringDescription.
   ///
   /// In en, this message translates to:
-  /// **'The Fn global hotkey requires enabling VoiceType in \"System Settings > Privacy & Security > Input Monitoring\".'**
+  /// **'The Fn global hotkey requires enabling Offhand in \"System Settings > Privacy & Security > Input Monitoring\".'**
   String get inputMonitoringDescription;
 
   /// No description provided for @accessibilityRequired.
@@ -1103,7 +1109,7 @@ abstract class AppLocalizations {
   /// No description provided for @accessibilityDescription.
   ///
   /// In en, this message translates to:
-  /// **'To enable automatic text input, VoiceType needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".'**
+  /// **'To enable automatic text input, Offhand needs to be enabled in \"System Settings > Privacy & Security > Accessibility\".'**
   String get accessibilityDescription;
 
   /// No description provided for @later.
@@ -2005,6 +2011,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added to dictionary'**
   String get addedToDictionary;
+
+  /// No description provided for @home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get home;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
 }
 
 class _AppLocalizationsDelegate

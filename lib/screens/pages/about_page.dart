@@ -39,16 +39,19 @@ class AboutPage extends StatelessWidget {
                     Icon(Icons.mic, color: cs.primary, size: 24),
                     SizedBox(width: 8),
                     Text(
-                      'VoiceType',
+                      l10n.appTitle,
                       style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('${l10n.version} 1.0.0',
-                    style: TextStyle(
-                        fontSize: 13, color: cs.onSurfaceVariant)),
+                Text(
+                  '${l10n.version} 1.0.0',
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   l10n.appDescription,
@@ -56,6 +59,15 @@ class AboutPage extends StatelessWidget {
                     fontSize: 14,
                     color: cs.onSurfaceVariant,
                     height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.appSlogan,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: cs.primary,
                   ),
                 ),
               ],

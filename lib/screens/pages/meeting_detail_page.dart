@@ -18,16 +18,14 @@ class MeetingDetailPage extends StatefulWidget {
   State<MeetingDetailPage> createState() => _MeetingDetailPageState();
 }
 
-class _MeetingDetailPageState extends State<MeetingDetailPage>
-    with SingleTickerProviderStateMixin {
+class _MeetingDetailPageState extends State<MeetingDetailPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
   MeetingRecord? _meeting;
   bool _loading = true;
+  bool _editingTitle = false;
 
-  late final TabController _tabController;
   final TextEditingController _titleController = TextEditingController();
-
   final TextEditingController _detailController = TextEditingController();
   final TextEditingController _summaryController = TextEditingController();
 
@@ -37,7 +35,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadData();
   }
 
@@ -46,7 +43,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
     _titleController.dispose();
     _detailController.dispose();
     _summaryController.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -92,51 +88,108 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
 
     return Scaffold(
       backgroundColor: _cs.surfaceContainerLow,
-      appBar: AppBar(
-        backgroundColor: _cs.surface,
-        elevation: 0,
-        title: Text(
-          meeting.title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: _cs.onSurface,
+      body: Column(
+        children: [
+          _buildHeader(meeting, dateStr, l10n),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 左侧：完整转写
+                  Expanded(
+                    flex: 3,
+                    child: _buildPanel(
+                      icon: Icons.article_outlined,
+                      title: l10n.meetingFullTranscription,
+                      trailing: _buildSaveButton(
+                        saving: _savingDetail,
+                        onPressed: _saveDetail,
+                        l10n: l10n,
+                      ),
+                      body: _buildTextEditor(
+                        controller: _detailController,
+                        emptyHint: l10n.meetingNoContent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 右侧：会议摘要
+                  Expanded(
+                    flex: 2,
+                    child: _buildPanel(
+                      icon: Icons.summarize_outlined,
+                      title: l10n.meetingSummary,
+                      trailing: _buildSaveButton(
+                        saving: _savingSummary,
+                        onPressed: _saveSummary,
+                        l10n: l10n,
+                      ),
+                      body: _buildTextEditor(
+                        controller: _summaryController,
+                        emptyHint: l10n.meetingNoSummary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        actions: [
+        ],
+      ),
+    );
+  }
+
+  // ──────────────── Header ────────────────
+
+  Widget _buildHeader(
+    MeetingRecord meeting,
+    String dateStr,
+    AppLocalizations l10n,
+  ) {
+    final charCount = _detailController.text.length;
+
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        border: Border(bottom: BorderSide(color: _cs.outlineVariant)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, size: 20),
+            onPressed: () => Navigator.pop(context),
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          ),
+          const SizedBox(width: 4),
+          // 可编辑标题
+          Expanded(child: _buildTitleArea(meeting)),
+          const SizedBox(width: 12),
+          // 信息标签
+          _buildBadge(Icons.calendar_today_outlined, dateStr),
+          const SizedBox(width: 6),
+          _buildBadge(Icons.timer_outlined, meeting.formattedDuration),
+          const SizedBox(width: 6),
+          _buildBadge(Icons.text_fields, '$charCount'),
+          const SizedBox(width: 4),
+          // 操作菜单
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: _cs.onSurfaceVariant),
-            onSelected: (value) => _handleMenuAction(value, meeting, l10n),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'copy',
-                child: Row(
-                  children: [
-                    const Icon(Icons.copy, size: 18),
-                    const SizedBox(width: 8),
-                    Text(l10n.meetingCopyAll),
-                  ],
-                ),
+            icon: Icon(Icons.more_vert, size: 20, color: _cs.onSurfaceVariant),
+            onSelected: (v) => _handleMenuAction(v, meeting, l10n),
+            itemBuilder: (_) => [
+              _menuItem('copy', Icons.copy, l10n.meetingCopyAll),
+              _menuItem(
+                'export_text',
+                Icons.text_snippet_outlined,
+                l10n.meetingExportText,
               ),
-              PopupMenuItem(
-                value: 'export_text',
-                child: Row(
-                  children: [
-                    const Icon(Icons.text_snippet_outlined, size: 18),
-                    const SizedBox(width: 8),
-                    Text(l10n.meetingExportText),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'export_md',
-                child: Row(
-                  children: [
-                    const Icon(Icons.description_outlined, size: 18),
-                    const SizedBox(width: 8),
-                    Text(l10n.meetingExportMarkdown),
-                  ],
-                ),
+              _menuItem(
+                'export_md',
+                Icons.description_outlined,
+                l10n.meetingExportMarkdown,
               ),
               const PopupMenuDivider(),
               PopupMenuItem(
@@ -159,260 +212,233 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
             ],
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: _cs.primary,
-          unselectedLabelColor: _cs.onSurfaceVariant,
-          indicatorColor: _cs.primary,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.article_outlined, size: 18),
-              text: l10n.meetingDetailTab,
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [Icon(icon, size: 18), const SizedBox(width: 8), Text(label)],
+      ),
+    );
+  }
+
+  Widget _buildTitleArea(MeetingRecord meeting) {
+    if (_editingTitle) {
+      return SizedBox(
+        height: 34,
+        child: TextField(
+          controller: _titleController,
+          autofocus: true,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: _cs.onSurface,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 8,
             ),
-            Tab(
-              icon: const Icon(Icons.summarize_outlined, size: 18),
-              text: l10n.meetingSummaryTab,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: _cs.outline),
             ),
-          ],
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.check, size: 16, color: _cs.primary),
+                  onPressed: _saveTitle,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, size: 16, color: _cs.outline),
+                  onPressed: () {
+                    _titleController.text = _meeting?.title ?? '';
+                    setState(() => _editingTitle = false);
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          onSubmitted: (_) => _saveTitle(),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildDetailTab(meeting, dateStr, l10n),
-          _buildSummaryTab(meeting, l10n),
-        ],
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildDetailTab(
-    MeetingRecord meeting,
-    String dateStr,
-    AppLocalizations l10n,
-  ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onDoubleTap: () => setState(() => _editingTitle = true),
+      child: Row(
         children: [
-          _buildInfoCard(meeting, dateStr, l10n),
-          const SizedBox(height: 20),
-          _buildTitleSection(meeting, l10n),
-          const SizedBox(height: 20),
-          _buildDetailEditorSection(l10n),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryTab(MeetingRecord meeting, AppLocalizations l10n) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                l10n.meetingSummary,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: _cs.onSurface,
-                ),
-              ),
-              const Spacer(),
-              if (_hasFullTranscription)
-                TextButton.icon(
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: Text(l10n.meetingRegenerateSummary),
-                  onPressed: () => _regenerateSummary(l10n),
-                ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _savingSummary ? null : _saveSummary,
-                icon: _savingSummary
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined, size: 16),
-                label: Text(l10n.saveChanges),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildTextEditorCard(
-            controller: _summaryController,
-            emptyHint: l10n.meetingNoSummary,
-            minLines: 10,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailEditorSection(AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.article_outlined, size: 18, color: _cs.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(
-              l10n.meetingFullTranscription,
+          Flexible(
+            child: Text(
+              meeting.title,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: _cs.onSurface,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: _savingDetail ? null : _saveDetail,
-              icon: _savingDetail
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined, size: 16),
-              label: Text(l10n.saveChanges),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildTextEditorCard(
-          controller: _detailController,
-          emptyHint: l10n.meetingNoContent,
-          minLines: 14,
-        ),
-      ],
+          ),
+          const SizedBox(width: 4),
+          Icon(Icons.edit_outlined, size: 14, color: _cs.outline),
+        ],
+      ),
     );
   }
 
-  Widget _buildTextEditorCard({
+  Widget _buildBadge(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: _cs.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────── Content Panels ────────────────
+
+  Widget _buildPanel({
+    required IconData icon,
+    required String title,
+    required Widget trailing,
+    required Widget body,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 面板标题栏
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 10, 6),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: _cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _cs.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                trailing,
+              ],
+            ),
+          ),
+          Divider(height: 1, color: _cs.outlineVariant.withValues(alpha: 0.4)),
+          // 编辑区域
+          Expanded(child: body),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextEditor({
     required TextEditingController controller,
     required String emptyHint,
-    required int minLines,
   }) {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onSecondaryTapDown: (details) {
         _showDictionaryContextMenu(details.globalPosition, controller);
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: _cs.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _cs.outlineVariant),
-        ),
-        child: TextField(
-          controller: controller,
-          minLines: minLines,
-          maxLines: null,
-          style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.7),
-          decoration: InputDecoration(
-            hintText: emptyHint,
-            hintStyle: TextStyle(color: _cs.outline),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.all(14),
-          ),
+      child: TextField(
+        controller: controller,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style: TextStyle(fontSize: 13, color: _cs.onSurface, height: 1.8),
+        decoration: InputDecoration(
+          hintText: emptyHint,
+          hintStyle: TextStyle(color: _cs.outline),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(14),
         ),
       ),
     );
   }
 
-  Widget _buildInfoCard(
-    MeetingRecord meeting,
-    String dateStr,
-    AppLocalizations l10n,
-  ) {
-    final charCount = _detailController.text.length;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          _InfoItem(
-            icon: Icons.calendar_today_outlined,
-            label: l10n.meetingDate,
-            value: dateStr,
-            cs: _cs,
-          ),
-          const SizedBox(width: 32),
-          _InfoItem(
-            icon: Icons.timer_outlined,
-            label: l10n.meetingDuration,
-            value: meeting.formattedDuration,
-            cs: _cs,
-          ),
-          const SizedBox(width: 32),
-          _InfoItem(
-            icon: Icons.text_fields_outlined,
-            label: l10n.meetingTotalChars,
-            value: '$charCount',
-            cs: _cs,
-          ),
-        ],
+  Widget _buildSaveButton({
+    required bool saving,
+    required VoidCallback onPressed,
+    required AppLocalizations l10n,
+  }) {
+    return SizedBox(
+      height: 30,
+      child: FilledButton.tonalIcon(
+        onPressed: saving ? null : onPressed,
+        icon: saving
+            ? const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 1.5),
+              )
+            : const Icon(Icons.save_outlined, size: 14),
+        label: Text(l10n.saveChanges, style: const TextStyle(fontSize: 12)),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
       ),
     );
   }
 
-  Widget _buildTitleSection(MeetingRecord meeting, AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _titleController,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: _cs.onSurface,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                labelText: l10n.meetingTitle,
-                labelStyle: TextStyle(color: _cs.onSurfaceVariant),
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (_titleController.text.isEmpty) return;
-              await context.read<MeetingProvider>().updateMeetingTitle(
-                widget.meetingId,
-                _titleController.text,
-              );
-              if (!mounted) return;
-              setState(() => _meeting!.title = _titleController.text);
-              _showSavedSnackBar();
-            },
-            child: Text(l10n.saveChanges),
-          ),
-        ],
-      ),
+  // ──────────────── Data Actions ────────────────
+
+  Future<void> _saveTitle() async {
+    if (_titleController.text.isEmpty) return;
+    await context.read<MeetingProvider>().updateMeetingTitle(
+      widget.meetingId,
+      _titleController.text,
     );
+    if (!mounted) return;
+    setState(() {
+      _meeting!.title = _titleController.text;
+      _editingTitle = false;
+    });
+    _showSavedSnackBar();
   }
 
   Future<void> _saveDetail() async {
     setState(() => _savingDetail = true);
-
     try {
       final stored = _detailController.text;
       await context.read<MeetingProvider>().updateMeetingFullTranscription(
@@ -424,15 +450,12 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
       _showSavedSnackBar();
       setState(() {});
     } finally {
-      if (mounted) {
-        setState(() => _savingDetail = false);
-      }
+      if (mounted) setState(() => _savingDetail = false);
     }
   }
 
   Future<void> _saveSummary() async {
     setState(() => _savingSummary = true);
-
     try {
       final stored = _summaryController.text;
       await context.read<MeetingProvider>().updateMeetingSummary(
@@ -443,37 +466,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
       _meeting?.summary = stored;
       _showSavedSnackBar();
     } finally {
-      if (mounted) {
-        setState(() => _savingSummary = false);
-      }
-    }
-  }
-
-  Future<void> _regenerateSummary(AppLocalizations l10n) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.meetingGeneratingSummary),
-        duration: const Duration(seconds: 60),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-
-    try {
-      await context.read<MeetingProvider>().regenerateSummary(widget.meetingId);
-      await _loadData();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      _showSavedSnackBar();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.meetingError),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (mounted) setState(() => _savingSummary = false);
     }
   }
 
@@ -501,7 +494,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
         ),
       ],
     );
-
     if (selected == 'add_dict') {
       await _addToDictionary(selectedText);
     }
@@ -510,23 +502,19 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
   String _getSelectedText(TextEditingController controller) {
     final selection = controller.selection;
     if (!selection.isValid || selection.isCollapsed) return '';
-
     final text = controller.text;
     final start = selection.start.clamp(0, text.length);
     final end = selection.end.clamp(0, text.length);
     if (start >= end) return '';
-
     return text.substring(start, end).trim();
   }
 
   Future<void> _addToDictionary(String word) async {
     if (word.isEmpty) return;
-
     final l10n = AppLocalizations.of(context)!;
     await context.read<SettingsProvider>().addDictionaryEntry(
       DictionaryEntry.create(word: word),
     );
-
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -623,10 +611,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
     );
   }
 
-  bool get _hasFullTranscription {
-    return _detailController.text.trim().isNotEmpty;
-  }
-
   void _showSavedSnackBar() {
     final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -635,48 +619,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage>
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
       ),
-    );
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final ColorScheme cs;
-
-  const _InfoItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.cs,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: cs.outline),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: cs.onSurface,
-          ),
-        ),
-      ],
     );
   }
 }
