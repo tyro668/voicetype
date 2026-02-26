@@ -9,7 +9,9 @@ import 'pages/about_page.dart';
 
 /// 设置界面 — 自带左侧子导航栏，以弹窗形式展示。
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final int initialIndex;
+
+  const SettingsScreen({super.key, this.initialIndex = 0});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -17,6 +19,12 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex.clamp(0, 5);
+  }
 
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
