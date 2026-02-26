@@ -19,7 +19,7 @@ void main() {
       (Platform.environment['ALIYUN_TEXT_MODEL'] ?? 'qwen-plus').trim();
 
   group('模型测试连接', () {
-    test('阿里云与 OpenAI 兼容模型都可以测试连接成功', () async {
+    test('Aliyun 与 OpenAI 兼容模型都可以测试连接成功', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
 
       server.listen((HttpRequest request) async {
@@ -64,7 +64,7 @@ void main() {
       final sttConfigs = <SttProviderConfig>[
         SttProviderConfig(
           type: SttProviderType.cloud,
-          name: '阿里云',
+          name: 'Aliyun',
           baseUrl: baseUrl,
           apiKey: 'sk-aliyun-test',
           model: 'qwen3-asr-flash',
@@ -125,11 +125,11 @@ void main() {
     });
 
     test(
-      '阿里云真实 compatible-mode/v1 地址可测试连接成功（环境变量开关）',
+      'Aliyun 真实 compatible-mode/v1 地址可测试连接成功（环境变量开关）',
       () async {
         final sttConfig = SttProviderConfig(
           type: SttProviderType.cloud,
-          name: '阿里云',
+          name: 'Aliyun',
           baseUrl: aliyunBaseUrl,
           apiKey: aliyunApiKey,
           model: aliyunSttModel,
@@ -141,7 +141,7 @@ void main() {
         expect(
           sttResult.ok,
           isTrue,
-          reason: '阿里云语音模型连接失败: ${sttResult.message}',
+          reason: 'Aliyun 语音模型连接失败: ${sttResult.message}',
         );
 
         final aiConfig =
@@ -160,7 +160,11 @@ void main() {
         final aiResult = await AiEnhanceService(
           aiConfig,
         ).checkAvailabilityDetailed();
-        expect(aiResult.ok, isTrue, reason: '阿里云文本模型连接失败: ${aiResult.message}');
+        expect(
+          aiResult.ok,
+          isTrue,
+          reason: 'Aliyun 文本模型连接失败: ${aiResult.message}',
+        );
       },
       skip: !runAliyunRealTest || aliyunApiKey.isEmpty,
     );

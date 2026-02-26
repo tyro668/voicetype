@@ -31,7 +31,7 @@ class AiVendorPreset {
       models: [AiModel(id: 'deepseek-chat', description: 'DeepSeek 默认模型')],
     ),
     AiVendorPreset(
-      name: '阿里云',
+      name: 'Aliyun',
       baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
       models: [
         AiModel(id: 'qwen-plus', description: '千问 Plus'),
@@ -40,12 +40,46 @@ class AiVendorPreset {
       ],
     ),
     AiVendorPreset(
-      name: '本地模型',
+      name: 'OpenAI',
+      baseUrl: 'https://api.openai.com/v1',
+      models: [
+        AiModel(id: 'gpt-5', description: 'GPT-5'),
+        AiModel(id: 'gpt-5-mini', description: 'GPT-5 mini'),
+        AiModel(id: 'gpt-5-nano', description: 'GPT-5 nano'),
+        AiModel(id: 'gpt-4.1', description: 'GPT-4.1'),
+      ],
+      defaultModelIdOverride: 'gpt-5-mini',
+    ),
+    AiVendorPreset(
+      name: 'Google Gemini',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      models: [
+        AiModel(id: 'gemini-3-pro', description: 'Gemini 3 Pro'),
+        AiModel(id: 'gemini-3-flash', description: 'Gemini 3 Flash'),
+        AiModel(id: 'gemini-3-flash-lite', description: 'Gemini 3 Flash-Lite'),
+        AiModel(id: 'gemini-2.5-pro', description: 'Gemini 2.5 Pro'),
+        AiModel(id: 'gemini-2.5-flash', description: 'Gemini 2.5 Flash'),
+        AiModel(
+          id: 'gemini-2.5-flash-lite',
+          description: 'Gemini 2.5 Flash-Lite',
+        ),
+        AiModel(id: 'gemini-2.0-flash', description: 'Gemini 2.0 Flash'),
+      ],
+      defaultModelIdOverride: 'gemini-3-pro',
+    ),
+    AiVendorPreset(
+      name: 'Local Model',
       baseUrl: '',
       isLocal: true,
       models: [
-        AiModel(id: 'qwen2.5-0.5b-instruct-q5_k_m.gguf', description: 'Qwen2.5 0.5B Q5_K_M (~400MB)'),
-        AiModel(id: 'qwen2.5-0.5b-instruct-q4_k_m.gguf', description: 'Qwen2.5 0.5B Q4_K_M (~350MB)'),
+        AiModel(
+          id: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
+          description: 'Qwen2.5 0.5B Q5_K_M (~400MB)',
+        ),
+        AiModel(
+          id: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+          description: 'Qwen2.5 0.5B Q4_K_M (~350MB)',
+        ),
       ],
       defaultModelIdOverride: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
     ),
@@ -54,24 +88,22 @@ class AiVendorPreset {
   static List<AiVendorPreset> fromPresetJsonList(List<dynamic> items) {
     return items
         .whereType<Map<String, dynamic>>()
-        .map(
-          (item) {
-            final isLocal = item['isLocal'] == true;
-            return AiVendorPreset(
-              name: item['name'] ?? '',
-              baseUrl: item['baseUrl'] ?? '',
-              isLocal: isLocal,
-              models: (item['models'] as List<dynamic>? ?? [])
-                  .whereType<Map<String, dynamic>>()
-                  .map(AiModel.fromJson)
-                  .toList(),
-              defaultModelIdOverride: _resolveDefaultModelId(
-                item['defaultModel']?.toString(),
-                item['models'],
-              ),
-            );
-          },
-        )
+        .map((item) {
+          final isLocal = item['isLocal'] == true;
+          return AiVendorPreset(
+            name: item['name'] ?? '',
+            baseUrl: item['baseUrl'] ?? '',
+            isLocal: isLocal,
+            models: (item['models'] as List<dynamic>? ?? [])
+                .whereType<Map<String, dynamic>>()
+                .map(AiModel.fromJson)
+                .toList(),
+            defaultModelIdOverride: _resolveDefaultModelId(
+              item['defaultModel']?.toString(),
+              item['models'],
+            ),
+          );
+        })
         .where(
           (preset) =>
               preset.name.isNotEmpty &&

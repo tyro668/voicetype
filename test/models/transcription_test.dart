@@ -34,7 +34,7 @@ void main() {
         text: '测试中文文本',
         createdAt: sampleTime,
         duration: const Duration(seconds: 10),
-        provider: '阿里云',
+        provider: 'Aliyun',
         model: 'qwen3-asr-flash',
         providerConfigJson: '{}',
       );

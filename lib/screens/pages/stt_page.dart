@@ -21,7 +21,8 @@ class _SttPageState extends State<SttPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
   static bool isLocalModelEntry(SttModelEntry entry) {
-    return entry.vendorName == '本地模型' ||
+    return entry.vendorName == 'Local Model' ||
+        entry.vendorName == '本地模型' ||
         entry.vendorName == '本地 whisper.cpp' ||
         entry.vendorName == 'whisper.cpp';
   }
@@ -97,7 +98,7 @@ class _SttPageState extends State<SttPage> {
     AppLocalizations l10n,
   ) {
     return ModelEntryCard(
-      vendorName: entry.vendorName,
+      vendorName: localizedVendorName(entry.vendorName, l10n),
       modelName: entry.model,
       isActive: entry.enabled,
       l10n: l10n,
@@ -224,7 +225,6 @@ class _SttPageState extends State<SttPage> {
   }
 }
 
-
 // ==================== 添加模型对话框 ====================
 class _AddModelDialog extends StatefulWidget {
   final List<SttProviderConfig> presets;
@@ -260,8 +260,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
 
   List<SttProviderConfig> get _vendorOptions => widget.presets;
 
-  bool get _isLocalModel =>
-      _selectedVendor?.type == SttProviderType.whisperCpp;
+  bool get _isLocalModel => _selectedVendor?.type == SttProviderType.whisperCpp;
 
   @override
   void dispose() {
@@ -393,7 +392,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '本地模型通过 FFI 直接调用 whisper.cpp，只需下载模型文件即可使用',
+                  l10n.localModelSttHint,
                   style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
                 ),
               ),
@@ -442,11 +441,11 @@ class _AddModelDialogState extends State<_AddModelDialog> {
             borderRadius: BorderRadius.circular(10),
             onTap: exists
                 ? () => setState(() {
-                      _selectedModel = SttModel(
-                        id: model.fileName,
-                        description: model.description,
-                      );
-                    })
+                    _selectedModel = SttModel(
+                      id: model.fileName,
+                      description: model.description,
+                    );
+                  })
                 : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -461,8 +460,8 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                     color: isSelected
                         ? _cs.primary
                         : exists
-                            ? _cs.outline
-                            : _cs.outline.withValues(alpha: 0.4),
+                        ? _cs.outline
+                        : _cs.outline.withValues(alpha: 0.4),
                   ),
                   const SizedBox(width: 10),
                   // 模型信息
@@ -543,7 +542,11 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, size: 14, color: Colors.green),
+                          Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: Colors.green,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             '已下载',
@@ -644,10 +647,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
 
     if (_isLocalModel) {
       vendorName = _selectedVendor!.name;
-      baseUrl = '';  // FFI 模式不需要路径
+      baseUrl = ''; // FFI 模式不需要路径
       model = _selectedModel!.id;
     } else if (_isCustom) {
-      vendorName = '自定义';
+      vendorName = 'Custom';
       baseUrl = _customBaseUrlController.text.trim();
       model = _customModelController.text.trim();
     } else {
@@ -670,7 +673,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   Widget _buildVendorDropdown(AppLocalizations l10n) {
     final items = <StyledDropdownItem<String>>[
       ..._vendorOptions.map(
-        (p) => StyledDropdownItem(value: p.name, label: p.name),
+        (p) => StyledDropdownItem(
+          value: p.name,
+          label: localizedVendorName(p.name, l10n),
+        ),
       ),
       StyledDropdownItem(value: '__custom__', label: l10n.custom),
     ];
@@ -693,9 +699,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
             _selectedModel = null;
             _isCustom = true;
           } else {
-            _selectedVendor = _vendorOptions.firstWhere(
-              (p) => p.name == value,
-            );
+            _selectedVendor = _vendorOptions.firstWhere((p) => p.name == value);
             _selectedModel = null;
             _isCustom = false;
           }
@@ -733,7 +737,6 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     );
   }
 }
-
 
 // ==================== 编辑模型对话框 ====================
 class _EditModelDialog extends StatefulWidget {
@@ -819,7 +822,9 @@ class _EditModelDialogState extends State<_EditModelDialog> {
 
                 FormFieldLabel(l10n.vendor),
                 const SizedBox(height: 6),
-                _buildReadOnlyField(widget.entry.vendorName),
+                _buildReadOnlyField(
+                  localizedVendorName(widget.entry.vendorName, widget.l10n),
+                ),
                 const SizedBox(height: 12),
 
                 if (_isLocalModel) ...[
@@ -835,12 +840,21 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       ),
                       const SizedBox(width: 6),
                       Tooltip(
-                        message: '打开模型文件所在目录',
+                        message: l10n.openModelDir,
                         child: IconButton(
-                          icon: Icon(Icons.folder_open, size: 20, color: _cs.onSurfaceVariant),
+                          icon: Icon(
+                            Icons.folder_open,
+                            size: 20,
+                            color: _cs.onSurfaceVariant,
+                          ),
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                          onPressed: () => _openModelFileLocation(_modelController.text.trim()),
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          onPressed: () => _openModelFileLocation(
+                            _modelController.text.trim(),
+                          ),
                         ),
                       ),
                     ],

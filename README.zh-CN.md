@@ -58,12 +58,26 @@ powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 |端点URL|https://open.bigmodel.cn/api/paas/v4|
 |模型名称|GLM-ASR-2512|
 
-也可以使用阿里云 DashScope 的语音模型 (兼容 OpenAI 接口模式)
+也可以使用 Aliyun DashScope 的语音模型 (兼容 OpenAI 接口模式)
 
 |属性名|属性值|
 |-----|-----|
 |端点URL|https://dashscope.aliyuncs.com/compatible-mode/v1|
 |模型名称|qwen3-asr-flash|
+
+也支持 OpenAI 官方语音转写模型
+
+|属性名|属性值|
+|-----|-----|
+|端点URL|https://api.openai.com/v1|
+|模型名称|gpt-4o-transcribe / gpt-4o-mini-transcribe / whisper-1|
+
+也支持 Google Gemini 的 OpenAI 兼容接口（内置了音频回退调用）
+
+|属性名|属性值|
+|-----|-----|
+|端点URL|https://generativelanguage.googleapis.com/v1beta/openai|
+|模型名称|gemini-3-pro / gemini-3-flash / gemini-3-flash-lite|
 
 ## 配置文本模型（可选）
 
@@ -73,6 +87,20 @@ powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 |-----|-----|
 |端点URL|https://open.bigmodel.cn/api/paas/v4|
 |模型名称|GLM-4.7|
+
+OpenAI（文本增强）常用配置
+
+|属性名|属性值|
+|-----|-----|
+|端点URL|https://api.openai.com/v1|
+|模型名称|gpt-5 / gpt-5-mini / gpt-5-nano / gpt-4.1|
+
+Google Gemini（文本增强）常用配置
+
+|属性名|属性值|
+|-----|-----|
+|端点URL|https://generativelanguage.googleapis.com/v1beta/openai|
+|模型名称|gemini-3-pro / gemini-3-flash / gemini-3-flash-lite|
 
 ## 用户界面
 

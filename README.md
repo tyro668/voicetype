@@ -66,6 +66,20 @@ You can also use Alibaba Cloud DashScope speech model (OpenAI-compatible API mod
 | Endpoint URL | https://dashscope.aliyuncs.com/compatible-mode/v1 |
 | Model Name | qwen3-asr-flash |
 
+OpenAI official speech transcription is also supported.
+
+| Property | Value |
+|-----|-----|
+| Endpoint URL | https://api.openai.com/v1 |
+| Model Name | gpt-4o-transcribe / gpt-4o-mini-transcribe / whisper-1 |
+
+Google Gemini OpenAI-compatible endpoint is also supported (with built-in audio fallback).
+
+| Property | Value |
+|-----|-----|
+| Endpoint URL | https://generativelanguage.googleapis.com/v1beta/openai |
+| Model Name | gemini-3-pro / gemini-3-flash / gemini-3-flash-lite |
+
 ## Configure text model (optional)
 
 Any OpenAI-compatible service can be used.
@@ -74,6 +88,20 @@ Any OpenAI-compatible service can be used.
 |-----|-----|
 | Endpoint URL | https://open.bigmodel.cn/api/paas/v4 |
 | Model Name | GLM-4.7 |
+
+OpenAI common setup for text enhancement.
+
+| Property | Value |
+|-----|-----|
+| Endpoint URL | https://api.openai.com/v1 |
+| Model Name | gpt-5 / gpt-5-mini / gpt-5-nano / gpt-4.1 |
+
+Google Gemini common setup for text enhancement.
+
+| Property | Value |
+|-----|-----|
+| Endpoint URL | https://generativelanguage.googleapis.com/v1beta/openai |
+| Model Name | gemini-3-pro / gemini-3-flash / gemini-3-flash-lite |
 
 ## UI
 

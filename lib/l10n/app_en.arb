@@ -388,5 +388,12 @@
   "addedToDictionary": "Added to dictionary",
 
   "home": "Home",
-  "settings": "Settings"
+  "settings": "Settings",
+
+  "vendorLocalModel": "Local Model",
+  "vendorCustom": "Custom",
+  "localModelSttHint": "Local model calls whisper.cpp directly via FFI, just download the model file to use.",
+  "localModelAiHint": "Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.",
+  "customTemplateSummary": "Custom Template",
+  "openModelDir": "Open model file directory"
 }

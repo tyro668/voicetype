@@ -989,4 +989,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settings => '设置';
+
+  @override
+  String get vendorLocalModel => '本地模型';
+
+  @override
+  String get vendorCustom => '自定义';
+
+  @override
+  String get localModelSttHint => '本地模型通过 FFI 直接调用 whisper.cpp，只需下载模型文件即可使用';
+
+  @override
+  String get localModelAiHint =>
+      '本地模型通过 FFI 直接调用 llama.cpp，无需联网即可使用，支持 macOS 和 Windows';
+
+  @override
+  String get customTemplateSummary => '自定义模板';
+
+  @override
+  String get openModelDir => '打开模型文件所在目录';
 }

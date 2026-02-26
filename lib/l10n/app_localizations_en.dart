@@ -1030,4 +1030,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings => 'Settings';
+
+  @override
+  String get vendorLocalModel => 'Local Model';
+
+  @override
+  String get vendorCustom => 'Custom';
+
+  @override
+  String get localModelSttHint =>
+      'Local model calls whisper.cpp directly via FFI, just download the model file to use.';
+
+  @override
+  String get localModelAiHint =>
+      'Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.';
+
+  @override
+  String get customTemplateSummary => 'Custom Template';
+
+  @override
+  String get openModelDir => 'Open model file directory';
 }

@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 
+/// Translates internal vendor name to localized display name.
+String localizedVendorName(String vendorName, AppLocalizations l10n) {
+  switch (vendorName) {
+    case 'Local Model':
+    case '本地模型':
+    case '本地 whisper.cpp':
+    case 'whisper.cpp':
+      return l10n.vendorLocalModel;
+    case 'Custom':
+    case '自定义':
+      return l10n.vendorCustom;
+    default:
+      return vendorName;
+  }
+}
+
 /// 表单字段标签（带可选必填标记）
 class FormFieldLabel extends StatelessWidget {
   final String text;
@@ -53,7 +69,11 @@ class StyledDropdown<T> extends StatelessWidget {
         isExpanded: true,
         hint: Text(hintText, style: TextStyle(fontSize: 14, color: cs.outline)),
         style: TextStyle(fontSize: 14, color: cs.onSurface),
-        icon: Icon(Icons.unfold_more_rounded, size: 18, color: cs.onSurfaceVariant),
+        icon: Icon(
+          Icons.unfold_more_rounded,
+          size: 18,
+          color: cs.onSurfaceVariant,
+        ),
         dropdownColor: cs.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12),
         decoration: InputDecoration(
@@ -74,14 +94,16 @@ class StyledDropdown<T> extends StatelessWidget {
           ),
         ),
         items: items
-            .map((item) => DropdownMenuItem<T>(
-                  value: item.value,
-                  child: Text(
-                    item.label,
-                    style: const TextStyle(fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ))
+            .map(
+              (item) => DropdownMenuItem<T>(
+                value: item.value,
+                child: Text(
+                  item.label,
+                  style: const TextStyle(fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
             .toList(),
         onChanged: onChanged,
       ),

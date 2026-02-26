@@ -141,8 +141,9 @@ class SettingsProvider extends ChangeNotifier {
   PromptTemplate? get activePromptTemplate {
     if (_activePromptTemplateId == null) return null;
     try {
-      return _promptTemplates
-          .firstWhere((t) => t.id == _activePromptTemplateId);
+      return _promptTemplates.firstWhere(
+        (t) => t.id == _activePromptTemplateId,
+      );
     } catch (_) {
       return null;
     }
@@ -152,7 +153,8 @@ class SettingsProvider extends ChangeNotifier {
   SceneMode get sceneMode => _sceneMode;
 
   // Dictionary getter
-  List<DictionaryEntry> get dictionaryEntries => List.unmodifiable(_dictionaryEntries);
+  List<DictionaryEntry> get dictionaryEntries =>
+      List.unmodifiable(_dictionaryEntries);
 
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
@@ -408,17 +410,14 @@ class SettingsProvider extends ChangeNotifier {
     final customTemplates = _promptTemplates
         .where((t) => !t.isBuiltin)
         .toList();
-    _promptTemplates = [
-      ...builtins,
-      ...customTemplates,
-    ];
+    _promptTemplates = [...builtins, ...customTemplates];
 
     final activeTemplateIdRaw = await db.getSetting(_activePromptTemplateIdKey);
     final fallbackId = PromptTemplate.defaultBuiltinId;
     final candidateId =
         (activeTemplateIdRaw != null && activeTemplateIdRaw.trim().isNotEmpty)
-            ? activeTemplateIdRaw.trim()
-            : fallbackId;
+        ? activeTemplateIdRaw.trim()
+        : fallbackId;
 
     final exists = _promptTemplates.any((t) => t.id == candidateId);
     _activePromptTemplateId = exists ? candidateId : fallbackId;
@@ -724,7 +723,8 @@ class SettingsProvider extends ChangeNotifier {
     if (active != null) {
       // 根据 vendorName 判断 provider type
       SttProviderType type;
-      if (active.vendorName == '本地模型' ||
+      if (active.vendorName == 'Local Model' ||
+          active.vendorName == '本地模型' ||
           active.vendorName == '本地 whisper.cpp' ||
           active.vendorName == 'whisper.cpp') {
         type = SttProviderType.whisperCpp;
@@ -894,8 +894,9 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setActivePromptTemplate(String? id) async {
     final fallbackId = PromptTemplate.defaultBuiltinId;
     final targetId = id ?? fallbackId;
-    _activePromptTemplateId =
-        _promptTemplates.any((t) => t.id == targetId) ? targetId : fallbackId;
+    _activePromptTemplateId = _promptTemplates.any((t) => t.id == targetId)
+        ? targetId
+        : fallbackId;
     await _saveSetting(_activePromptTemplateIdKey, _activePromptTemplateId!);
     notifyListeners();
   }
@@ -940,12 +941,14 @@ class SettingsProvider extends ChangeNotifier {
   /// Returns a formatted string of dictionary words for injection into AI prompts.
   String get dictionaryWordsForPrompt {
     if (_dictionaryEntries.isEmpty) return '';
-    final words = _dictionaryEntries.map((e) {
-      if (e.description != null && e.description!.isNotEmpty) {
-        return '${e.word}（${e.description}）';
-      }
-      return e.word;
-    }).join('、');
+    final words = _dictionaryEntries
+        .map((e) {
+          if (e.description != null && e.description!.isNotEmpty) {
+            return '${e.word}（${e.description}）';
+          }
+          return e.word;
+        })
+        .join('、');
     return '\n\n【词典参考】请在输出中优先使用以下词语：$words';
   }
 

@@ -197,7 +197,7 @@ void main() {
 
           final config = SttProviderConfig(
             type: SttProviderType.cloud,
-            name: '阿里云',
+            name: 'Aliyun',
             baseUrl:
                 'http://127.0.0.1:${server.port}/dashscope.aliyuncs.com/compatible-mode/v1',
             apiKey: 'test-key',

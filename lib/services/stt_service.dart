@@ -60,7 +60,12 @@ class SttService {
       throw SttException(apiKeyError);
     }
 
-    // 所有云端服务统一走标准 OpenAI 接口
+    // Gemini / Aliyun 不支持 /audio/transcriptions，直接走 chat/completions
+    if (_shouldUseChatAudioFallback()) {
+      return _transcribeChatAudioFallback(audioPath);
+    }
+
+    // 其余云端服务走标准 OpenAI 接口
     return _transcribeOpenAI(audioPath, resolvedModel);
   }
 
@@ -83,7 +88,9 @@ class SttService {
 
   /// 标准 OpenAI /audio/transcriptions 接口
   Future<String> _transcribeOpenAI(String audioPath, String model) async {
-    final uri = Uri.parse('${config.baseUrl}/audio/transcriptions');
+    final uri = Uri.parse(
+      '${_normalizeBaseUrl(config.baseUrl)}/audio/transcriptions',
+    );
     await LogService.info('STT', 'POST $uri');
 
     final request = http.MultipartRequest('POST', uri);
@@ -106,32 +113,32 @@ class SttService {
       response = await http.Response.fromStream(streamedResponse);
     } on TimeoutException {
       client.close();
-      if (_isAliyunCompatibleMode()) {
+      if (_shouldUseChatAudioFallback()) {
         await LogService.info(
           'STT',
-          'fallback to aliyun chat/completions because /audio/transcriptions timeout',
+          'fallback to chat/completions because /audio/transcriptions timeout',
         );
-        return _transcribeAliyunCompatibleFallback(audioPath);
+        return _transcribeChatAudioFallback(audioPath);
       }
       rethrow;
     } on SocketException catch (e) {
       client.close();
-      if (_isAliyunCompatibleMode()) {
+      if (_shouldUseChatAudioFallback()) {
         await LogService.info(
           'STT',
-          'fallback to aliyun chat/completions because /audio/transcriptions socket error: ${e.message}',
+          'fallback to chat/completions because /audio/transcriptions socket error: ${e.message}',
         );
-        return _transcribeAliyunCompatibleFallback(audioPath);
+        return _transcribeChatAudioFallback(audioPath);
       }
       rethrow;
     } on http.ClientException catch (e) {
       client.close();
-      if (_isAliyunCompatibleMode()) {
+      if (_shouldUseChatAudioFallback()) {
         await LogService.info(
           'STT',
-          'fallback to aliyun chat/completions because /audio/transcriptions client error: ${e.message}',
+          'fallback to chat/completions because /audio/transcriptions client error: ${e.message}',
         );
-        return _transcribeAliyunCompatibleFallback(audioPath);
+        return _transcribeChatAudioFallback(audioPath);
       }
       rethrow;
     } finally {
@@ -150,18 +157,12 @@ class SttService {
         'transcribe success textLength=${text.length}',
       );
       return text;
-    } else if (response.statusCode == 404 && _isAliyunCompatibleMode()) {
+    } else if (_shouldUseChatAudioFallback()) {
       await LogService.info(
         'STT',
-        'fallback to aliyun chat/completions because /audio/transcriptions returns 404',
+        'fallback to chat/completions because /audio/transcriptions returns ${response.statusCode}',
       );
-      return _transcribeAliyunCompatibleFallback(audioPath);
-    } else if (response.statusCode >= 500 && _isAliyunCompatibleMode()) {
-      await LogService.info(
-        'STT',
-        'fallback to aliyun chat/completions because /audio/transcriptions returns ${response.statusCode}',
-      );
-      return _transcribeAliyunCompatibleFallback(audioPath);
+      return _transcribeChatAudioFallback(audioPath);
     } else {
       final message = _buildTranscribeErrorMessage(
         response.statusCode,
@@ -173,40 +174,89 @@ class SttService {
   }
 
   bool _isAliyunCompatibleMode() {
-    final baseUrl = config.baseUrl.toLowerCase();
+    final baseUrl = _normalizeBaseUrl(config.baseUrl).toLowerCase();
     return baseUrl.contains('dashscope.aliyuncs.com/compatible-mode/v1') ||
         baseUrl.contains('dashscope-intl.aliyuncs.com/compatible-mode/v1') ||
         baseUrl.contains('dashscope-us.aliyuncs.com/compatible-mode/v1');
   }
 
-  Future<String> _transcribeAliyunCompatibleFallback(String audioPath) async {
-    final uri = Uri.parse('${config.baseUrl}/chat/completions');
-    await LogService.info('STT', 'POST $uri (aliyun fallback)');
+  bool _isGeminiOpenAICompatibleMode() {
+    final baseUrl = _normalizeBaseUrl(config.baseUrl).toLowerCase();
+    return baseUrl.contains('generativelanguage.googleapis.com/v1beta/openai');
+  }
+
+  bool _shouldUseChatAudioFallback() {
+    return _isAliyunCompatibleMode() || _isGeminiOpenAICompatibleMode();
+  }
+
+  String _normalizeBaseUrl(String baseUrl) {
+    var result = baseUrl.trim();
+    while (result.endsWith('/')) {
+      result = result.substring(0, result.length - 1);
+    }
+    return result;
+  }
+
+  Future<String> _transcribeChatAudioFallback(String audioPath) async {
+    final uri = Uri.parse(
+      '${_normalizeBaseUrl(config.baseUrl)}/chat/completions',
+    );
+    final isGemini = _isGeminiOpenAICompatibleMode();
+    await LogService.info(
+      'STT',
+      'POST $uri (${isGemini ? 'gemini' : 'aliyun'} fallback)',
+    );
 
     final bytes = await File(audioPath).readAsBytes();
     final base64Audio = base64Encode(bytes);
+    final audioFormat = _detectAudioFormat(audioPath);
 
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (config.apiKey.isNotEmpty) {
       headers['Authorization'] = 'Bearer ${config.apiKey}';
     }
 
-    final body = json.encode({
-      'model': _resolvedModel(),
-      'messages': [
-        {
-          'role': 'user',
-          'content': [
-            {
-              'type': 'input_audio',
-              'input_audio': {'data': 'data:audio/wav;base64,$base64Audio'},
+    final body = json.encode(
+      isGemini
+          ? {
+              'model': _resolvedModel(),
+              'messages': [
+                {
+                  'role': 'user',
+                  'content': [
+                    {'type': 'text', 'text': '请将这段音频准确转写为纯文本，仅返回转写结果。'},
+                    {
+                      'type': 'input_audio',
+                      'input_audio': {
+                        'data': base64Audio,
+                        'format': audioFormat,
+                      },
+                    },
+                  ],
+                },
+              ],
+              'stream': false,
+              'temperature': 0,
+            }
+          : {
+              'model': _resolvedModel(),
+              'messages': [
+                {
+                  'role': 'user',
+                  'content': [
+                    {
+                      'type': 'input_audio',
+                      'input_audio': {
+                        'data': 'data:audio/$audioFormat;base64,$base64Audio',
+                      },
+                    },
+                  ],
+                },
+              ],
+              'stream': false,
+              'asr_options': {'enable_itn': false},
             },
-          ],
-        },
-      ],
-      'stream': false,
-      'asr_options': {'enable_itn': false},
-    });
+    );
 
     final client = NetworkClientService.createClient();
     final response = await client
@@ -216,7 +266,7 @@ class SttService {
 
     await LogService.info(
       'STT',
-      'aliyun fallback response status=${response.statusCode} bodyLength=${response.body.length}',
+      'chat audio fallback response status=${response.statusCode} bodyLength=${response.body.length}',
     );
 
     if (response.statusCode != 200) {
@@ -228,7 +278,21 @@ class SttService {
       throw SttException(message);
     }
 
-    final jsonBody = json.decode(response.body) as Map<String, dynamic>;
+    return _extractTextFromChatCompletion(response.body);
+  }
+
+  String _detectAudioFormat(String audioPath) {
+    final lower = audioPath.toLowerCase();
+    if (lower.endsWith('.mp3')) return 'mp3';
+    if (lower.endsWith('.m4a')) return 'm4a';
+    if (lower.endsWith('.ogg')) return 'ogg';
+    if (lower.endsWith('.flac')) return 'flac';
+    if (lower.endsWith('.webm')) return 'webm';
+    return 'wav';
+  }
+
+  String _extractTextFromChatCompletion(String responseBody) {
+    final jsonBody = json.decode(responseBody) as Map<String, dynamic>;
     final choices = jsonBody['choices'] as List<dynamic>?;
     final message = choices?.isNotEmpty == true
         ? choices!.first['message'] as Map<String, dynamic>?
@@ -351,7 +415,7 @@ class SttService {
 
   /// 使用 /models 端点检查连通性（轻量级 GET 请求，不触发模型推理）
   Future<SttConnectionCheckResult> _checkModelsEndpoint() async {
-    final uri = Uri.parse('${config.baseUrl}/models');
+    final uri = Uri.parse('${_normalizeBaseUrl(config.baseUrl)}/models');
     await LogService.info('STT', 'GET $uri');
     final client = NetworkClientService.createClient();
     final response = await client

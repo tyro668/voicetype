@@ -2023,6 +2023,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settings;
+
+  /// No description provided for @vendorLocalModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Model'**
+  String get vendorLocalModel;
+
+  /// No description provided for @vendorCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get vendorCustom;
+
+  /// No description provided for @localModelSttHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Local model calls whisper.cpp directly via FFI, just download the model file to use.'**
+  String get localModelSttHint;
+
+  /// No description provided for @localModelAiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.'**
+  String get localModelAiHint;
+
+  /// No description provided for @customTemplateSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Template'**
+  String get customTemplateSummary;
+
+  /// No description provided for @openModelDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Open model file directory'**
+  String get openModelDir;
 }
 
 class _AppLocalizationsDelegate

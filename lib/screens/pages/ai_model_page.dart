@@ -22,7 +22,7 @@ class _AiModelPageState extends State<AiModelPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
   static bool isLocalAiModelEntry(AiModelEntry entry) {
-    return entry.vendorName == '本地模型';
+    return entry.vendorName == 'Local Model' || entry.vendorName == '本地模型';
   }
 
   @override
@@ -114,7 +114,7 @@ class _AiModelPageState extends State<AiModelPage> {
     AppLocalizations l10n,
   ) {
     return ModelEntryCard(
-      vendorName: entry.vendorName,
+      vendorName: localizedVendorName(entry.vendorName, l10n),
       modelName: entry.model,
       isActive: entry.enabled,
       l10n: l10n,
@@ -425,7 +425,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '本地模型通过 FFI 直接调用 llama.cpp，无需联网即可使用，支持 macOS 和 Windows',
+                  l10n.localModelAiHint,
                   style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
                 ),
               ),
@@ -450,7 +450,8 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         final exists = snapshot.data ?? downloaded ?? false;
         if (snapshot.hasData && _modelDownloaded[model.fileName] == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _modelDownloaded[model.fileName] = exists);
+            if (mounted)
+              setState(() => _modelDownloaded[model.fileName] = exists);
           });
         }
 
@@ -467,68 +468,136 @@ class _AddModelDialogState extends State<_AddModelDialog> {
             borderRadius: BorderRadius.circular(10),
             onTap: exists
                 ? () => setState(() {
-                      _selectedModel = AiModel(id: model.fileName, description: model.description);
-                    })
+                    _selectedModel = AiModel(
+                      id: model.fileName,
+                      description: model.description,
+                    );
+                  })
                 : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
                   Icon(
-                    isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
                     size: 18,
-                    color: isSelected ? _cs.primary : exists ? _cs.outline : _cs.outline.withValues(alpha: 0.4),
+                    color: isSelected
+                        ? _cs.primary
+                        : exists
+                        ? _cs.outline
+                        : _cs.outline.withValues(alpha: 0.4),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(model.fileName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _cs.onSurface)),
+                        Text(
+                          model.fileName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _cs.onSurface,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(model.description, style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant)),
+                        Text(
+                          model.description,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _cs.onSurfaceVariant,
+                          ),
+                        ),
                         if (isDownloading) ...[
                           const SizedBox(height: 6),
                           if (_downloadStatus.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(_downloadStatus, style: TextStyle(fontSize: 10, color: _cs.onSurfaceVariant)),
+                              child: Text(
+                                _downloadStatus,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: _cs.onSurfaceVariant,
+                                ),
+                              ),
                             ),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(value: _downloadProgress, minHeight: 4, backgroundColor: _cs.surfaceContainerHighest),
+                            child: LinearProgressIndicator(
+                              value: _downloadProgress,
+                              minHeight: 4,
+                              backgroundColor: _cs.surfaceContainerHighest,
+                            ),
                           ),
                           const SizedBox(height: 2),
-                          Text('${(_downloadProgress * 100).toStringAsFixed(0)}%', style: TextStyle(fontSize: 10, color: _cs.onSurfaceVariant)),
+                          Text(
+                            '${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: _cs.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                         if (_downloadError != null && isSelected) ...[
                           const SizedBox(height: 4),
-                          Text(_downloadError!, style: const TextStyle(fontSize: 11, color: Colors.redAccent)),
+                          Text(
+                            _downloadError!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.redAccent,
+                            ),
+                          ),
                         ],
                       ],
                     ),
                   ),
                   if (exists)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, size: 14, color: Colors.green),
+                          Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: Colors.green,
+                          ),
                           SizedBox(width: 4),
-                          Text('已下载', style: TextStyle(fontSize: 11, color: Colors.green)),
+                          Text(
+                            '已下载',
+                            style: TextStyle(fontSize: 11, color: Colors.green),
+                          ),
                         ],
                       ),
                     )
                   else if (isDownloading)
-                    SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _cs.primary))
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _cs.primary,
+                      ),
+                    )
                   else
                     TextButton.icon(
                       onPressed: () => _downloadModel(model),
                       icon: const Icon(Icons.download, size: 16),
                       label: const Text('下载', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
                 ],
               ),
@@ -545,17 +614,32 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       _downloadProgress = 0.0;
       _downloadError = null;
       _downloadStatus = '';
-      _selectedModel = AiModel(id: model.fileName, description: model.description);
+      _selectedModel = AiModel(
+        id: model.fileName,
+        description: model.description,
+      );
     });
     try {
       await LocalLlmService.downloadModel(
         model,
-        onProgress: (progress) { if (mounted) setState(() => _downloadProgress = progress); },
-        onStatus: (message) { if (mounted) setState(() => _downloadStatus = message); },
+        onProgress: (progress) {
+          if (mounted) setState(() => _downloadProgress = progress);
+        },
+        onStatus: (message) {
+          if (mounted) setState(() => _downloadStatus = message);
+        },
       );
-      if (mounted) setState(() { _downloading = false; _modelDownloaded[model.fileName] = true; });
+      if (mounted)
+        setState(() {
+          _downloading = false;
+          _modelDownloaded[model.fileName] = true;
+        });
     } catch (e) {
-      if (mounted) setState(() { _downloading = false; _downloadError = e.toString(); });
+      if (mounted)
+        setState(() {
+          _downloading = false;
+          _downloadError = e.toString();
+        });
     }
   }
 
@@ -583,7 +667,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       baseUrl = '';
       model = _selectedModel!.id;
     } else if (_isCustom) {
-      vendorName = '自定义';
+      vendorName = 'Custom';
       baseUrl = _customBaseUrlController.text.trim();
       model = _customModelController.text.trim();
     } else {
@@ -606,7 +690,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   Widget _buildVendorDropdown(AppLocalizations l10n) {
     final items = <StyledDropdownItem<String>>[
       ..._vendorOptions.map(
-        (p) => StyledDropdownItem(value: p.name, label: p.name),
+        (p) => StyledDropdownItem(
+          value: p.name,
+          label: localizedVendorName(p.name, l10n),
+        ),
       ),
       StyledDropdownItem(value: '__custom__', label: l10n.custom),
     ];
@@ -629,9 +716,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
             _selectedModel = null;
             _isCustom = true;
           } else {
-            _selectedVendor = _vendorOptions.firstWhere(
-              (p) => p.name == value,
-            );
+            _selectedVendor = _vendorOptions.firstWhere((p) => p.name == value);
             _selectedModel = null;
             _isCustom = false;
           }
@@ -716,8 +801,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
   }
 
   bool get _isCustom =>
-      !_isLocalModel &&
-      !widget.presets.any((p) => p.name == _vendorName);
+      !_isLocalModel && !widget.presets.any((p) => p.name == _vendorName);
 
   @override
   Widget build(BuildContext context) {
@@ -767,8 +851,11 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      _vendorName,
-                      style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                      localizedVendorName(_vendorName, l10n),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -787,12 +874,21 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       ),
                       const SizedBox(width: 6),
                       Tooltip(
-                        message: '打开模型文件所在目录',
+                        message: l10n.openModelDir,
                         child: IconButton(
-                          icon: Icon(Icons.folder_open, size: 20, color: _cs.onSurfaceVariant),
+                          icon: Icon(
+                            Icons.folder_open,
+                            size: 20,
+                            color: _cs.onSurfaceVariant,
+                          ),
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                          onPressed: () => _openModelFileLocation(_modelController.text.trim()),
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          onPressed: () => _openModelFileLocation(
+                            _modelController.text.trim(),
+                          ),
                         ),
                       ),
                     ],
@@ -883,8 +979,8 @@ class _EditModelDialogState extends State<_EditModelDialog> {
       baseUrl: _isLocalModel
           ? ''
           : _isCustom
-              ? _baseUrlController.text.trim()
-              : widget.entry.baseUrl,
+          ? _baseUrlController.text.trim()
+          : widget.entry.baseUrl,
       model: _modelController.text.trim(),
       apiKey: _isLocalModel ? '' : _apiKeyController.text.trim(),
     );

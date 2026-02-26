@@ -52,114 +52,126 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final items = _getItems(l10n);
 
-    return Column(
-      children: [
-        // 弹窗标题栏（含关闭按钮）
-        Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: _cs.surface,
-            border: Border(bottom: BorderSide(color: _cs.outlineVariant)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Text(
-                l10n.settings,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: _cs.onSurface,
-                ),
+    return ScaffoldMessenger(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            // 弹窗标题栏（含关闭按钮）
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: _cs.surface,
+                border: Border(bottom: BorderSide(color: _cs.outlineVariant)),
               ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: () => Navigator.of(context).pop(),
-                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Text(
+                    l10n.settings,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: _cs.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        // 左侧导航 + 右侧内容
-        Expanded(
-          child: Row(
-            children: [
-              // 设置子导航栏
-              Container(
-                width: 180,
-                decoration: BoxDecoration(
-                  color: _cs.surfaceContainerLow,
-                  border: Border(right: BorderSide(color: _cs.outlineVariant)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    ...List.generate(items.length, (i) {
-                      final item = items[i];
-                      final selected = _selectedIndex == i;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 1,
-                        ),
-                        child: Material(
-                          color: selected
-                              ? _cs.secondaryContainer
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () => setState(() => _selectedIndex = i),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 9,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    item.icon,
-                                    size: 16,
-                                    color: selected
-                                        ? _cs.onSurface
-                                        : _cs.onSurfaceVariant,
+            ),
+            // 左侧导航 + 右侧内容
+            Expanded(
+              child: Row(
+                children: [
+                  // 设置子导航栏
+                  Container(
+                    width: 180,
+                    decoration: BoxDecoration(
+                      color: _cs.surfaceContainerLow,
+                      border: Border(
+                        right: BorderSide(color: _cs.outlineVariant),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        ...List.generate(items.length, (i) {
+                          final item = items[i];
+                          final selected = _selectedIndex == i;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 1,
+                            ),
+                            child: Material(
+                              color: selected
+                                  ? _cs.secondaryContainer
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () => setState(() => _selectedIndex = i),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 9,
                                   ),
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Text(
-                                      item.label,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: selected
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        item.icon,
+                                        size: 16,
                                         color: selected
                                             ? _cs.onSurface
                                             : _cs.onSurfaceVariant,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          item.label,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: selected
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                            color: selected
+                                                ? _cs.onSurface
+                                                : _cs.onSurfaceVariant,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  // 设置内容区域
+                  Expanded(child: _buildPage()),
+                ],
               ),
-              // 设置内容区域
-              Expanded(child: _buildPage()),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

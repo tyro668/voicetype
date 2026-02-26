@@ -98,7 +98,7 @@ class SttProviderConfig {
     ),
     SttProviderConfig(
       type: SttProviderType.cloud,
-      name: '阿里云',
+      name: 'Aliyun',
       baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
       apiKey: '',
       model: 'qwen3-asr-flash',
@@ -110,13 +110,63 @@ class SttProviderConfig {
       ],
     ),
     SttProviderConfig(
+      type: SttProviderType.cloud,
+      name: 'OpenAI',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: '',
+      model: 'gpt-4o-transcribe',
+      apiKeyUrl: 'https://platform.openai.com/api-keys',
+      availableModels: [
+        SttModel(id: 'gpt-4o-transcribe', description: 'GPT-4o Transcribe'),
+        SttModel(
+          id: 'gpt-4o-mini-transcribe',
+          description: 'GPT-4o mini Transcribe',
+        ),
+        SttModel(id: 'whisper-1', description: 'Whisper-1'),
+      ],
+    ),
+    SttProviderConfig(
+      type: SttProviderType.cloud,
+      name: 'Google Gemini',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      apiKey: '',
+      model: 'gemini-3-flash',
+      apiKeyUrl: 'https://aistudio.google.com/app/apikey',
+      availableModels: [
+        SttModel(id: 'gemini-3-pro', description: 'Gemini 3 Pro (OpenAI 兼容)'),
+        SttModel(
+          id: 'gemini-3-flash',
+          description: 'Gemini 3 Flash (OpenAI 兼容)',
+        ),
+        SttModel(
+          id: 'gemini-3-flash-lite',
+          description: 'Gemini 3 Flash-Lite (OpenAI 兼容)',
+        ),
+        SttModel(
+          id: 'gemini-2.5-pro',
+          description: 'Gemini 2.5 Pro (OpenAI 兼容)',
+        ),
+        SttModel(
+          id: 'gemini-2.5-flash',
+          description: 'Gemini 2.5 Flash (OpenAI 兼容)',
+        ),
+        SttModel(
+          id: 'gemini-2.5-flash-lite',
+          description: 'Gemini 2.5 Flash-Lite (OpenAI 兼容)',
+        ),
+      ],
+    ),
+    SttProviderConfig(
       type: SttProviderType.whisperCpp,
-      name: '本地模型',
+      name: 'Local Model',
       baseUrl: '',
       apiKey: '',
       model: 'ggml-tiny.bin',
       availableModels: [
-        SttModel(id: 'ggml-tiny.bin', description: 'Tiny (~75MB) - 速度最快，适合日常使用'),
+        SttModel(
+          id: 'ggml-tiny.bin',
+          description: 'Tiny (~75MB) - 速度最快，适合日常使用',
+        ),
         SttModel(id: 'ggml-base.bin', description: 'Base (~142MB) - 平衡速度与准确率'),
         SttModel(id: 'ggml-small.bin', description: 'Small (~466MB) - 更高准确率'),
       ],

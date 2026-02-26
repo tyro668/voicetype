@@ -82,24 +82,19 @@ class PromptTemplate {
     'createdAt': createdAt.toIso8601String(),
   };
 
-  factory PromptTemplate.fromJson(Map<String, dynamic> json) =>
-      PromptTemplate(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        summary: (json['summary'] as String?)?.trim().isNotEmpty == true
-            ? json['summary'] as String
-            : defaultSummaryFromContent((json['content'] as String?) ?? ''),
-        content: json['content'] as String,
-        isBuiltin: json['isBuiltin'] as bool? ?? false,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-      );
+  factory PromptTemplate.fromJson(Map<String, dynamic> json) => PromptTemplate(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    summary: (json['summary'] as String?)?.trim().isNotEmpty == true
+        ? json['summary'] as String
+        : defaultSummaryFromContent((json['content'] as String?) ?? ''),
+    content: json['content'] as String,
+    isBuiltin: json['isBuiltin'] as bool? ?? false,
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+  );
 
-  PromptTemplate copyWith({
-    String? name,
-    String? summary,
-    String? content,
-  }) =>
+  PromptTemplate copyWith({String? name, String? summary, String? content}) =>
       PromptTemplate(
         id: id,
         name: name ?? this.name,
@@ -113,7 +108,7 @@ class PromptTemplate {
     final line = content
         .replaceAll(RegExp(r'\s+'), ' ')
         .replaceAll(RegExp(r'^\s+|\s+$'), '');
-    if (line.isEmpty) return '自定义模板';
+    if (line.isEmpty) return 'Custom Template';
     return line.length > 24 ? '${line.substring(0, 24)}…' : line;
   }
 
@@ -122,15 +117,14 @@ class PromptTemplate {
     required String name,
     required String content,
     String? summary,
-  }) =>
-      PromptTemplate(
-        id: const Uuid().v4(),
-        name: name,
-        summary: (summary?.trim().isNotEmpty == true)
-            ? summary!.trim()
-            : defaultSummaryFromContent(content),
-        content: content,
-        isBuiltin: false,
-        createdAt: DateTime.now(),
-      );
+  }) => PromptTemplate(
+    id: const Uuid().v4(),
+    name: name,
+    summary: (summary?.trim().isNotEmpty == true)
+        ? summary!.trim()
+        : defaultSummaryFromContent(content),
+    content: content,
+    isBuiltin: false,
+    createdAt: DateTime.now(),
+  );
 }
