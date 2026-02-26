@@ -52,11 +52,14 @@ class AiVendorPreset {
     ),
     AiVendorPreset(
       name: 'Google Gemini',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
       models: [
-        AiModel(id: 'gemini-3-pro', description: 'Gemini 3 Pro'),
-        AiModel(id: 'gemini-3-flash', description: 'Gemini 3 Flash'),
-        AiModel(id: 'gemini-3-flash-lite', description: 'Gemini 3 Flash-Lite'),
+        AiModel(id: 'gemini-3.0-pro', description: 'Gemini 3.0 Pro'),
+        AiModel(id: 'gemini-3.0-flash', description: 'Gemini 3.0 Flash'),
+        AiModel(
+          id: 'gemini-3.0-flash-lite',
+          description: 'Gemini 3.0 Flash-Lite',
+        ),
         AiModel(id: 'gemini-2.5-pro', description: 'Gemini 2.5 Pro'),
         AiModel(id: 'gemini-2.5-flash', description: 'Gemini 2.5 Flash'),
         AiModel(
@@ -65,7 +68,7 @@ class AiVendorPreset {
         ),
         AiModel(id: 'gemini-2.0-flash', description: 'Gemini 2.0 Flash'),
       ],
-      defaultModelIdOverride: 'gemini-3-pro',
+      defaultModelIdOverride: 'gemini-3.0-pro',
     ),
     AiVendorPreset(
       name: 'Local Model',

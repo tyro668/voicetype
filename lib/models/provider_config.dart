@@ -128,20 +128,11 @@ class SttProviderConfig {
     SttProviderConfig(
       type: SttProviderType.cloud,
       name: 'Google Gemini',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
       apiKey: '',
-      model: 'gemini-3-flash',
+      model: 'gemini-2.5-flash',
       apiKeyUrl: 'https://aistudio.google.com/app/apikey',
       availableModels: [
-        SttModel(id: 'gemini-3-pro', description: 'Gemini 3 Pro (OpenAI 兼容)'),
-        SttModel(
-          id: 'gemini-3-flash',
-          description: 'Gemini 3 Flash (OpenAI 兼容)',
-        ),
-        SttModel(
-          id: 'gemini-3-flash-lite',
-          description: 'Gemini 3 Flash-Lite (OpenAI 兼容)',
-        ),
         SttModel(
           id: 'gemini-2.5-pro',
           description: 'Gemini 2.5 Pro (OpenAI 兼容)',
