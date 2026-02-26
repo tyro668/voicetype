@@ -1820,6 +1820,12 @@ abstract class AppLocalizations {
   /// **'Exported to clipboard'**
   String get meetingExported;
 
+  /// No description provided for @meetingEmptyContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty'**
+  String get meetingEmptyContent;
+
   /// No description provided for @meetingNotFound.
   ///
   /// In en, this message translates to:

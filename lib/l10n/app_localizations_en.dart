@@ -925,6 +925,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meetingExported => 'Exported to clipboard';
 
   @override
+  String get meetingEmptyContent => 'Empty';
+
+  @override
   String get meetingNotFound => 'Meeting record not found';
 
   @override

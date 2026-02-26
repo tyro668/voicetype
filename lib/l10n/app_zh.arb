@@ -348,6 +348,7 @@
   "meetingExportText": "导出为文本",
   "meetingExportMarkdown": "导出为 Markdown",
   "meetingExported": "已导出到剪贴板",
+  "meetingEmptyContent": "内容为空",
   "meetingNotFound": "会议记录不存在",
   "meetingOverlayStarting": "会议启动中",
   "meetingOverlayRecording": "会议录音中",

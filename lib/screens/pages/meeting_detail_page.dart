@@ -491,7 +491,15 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
         }
         break;
       case 'delete':
-        _confirmDelete(meeting, l10n);
+        final isEmpty = meeting.fullTranscription == null ||
+            meeting.fullTranscription!.trim().isEmpty;
+        if (isEmpty) {
+          // 空会议直接删除，无需确认
+          await context.read<MeetingProvider>().deleteMeeting(meeting.id);
+          if (mounted) Navigator.pop(context);
+        } else {
+          _confirmDelete(meeting, l10n);
+        }
         break;
     }
   }

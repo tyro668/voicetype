@@ -353,6 +353,7 @@
   "meetingExportText": "Export as Text",
   "meetingExportMarkdown": "Export as Markdown",
   "meetingExported": "Exported to clipboard",
+  "meetingEmptyContent": "Empty",
   "meetingNotFound": "Meeting record not found",
   "meetingOverlayStarting": "Meeting starting",
   "meetingOverlayRecording": "Meeting recording",

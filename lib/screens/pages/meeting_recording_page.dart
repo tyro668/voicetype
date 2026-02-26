@@ -155,7 +155,20 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
       _scrollToBottom();
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) {
+          // 保存标题（录音在后台继续）
+          if (_titleController.text.isNotEmpty && provider.currentMeeting != null) {
+            provider.updateMeetingTitle(
+              provider.currentMeeting!.id,
+              _titleController.text,
+            );
+          }
+        }
+      },
+      child: Scaffold(
       backgroundColor: _cs.surfaceContainerLow,
       appBar: AppBar(
         backgroundColor: _cs.surface,
@@ -290,7 +303,8 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
 
         ],
       ),
-    );
+      ), // end Scaffold / PopScope child
+    ); // end PopScope
   }
 
   /// 实时转写文字滚动区域
@@ -454,37 +468,15 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
 
 
   void _handleBack(MeetingProvider provider, AppLocalizations l10n) {
-    if (provider.isRecording) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.meetingStopConfirmTitle),
-          content: Text(l10n.meetingStopConfirm),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                if (_titleController.text.isNotEmpty && provider.currentMeeting != null) {
-                  await provider.updateMeetingTitle(
-                    provider.currentMeeting!.id,
-                    _titleController.text,
-                  );
-                }
-                await provider.stopMeeting();
-                if (mounted) Navigator.pop(context);
-              },
-              child: Text(l10n.confirm),
-            ),
-          ],
-        ),
+    // 保存标题
+    if (_titleController.text.isNotEmpty && provider.currentMeeting != null) {
+      provider.updateMeetingTitle(
+        provider.currentMeeting!.id,
+        _titleController.text,
       );
-    } else {
-      Navigator.pop(context);
     }
+    // 直接返回列表，录音在后台继续
+    Navigator.pop(context);
   }
 
   String _formatDuration(Duration d) {

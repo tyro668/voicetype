@@ -158,13 +158,17 @@ class _MeetingListPageState extends State<MeetingListPage> {
     final dateStr = DateFormat('M月d日 HH:mm').format(meeting.createdAt);
     final statusLabel = _statusLabel(meeting.status, l10n);
     final statusColor = _statusColor(meeting.status);
+    final isEmpty = meeting.status == MeetingStatus.completed &&
+        (meeting.fullTranscription == null || meeting.fullTranscription!.trim().isEmpty);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: _cs.surface,
+        color: isEmpty ? _cs.errorContainer.withValues(alpha: 0.15) : _cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        border: Border.all(
+          color: isEmpty ? _cs.error.withValues(alpha: 0.3) : _cs.outlineVariant,
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -240,6 +244,25 @@ class _MeetingListPageState extends State<MeetingListPage> {
                             ),
                           ),
                         ),
+                        // 空内容标识
+                        if (isEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _cs.error.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              l10n.meetingEmptyContent,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: _cs.error,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -248,9 +271,16 @@ class _MeetingListPageState extends State<MeetingListPage> {
               // 操作按钮
               if (meeting.status == MeetingStatus.completed) ...[
                 IconButton(
-                  icon: Icon(Icons.delete_outline, size: 20, color: _cs.outline),
+                  icon: Icon(Icons.delete_outline, size: 20, color: isEmpty ? _cs.error : _cs.outline),
                   tooltip: l10n.delete,
-                  onPressed: () => _confirmDelete(context, provider, meeting, l10n),
+                  onPressed: () {
+                    if (isEmpty) {
+                      // 空会议直接删除，无需确认
+                      provider.deleteMeeting(meeting.id);
+                    } else {
+                      _confirmDelete(context, provider, meeting, l10n);
+                    }
+                  },
                 ),
               ],
               Icon(Icons.chevron_right, size: 20, color: _cs.outline),

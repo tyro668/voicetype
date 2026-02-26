@@ -889,6 +889,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingExported => '已导出到剪贴板';
 
   @override
+  String get meetingEmptyContent => '内容为空';
+
+  @override
   String get meetingNotFound => '会议记录不存在';
 
   @override
