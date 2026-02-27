@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:data_table_2/data_table_2.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/dictionary_entry.dart';
@@ -198,6 +203,25 @@ class _DictionaryPageState extends State<DictionaryPage> {
                             },
                           ),
                         ],
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: () => _handleExportCsv(settings, l10n),
+                          icon: Icon(
+                            Icons.download_outlined,
+                            size: 20,
+                            color: _cs.onSurfaceVariant,
+                          ),
+                          tooltip: l10n.dictionaryExportCsv,
+                        ),
+                        IconButton(
+                          onPressed: () => _handleImportCsv(settings, l10n),
+                          icon: Icon(
+                            Icons.upload_outlined,
+                            size: 20,
+                            color: _cs.onSurfaceVariant,
+                          ),
+                          tooltip: l10n.dictionaryImportCsv,
+                        ),
                         const SizedBox(width: 4),
                         // 添加按钮
                         IconButton(
@@ -659,6 +683,93 @@ class _DictionaryPageState extends State<DictionaryPage> {
     if (entry != null) {
       await settings.updateDictionaryEntry(entry);
     }
+  }
+
+  Future<void> _handleExportCsv(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) async {
+    try {
+      final now = DateTime.now();
+      final fileName =
+          'dictionary_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}.csv';
+
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: l10n.dictionaryExportCsv,
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+      );
+      if (savePath == null || savePath.trim().isEmpty) return;
+
+      final targetPath = savePath.toLowerCase().endsWith('.csv')
+          ? savePath
+          : '$savePath.csv';
+      final csv = settings.exportDictionaryAsCsv();
+      await File(targetPath).writeAsString('\uFEFF$csv', encoding: utf8);
+
+      final targetDir = File(targetPath).parent.path;
+      final baseName = p.basenameWithoutExtension(targetPath);
+      final examplePath = p.join(targetDir, '${baseName}_example.csv');
+      final exampleCsv = settings.exportDictionaryExampleCsv();
+      await File(
+        examplePath,
+      ).writeAsString('\uFEFF$exampleCsv', encoding: utf8);
+
+      _showSnackBar(
+        l10n.dictionaryExportWithExampleSuccess(targetPath, examplePath),
+      );
+    } catch (_) {
+      _showSnackBar(l10n.dictionaryExportFailed, isError: true);
+    }
+  }
+
+  Future<void> _handleImportCsv(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        dialogTitle: l10n.dictionaryImportCsv,
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final path = result.files.single.path;
+      if (path == null || path.trim().isEmpty) {
+        _showSnackBar(l10n.dictionaryImportFailed, isError: true);
+        return;
+      }
+
+      final csvContent = await File(path).readAsString(encoding: utf8);
+      final imported = await settings.importDictionaryFromCsv(csvContent);
+      _resetToFirstPage();
+
+      _showSnackBar(
+        l10n.dictionaryImportSuccess(
+          imported.importedRows,
+          imported.skippedRows,
+          imported.totalRows,
+        ),
+      );
+    } on FormatException {
+      _showSnackBar(l10n.dictionaryImportInvalidFormat, isError: true);
+    } catch (_) {
+      _showSnackBar(l10n.dictionaryImportFailed, isError: true);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? _cs.error : null,
+      ),
+    );
   }
 
   Widget _buildMetaTag(String text, Color color) {

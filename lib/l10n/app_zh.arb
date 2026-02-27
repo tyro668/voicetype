@@ -324,7 +324,7 @@
   "promptSelectHint": "从左侧选择一个模板查看详情",
   "promptPreview": "预览",
 
-  "dictionarySettings": "词典设置",
+  "dictionarySettings": "词典",
   "dictionaryDescription": "设置词语纠正和保留规则，帮助 AI 更准确地输出专业术语和固定用语。",
   "dictionaryAdd": "添加规则",
   "dictionaryEdit": "编辑规则",
@@ -366,6 +366,32 @@
   },
   "dictionaryEmpty": "词典为空",
   "dictionaryEmptyHint": "添加纠正或保留规则，帮助 AI 更准确地输出",
+  "dictionaryExportCsv": "导出 CSV",
+  "dictionaryImportCsv": "导入 CSV",
+  "dictionaryExportSuccess": "CSV 已导出到：{path}",
+  "@dictionaryExportSuccess": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "dictionaryExportWithExampleSuccess": "CSV 已导出到：{path}\\n示例文件：{examplePath}\\n用于修改此文件，请按示例文件格式导入。",
+  "@dictionaryExportWithExampleSuccess": {
+    "placeholders": {
+      "path": {"type": "String"},
+      "examplePath": {"type": "String"}
+    }
+  },
+  "dictionaryExportFailed": "导出 CSV 失败",
+  "dictionaryImportSuccess": "导入完成：新增 {imported} 条，跳过 {skipped} 条（共 {total} 行）",
+  "@dictionaryImportSuccess": {
+    "placeholders": {
+      "imported": {"type": "int"},
+      "skipped": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "dictionaryImportInvalidFormat": "CSV 格式无效：缺少 original 列",
+  "dictionaryImportFailed": "导入 CSV 失败",
 
   "correctionEnabled": "智能纠错",
   "correctionDescription": "基于拼音匹配自动纠正同音字，仅在词典非空时生效",

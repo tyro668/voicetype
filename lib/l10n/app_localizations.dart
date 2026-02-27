@@ -1850,6 +1850,54 @@ abstract class AppLocalizations {
   /// **'Add correction or preservation rules to help AI output more accurately'**
   String get dictionaryEmptyHint;
 
+  /// No description provided for @dictionaryExportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get dictionaryExportCsv;
+
+  /// No description provided for @dictionaryImportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV'**
+  String get dictionaryImportCsv;
+
+  /// No description provided for @dictionaryExportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV exported to: {path}'**
+  String dictionaryExportSuccess(String path);
+
+  /// No description provided for @dictionaryExportWithExampleSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV exported to: {path}\\nExample file: {examplePath}\\nTo modify this file, please import it using the example format.'**
+  String dictionaryExportWithExampleSuccess(String path, String examplePath);
+
+  /// No description provided for @dictionaryExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export CSV'**
+  String get dictionaryExportFailed;
+
+  /// No description provided for @dictionaryImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Import completed: {imported} added, {skipped} skipped ({total} rows)'**
+  String dictionaryImportSuccess(int imported, int skipped, int total);
+
+  /// No description provided for @dictionaryImportInvalidFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid CSV format: missing original column'**
+  String get dictionaryImportInvalidFormat;
+
+  /// No description provided for @dictionaryImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import CSV'**
+  String get dictionaryImportFailed;
+
   /// No description provided for @correctionEnabled.
   ///
   /// In en, this message translates to:

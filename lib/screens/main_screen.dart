@@ -10,6 +10,7 @@ import '../providers/settings_provider.dart';
 import '../providers/meeting_provider.dart';
 import '../services/log_service.dart';
 import '../services/overlay_service.dart';
+import 'pages/dictionary_page.dart';
 import 'pages/history_page.dart';
 import 'pages/meeting_list_page.dart';
 import 'pages/meeting_recording_page.dart';
@@ -96,9 +97,10 @@ class _MainScreenState extends State<MainScreen> {
   LogicalKeyboardKey? _lastRegisteredHotkey;
   LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
 
-  /// 主导航项（首页 / 历史记录 / 会议记录）
+  /// 主导航项（首页 / 词典 / 历史记录 / 会议记录）
   List<_NavItem> _getNavItems(AppLocalizations l10n) => [
     _NavItem(icon: Icons.home_outlined, label: l10n.home),
+    _NavItem(icon: Icons.menu_book_outlined, label: l10n.dictionarySettings),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
     _NavItem(
       icon: Icons.record_voice_over_outlined,
@@ -740,8 +742,9 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildContent() {
     final Widget page = switch (_selectedNav) {
       0 => const DashboardPage(),
-      1 => const HistoryPage(),
-      2 => const MeetingListPage(),
+      1 => const DictionaryPage(),
+      2 => const HistoryPage(),
+      3 => const MeetingListPage(),
       _ => const SizedBox(),
     };
 

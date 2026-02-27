@@ -371,6 +371,32 @@
   },
   "dictionaryEmpty": "Dictionary is empty",
   "dictionaryEmptyHint": "Add correction or preservation rules to help AI output more accurately",
+  "dictionaryExportCsv": "Export CSV",
+  "dictionaryImportCsv": "Import CSV",
+  "dictionaryExportSuccess": "CSV exported to: {path}",
+  "@dictionaryExportSuccess": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "dictionaryExportWithExampleSuccess": "CSV exported to: {path}\\nExample file: {examplePath}\\nTo modify this file, please import it using the example format.",
+  "@dictionaryExportWithExampleSuccess": {
+    "placeholders": {
+      "path": {"type": "String"},
+      "examplePath": {"type": "String"}
+    }
+  },
+  "dictionaryExportFailed": "Failed to export CSV",
+  "dictionaryImportSuccess": "Import completed: {imported} added, {skipped} skipped ({total} rows)",
+  "@dictionaryImportSuccess": {
+    "placeholders": {
+      "imported": {"type": "int"},
+      "skipped": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "dictionaryImportInvalidFormat": "Invalid CSV format: missing original column",
+  "dictionaryImportFailed": "Failed to import CSV",
 
   "correctionEnabled": "Smart Correction",
   "correctionDescription": "Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty",

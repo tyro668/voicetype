@@ -817,7 +817,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptPreview => '预览';
 
   @override
-  String get dictionarySettings => '词典设置';
+  String get dictionarySettings => '词典';
 
   @override
   String get dictionaryDescription => '设置词语纠正和保留规则，帮助 AI 更准确地输出专业术语和固定用语。';
@@ -906,6 +906,36 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get dictionaryEmptyHint => '添加纠正或保留规则，帮助 AI 更准确地输出';
+
+  @override
+  String get dictionaryExportCsv => '导出 CSV';
+
+  @override
+  String get dictionaryImportCsv => '导入 CSV';
+
+  @override
+  String dictionaryExportSuccess(String path) {
+    return 'CSV 已导出到：$path';
+  }
+
+  @override
+  String dictionaryExportWithExampleSuccess(String path, String examplePath) {
+    return 'CSV 已导出到：$path\\n示例文件：$examplePath\\n用于修改此文件，请按示例文件格式导入。';
+  }
+
+  @override
+  String get dictionaryExportFailed => '导出 CSV 失败';
+
+  @override
+  String dictionaryImportSuccess(int imported, int skipped, int total) {
+    return '导入完成：新增 $imported 条，跳过 $skipped 条（共 $total 行）';
+  }
+
+  @override
+  String get dictionaryImportInvalidFormat => 'CSV 格式无效：缺少 original 列';
+
+  @override
+  String get dictionaryImportFailed => '导入 CSV 失败';
 
   @override
   String get correctionEnabled => '智能纠错';

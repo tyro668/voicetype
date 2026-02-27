@@ -952,6 +952,37 @@ class AppLocalizationsEn extends AppLocalizations {
       'Add correction or preservation rules to help AI output more accurately';
 
   @override
+  String get dictionaryExportCsv => 'Export CSV';
+
+  @override
+  String get dictionaryImportCsv => 'Import CSV';
+
+  @override
+  String dictionaryExportSuccess(String path) {
+    return 'CSV exported to: $path';
+  }
+
+  @override
+  String dictionaryExportWithExampleSuccess(String path, String examplePath) {
+    return 'CSV exported to: $path\\nExample file: $examplePath\\nTo modify this file, please import it using the example format.';
+  }
+
+  @override
+  String get dictionaryExportFailed => 'Failed to export CSV';
+
+  @override
+  String dictionaryImportSuccess(int imported, int skipped, int total) {
+    return 'Import completed: $imported added, $skipped skipped ($total rows)';
+  }
+
+  @override
+  String get dictionaryImportInvalidFormat =>
+      'Invalid CSV format: missing original column';
+
+  @override
+  String get dictionaryImportFailed => 'Failed to import CSV';
+
+  @override
   String get correctionEnabled => 'Smart Correction';
 
   @override

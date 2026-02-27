@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,18 @@ import '../models/stt_model_entry.dart';
 import '../database/app_database.dart';
 import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
+
+class DictionaryCsvImportResult {
+  final int totalRows;
+  final int importedRows;
+  final int skippedRows;
+
+  const DictionaryCsvImportResult({
+    required this.totalRows,
+    required this.importedRows,
+    required this.skippedRows,
+  });
+}
 
 class SettingsProvider extends ChangeNotifier {
   static const _correctionMaxReferenceEntries = 15;
@@ -998,6 +1011,211 @@ class SettingsProvider extends ChangeNotifier {
     await _saveDictionaryEntries();
     _rebuildPinyinIndex();
     notifyListeners();
+  }
+
+  String exportDictionaryAsCsv() {
+    final rows = <List<dynamic>>[
+      ['original', 'corrected', 'category', 'enabled', 'pinyinOverride'],
+      ..._dictionaryEntries.map(
+        (entry) => [
+          entry.original,
+          entry.corrected ?? '',
+          entry.category ?? '',
+          entry.enabled ? 'true' : 'false',
+          entry.pinyinOverride ?? '',
+        ],
+      ),
+    ];
+    return const ListToCsvConverter().convert(rows);
+  }
+
+  Future<DictionaryCsvImportResult> importDictionaryFromCsv(
+    String csvContent, {
+    bool replaceExisting = false,
+  }) async {
+    final text = csvContent.trim();
+    if (text.isEmpty) {
+      return const DictionaryCsvImportResult(
+        totalRows: 0,
+        importedRows: 0,
+        skippedRows: 0,
+      );
+    }
+
+    final rows = const CsvToListConverter(
+      shouldParseNumbers: false,
+    ).convert(csvContent);
+    if (rows.isEmpty) {
+      return const DictionaryCsvImportResult(
+        totalRows: 0,
+        importedRows: 0,
+        skippedRows: 0,
+      );
+    }
+
+    final header = rows.first;
+    final headerMap = <String, int>{};
+    for (var i = 0; i < header.length; i++) {
+      headerMap[_normalizeCsvHeader(_csvCellToString(header[i]))] = i;
+    }
+
+    int? indexFor(List<String> aliases) {
+      for (final alias in aliases) {
+        final idx = headerMap[_normalizeCsvHeader(alias)];
+        if (idx != null) return idx;
+      }
+      return null;
+    }
+
+    final originalIndex = indexFor(['original', 'originalword', '原始词']);
+    if (originalIndex == null) {
+      throw const FormatException('Missing required column: original');
+    }
+    final correctedIndex = indexFor(['corrected', 'correctto', '纠正为']);
+    final categoryIndex = indexFor(['category', '分类']);
+    final enabledIndex = indexFor(['enabled', '启用']);
+    final pinyinOverrideIndex = indexFor([
+      'pinyinoverride',
+      'pinyin_override',
+      '自定义拼音',
+    ]);
+
+    final nextEntries = replaceExisting
+        ? <DictionaryEntry>[]
+        : List<DictionaryEntry>.from(_dictionaryEntries);
+    final dedup = <String>{
+      for (final item in nextEntries)
+        _dictionaryDedupKey(item.original, item.corrected, item.category),
+    };
+
+    var totalRows = 0;
+    var importedRows = 0;
+    var skippedRows = 0;
+
+    for (var i = 1; i < rows.length; i++) {
+      final row = rows[i];
+      final rowIsEmpty = row.every(
+        (cell) => _csvCellToString(cell).trim().isEmpty,
+      );
+      if (rowIsEmpty) continue;
+
+      totalRows += 1;
+
+      final original = _csvValueAt(row, originalIndex).trim();
+      if (original.isEmpty) {
+        skippedRows += 1;
+        continue;
+      }
+
+      final correctedRaw = correctedIndex == null
+          ? ''
+          : _csvValueAt(row, correctedIndex).trim();
+      final corrected = correctedRaw.isEmpty ? null : correctedRaw;
+
+      final categoryRaw = categoryIndex == null
+          ? ''
+          : _csvValueAt(row, categoryIndex).trim();
+      final category = categoryRaw.isEmpty ? null : categoryRaw;
+
+      final enabled = enabledIndex == null
+          ? true
+          : _parseCsvEnabled(_csvValueAt(row, enabledIndex));
+
+      final pinyinRaw = pinyinOverrideIndex == null
+          ? ''
+          : _csvValueAt(row, pinyinOverrideIndex).trim();
+      final pinyinOverride = pinyinRaw.isEmpty ? null : pinyinRaw;
+
+      final dedupKey = _dictionaryDedupKey(original, corrected, category);
+      if (dedup.contains(dedupKey)) {
+        skippedRows += 1;
+        continue;
+      }
+
+      nextEntries.add(
+        DictionaryEntry.create(
+          original: original,
+          corrected: corrected,
+          category: category,
+          enabled: enabled,
+          pinyinOverride: pinyinOverride,
+        ),
+      );
+      dedup.add(dedupKey);
+      importedRows += 1;
+    }
+
+    if (replaceExisting || importedRows > 0) {
+      _dictionaryEntries = nextEntries;
+      await _saveDictionaryEntries();
+      _rebuildPinyinIndex();
+      notifyListeners();
+    }
+
+    return DictionaryCsvImportResult(
+      totalRows: totalRows,
+      importedRows: importedRows,
+      skippedRows: skippedRows,
+    );
+  }
+
+  String _csvCellToString(dynamic value) {
+    if (value == null) return '';
+    return value.toString().replaceFirst('\uFEFF', '');
+  }
+
+  String _csvValueAt(List<dynamic> row, int index) {
+    if (index < 0 || index >= row.length) return '';
+    return _csvCellToString(row[index]);
+  }
+
+  String _normalizeCsvHeader(String value) {
+    return value
+        .replaceFirst('\uFEFF', '')
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\s_\-]'), '');
+  }
+
+  bool _parseCsvEnabled(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    if ({
+      '1',
+      'true',
+      'yes',
+      'y',
+      'on',
+      '是',
+      '启用',
+      '启用中',
+    }.contains(normalized)) {
+      return true;
+    }
+    if ({
+      '0',
+      'false',
+      'no',
+      'n',
+      'off',
+      '否',
+      '禁用',
+      '已禁用',
+    }.contains(normalized)) {
+      return false;
+    }
+    return true;
+  }
+
+  String _dictionaryDedupKey(
+    String original,
+    String? corrected,
+    String? category,
+  ) {
+    final originalPart = original.trim().toLowerCase();
+    final correctedPart = (corrected ?? '').trim().toLowerCase();
+    final categoryPart = (category ?? '').trim().toLowerCase();
+    return '$originalPart|$correctedPart|$categoryPart';
   }
 
   /// 获取所有不重复的词典分类
