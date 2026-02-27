@@ -34,6 +34,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
   bool _regeneratingSummary = false;
   bool _editingDetail = false;
   bool _savingDetail = false;
+  bool _detailCollapsed = false;
 
   @override
   void initState() {
@@ -122,20 +123,23 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                     ),
                   const SizedBox(height: 12),
                   // 下方：完整转写
-                  Expanded(
-                    flex: _summaryCollapsed ? 1 : 3,
-                    child: _buildPanel(
-                      icon: Icons.article_outlined,
-                      title: l10n.meetingFullTranscription,
-                      trailing: _buildDetailActions(l10n),
-                      body: _buildTextEditor(
-                        controller: _detailController,
-                        emptyHint: l10n.meetingNoContent,
-                        readOnly: !_editingDetail,
-                        enableDictionaryMenu: true,
+                  if (_detailCollapsed)
+                    _buildCollapsedDetailPanel(l10n)
+                  else
+                    Expanded(
+                      flex: _summaryCollapsed ? 1 : 3,
+                      child: _buildPanel(
+                        icon: Icons.article_outlined,
+                        title: l10n.meetingFullTranscription,
+                        trailing: _buildDetailActions(l10n),
+                        body: _buildTextEditor(
+                          controller: _detailController,
+                          emptyHint: l10n.meetingNoContent,
+                          readOnly: !_editingDetail,
+                          enableDictionaryMenu: true,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -582,21 +586,34 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       );
     }
 
-    return SizedBox(
-      height: 28,
-      child: TextButton.icon(
-        onPressed: _startDetailEdit,
-        icon: Icon(Icons.edit_outlined, size: 14, color: _cs.onSurfaceVariant),
-        label: Text(l10n.edit, style: const TextStyle(fontSize: 12)),
-        style: TextButton.styleFrom(
-          foregroundColor: _cs.onSurfaceVariant,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 28,
+          child: TextButton.icon(
+            onPressed: _startDetailEdit,
+            icon: Icon(
+              Icons.edit_outlined,
+              size: 14,
+              color: _cs.onSurfaceVariant,
+            ),
+            label: Text(l10n.edit, style: const TextStyle(fontSize: 12)),
+            style: TextButton.styleFrom(
+              foregroundColor: _cs.onSurfaceVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 2),
+        _buildDetailCollapseButton(),
+      ],
     );
   }
 
@@ -678,6 +695,65 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
 
   void _toggleSummaryCollapsed() {
     setState(() => _summaryCollapsed = !_summaryCollapsed);
+  }
+
+  void _toggleDetailCollapsed() {
+    setState(() => _detailCollapsed = !_detailCollapsed);
+  }
+
+  Widget _buildDetailCollapseButton() {
+    return SizedBox(
+      height: 28,
+      width: 28,
+      child: IconButton(
+        onPressed: _toggleDetailCollapsed,
+        padding: EdgeInsets.zero,
+        icon: Icon(Icons.expand_less, size: 16, color: _cs.onSurfaceVariant),
+      ),
+    );
+  }
+
+  Widget _buildCollapsedDetailPanel(AppLocalizations l10n) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        child: Row(
+          children: [
+            Icon(Icons.article_outlined, size: 16, color: _cs.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.meetingFullTranscription,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _cs.onSurface,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(
+              height: 28,
+              width: 28,
+              child: IconButton(
+                onPressed: _toggleDetailCollapsed,
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: _cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _regenerateSummary() async {
