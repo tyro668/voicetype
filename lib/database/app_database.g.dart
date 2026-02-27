@@ -86,7 +86,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 5,
+      version: 6,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -104,7 +104,7 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `settings` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY (`key`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `transcriptions` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `created_at` TEXT NOT NULL, `duration_ms` INTEGER NOT NULL, `provider` TEXT NOT NULL, `model` TEXT NOT NULL, `provider_config` TEXT NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `transcriptions` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `raw_text` TEXT, `created_at` TEXT NOT NULL, `duration_ms` INTEGER NOT NULL, `provider` TEXT NOT NULL, `model` TEXT NOT NULL, `provider_config` TEXT NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `meetings` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `created_at` TEXT NOT NULL, `updated_at` TEXT NOT NULL, `status` TEXT NOT NULL, `summary` TEXT, `total_duration_ms` INTEGER NOT NULL, `full_transcription` TEXT, PRIMARY KEY (`id`))');
         await database.execute(
@@ -197,6 +197,7 @@ class _$TranscriptionDao extends TranscriptionDao {
             (TranscriptionEntity item) => <String, Object?>{
                   'id': item.id,
                   'text': item.text,
+                  'raw_text': item.rawText,
                   'created_at': item.createdAt,
                   'duration_ms': item.durationMs,
                   'provider': item.provider,
@@ -220,6 +221,7 @@ class _$TranscriptionDao extends TranscriptionDao {
         mapper: (Map<String, Object?> row) => TranscriptionEntity(
             id: row['id'] as String,
             text: row['text'] as String,
+            rawText: row['raw_text'] as String?,
             createdAt: row['created_at'] as String,
             durationMs: row['duration_ms'] as int,
             provider: row['provider'] as String,

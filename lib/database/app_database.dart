@@ -19,7 +19,15 @@ import 'transcription_entity.dart';
 part 'app_database.g.dart';
 
 /// 统一的 SQLite 数据库，使用 Floor ORM 管理历史记录和所有配置数据。
-@Database(version: 5, entities: [SettingEntity, TranscriptionEntity, MeetingEntity, MeetingSegmentEntity])
+@Database(
+  version: 6,
+  entities: [
+    SettingEntity,
+    TranscriptionEntity,
+    MeetingEntity,
+    MeetingSegmentEntity,
+  ],
+)
 abstract class AppDatabase extends FloorDatabase {
   SettingDao get settingDao;
   TranscriptionDao get transcriptionDao;
@@ -181,6 +189,15 @@ abstract class AppDatabase extends FloorDatabase {
         );
       }
     }),
+    Migration(5, 6, (database) async {
+      final cols = await database.rawQuery('PRAGMA table_info(transcriptions)');
+      final hasCol = cols.any((c) => c['name'] == 'raw_text');
+      if (!hasCol) {
+        await database.execute(
+          'ALTER TABLE transcriptions ADD COLUMN raw_text TEXT',
+        );
+      }
+    }),
   ];
 
   // ==================== 会议记录便捷方法 ====================
@@ -218,10 +235,14 @@ abstract class AppDatabase extends FloorDatabase {
   }
 
   Future<void> insertMeetingSegment(MeetingSegment segment) async {
-    await meetingSegmentDao.insertSegment(MeetingSegmentEntity.fromModel(segment));
+    await meetingSegmentDao.insertSegment(
+      MeetingSegmentEntity.fromModel(segment),
+    );
   }
 
   Future<void> updateMeetingSegment(MeetingSegment segment) async {
-    await meetingSegmentDao.updateSegment(MeetingSegmentEntity.fromModel(segment));
+    await meetingSegmentDao.updateSegment(
+      MeetingSegmentEntity.fromModel(segment),
+    );
   }
 }

@@ -9,6 +9,9 @@ class TranscriptionEntity {
 
   final String text;
 
+  @ColumnInfo(name: 'raw_text')
+  final String? rawText;
+
   @ColumnInfo(name: 'created_at')
   final String createdAt;
 
@@ -25,6 +28,7 @@ class TranscriptionEntity {
   TranscriptionEntity({
     required this.id,
     required this.text,
+    this.rawText,
     required this.createdAt,
     required this.durationMs,
     required this.provider,
@@ -36,6 +40,7 @@ class TranscriptionEntity {
   Transcription toModel() => Transcription(
     id: id,
     text: text,
+    rawText: rawText,
     createdAt: DateTime.parse(createdAt),
     duration: Duration(milliseconds: durationMs),
     provider: provider,
@@ -47,6 +52,7 @@ class TranscriptionEntity {
   factory TranscriptionEntity.fromModel(Transcription t) => TranscriptionEntity(
     id: t.id,
     text: t.text,
+    rawText: t.rawText,
     createdAt: t.createdAt.toIso8601String(),
     durationMs: t.duration.inMilliseconds,
     provider: t.provider,

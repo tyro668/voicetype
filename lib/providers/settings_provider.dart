@@ -13,6 +13,7 @@ import '../models/scene_mode.dart';
 import '../models/stt_model_entry.dart';
 import '../database/app_database.dart';
 import '../services/network_client_service.dart';
+import '../services/pinyin_matcher.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const _configKey = 'stt_provider_config';
@@ -36,6 +37,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _activePromptTemplateIdKey = 'active_prompt_template_id';
   static const _sceneModeKey = 'scene_mode';
   static const _dictionaryEntriesKey = 'dictionary_entries';
+  static const _correctionEnabledKey = 'correction_enabled';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -94,6 +96,11 @@ class SettingsProvider extends ChangeNotifier {
 
   // Dictionary entries
   List<DictionaryEntry> _dictionaryEntries = [];
+
+  // Correction settings
+  bool _correctionEnabled = true;
+  String _correctionPrompt = '';
+  final PinyinMatcher _pinyinMatcher = PinyinMatcher();
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -156,6 +163,11 @@ class SettingsProvider extends ChangeNotifier {
   List<DictionaryEntry> get dictionaryEntries =>
       List.unmodifiable(_dictionaryEntries);
 
+  // Correction getters
+  bool get correctionEnabled => _correctionEnabled;
+  String get correctionPrompt => _correctionPrompt;
+  PinyinMatcher get pinyinMatcher => _pinyinMatcher;
+
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
     final base = active != null
@@ -181,10 +193,13 @@ class SettingsProvider extends ChangeNotifier {
       resolvedPrompt += _sceneMode.promptSuffix;
     }
 
-    // Append dictionary words if available
-    final dictSuffix = dictionaryWordsForPrompt;
-    if (dictSuffix.isNotEmpty) {
-      resolvedPrompt += dictSuffix;
+    // Append dictionary words if available (only when correction is disabled,
+    // otherwise correction service handles dictionary via #R protocol)
+    if (!_correctionEnabled) {
+      final dictSuffix = dictionaryWordsForPrompt;
+      if (dictSuffix.isNotEmpty) {
+        resolvedPrompt += dictSuffix;
+      }
     }
 
     return base.copyWith(prompt: resolvedPrompt);
@@ -413,19 +428,14 @@ class SettingsProvider extends ChangeNotifier {
     _promptTemplates = [...builtins, ...customTemplates];
 
     final activeTemplateIdRaw = await db.getSetting(_activePromptTemplateIdKey);
-    final fallbackId = PromptTemplate.defaultBuiltinId;
-    final candidateId =
-        (activeTemplateIdRaw != null && activeTemplateIdRaw.trim().isNotEmpty)
-        ? activeTemplateIdRaw.trim()
-        : fallbackId;
-
-    final exists = _promptTemplates.any((t) => t.id == candidateId);
-    _activePromptTemplateId = exists ? candidateId : fallbackId;
+    _activePromptTemplateId = _resolvedActivePromptTemplateId(
+      activeTemplateIdRaw,
+    );
 
     await _savePromptTemplates();
     await _saveSetting(
       _activePromptTemplateIdKey,
-      _activePromptTemplateId ?? fallbackId,
+      _activePromptTemplateId ?? PromptTemplate.defaultBuiltinId,
     );
 
     // 加载场景模式
@@ -445,6 +455,22 @@ class SettingsProvider extends ChangeNotifier {
             .toList();
       } catch (_) {}
     }
+
+    // 构建拼音索引
+    _pinyinMatcher.buildIndex(_dictionaryEntries);
+
+    // 加载纠错设置
+    final correctionEnabledStr = await db.getSetting(_correctionEnabledKey);
+    if (correctionEnabledStr != null) {
+      _correctionEnabled = correctionEnabledStr == 'true';
+    }
+
+    // 加载纠错 prompt
+    try {
+      _correctionPrompt = await rootBundle.loadString(
+        'assets/prompts/correction_prompt.md',
+      );
+    } catch (_) {}
 
     notifyListeners();
   }
@@ -880,25 +906,37 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> deletePromptTemplate(String id) async {
     _promptTemplates.removeWhere((t) => t.id == id && !t.isBuiltin);
-    if (_activePromptTemplateId == id) {
-      _activePromptTemplateId = PromptTemplate.defaultBuiltinId;
-      await _saveSetting(
-        _activePromptTemplateIdKey,
-        PromptTemplate.defaultBuiltinId,
-      );
-    }
+    _activePromptTemplateId = _resolvedActivePromptTemplateId(
+      _activePromptTemplateId,
+    );
     await _savePromptTemplates();
+    await _saveSetting(
+      _activePromptTemplateIdKey,
+      _activePromptTemplateId ?? PromptTemplate.defaultBuiltinId,
+    );
     notifyListeners();
   }
 
   Future<void> setActivePromptTemplate(String? id) async {
-    final fallbackId = PromptTemplate.defaultBuiltinId;
-    final targetId = id ?? fallbackId;
-    _activePromptTemplateId = _promptTemplates.any((t) => t.id == targetId)
-        ? targetId
-        : fallbackId;
-    await _saveSetting(_activePromptTemplateIdKey, _activePromptTemplateId!);
+    _activePromptTemplateId = _resolvedActivePromptTemplateId(id);
+    await _saveSetting(
+      _activePromptTemplateIdKey,
+      _activePromptTemplateId ?? PromptTemplate.defaultBuiltinId,
+    );
     notifyListeners();
+  }
+
+  String _resolvedActivePromptTemplateId(String? preferredId) {
+    final defaultId = PromptTemplate.defaultBuiltinId;
+    final defaultExists = _promptTemplates.any((t) => t.id == defaultId);
+    final fallbackId = defaultExists
+        ? defaultId
+        : (_promptTemplates.isNotEmpty ? _promptTemplates.first.id : defaultId);
+    final targetId = (preferredId != null && preferredId.trim().isNotEmpty)
+        ? preferredId.trim()
+        : fallbackId;
+    final exists = _promptTemplates.any((t) => t.id == targetId);
+    return exists ? targetId : fallbackId;
   }
 
   // ===== 场景模式 =====
@@ -918,9 +956,15 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
+  /// 重建拼音索引（词典变更后调用）
+  void _rebuildPinyinIndex() {
+    _pinyinMatcher.buildIndex(_dictionaryEntries);
+  }
+
   Future<void> addDictionaryEntry(DictionaryEntry entry) async {
     _dictionaryEntries.add(entry);
     await _saveDictionaryEntries();
+    _rebuildPinyinIndex();
     notifyListeners();
   }
 
@@ -929,28 +973,91 @@ class SettingsProvider extends ChangeNotifier {
       return e.id == updated.id ? updated : e;
     }).toList();
     await _saveDictionaryEntries();
+    _rebuildPinyinIndex();
     notifyListeners();
   }
 
   Future<void> deleteDictionaryEntry(String id) async {
     _dictionaryEntries.removeWhere((e) => e.id == id);
     await _saveDictionaryEntries();
+    _rebuildPinyinIndex();
     notifyListeners();
   }
 
-  /// Returns a formatted string of dictionary words for injection into AI prompts.
-  String get dictionaryWordsForPrompt {
-    if (_dictionaryEntries.isEmpty) return '';
-    final words = _dictionaryEntries
-        .map((e) {
-          if (e.description != null && e.description!.isNotEmpty) {
-            return '${e.word}（${e.description}）';
-          }
-          return e.word;
-        })
-        .join('、');
-    return '\n\n【词典参考】请在输出中优先使用以下词语：$words';
+  Future<void> toggleDictionaryEntry(String id, bool enabled) async {
+    _dictionaryEntries = _dictionaryEntries.map((e) {
+      return e.id == id ? e.copyWith(enabled: enabled) : e;
+    }).toList();
+    await _saveDictionaryEntries();
+    _rebuildPinyinIndex();
+    notifyListeners();
   }
+
+  /// 获取所有不重复的词典分类
+  List<String> get dictionaryCategories {
+    final cats = <String>{};
+    for (final e in _dictionaryEntries) {
+      if (e.category != null && e.category!.isNotEmpty) {
+        cats.add(e.category!);
+      }
+    }
+    return cats.toList()..sort();
+  }
+
+  /// 生成结构化的词典提示词后缀，注入到 AI prompt 中。
+  ///
+  /// 格式示例：
+  /// 【词典纠正规则】
+  /// 以下是需要遵守的文字纠正和术语规范：
+  /// - 纠正规则：遇到"原始词"时，应替换为"纠正词"
+  /// - 保留规则：遇到"术语"时，保持原样不要改写
+  String get dictionaryWordsForPrompt {
+    final active = _dictionaryEntries.where((e) => e.enabled).toList();
+    if (active.isEmpty) return '';
+
+    final corrections = active
+        .where((e) => e.type == DictionaryEntryType.correction)
+        .toList();
+    final preserves = active
+        .where((e) => e.type == DictionaryEntryType.preserve)
+        .toList();
+
+    final buf = StringBuffer('\n\n【词典纠正规则】\n以下是需要遵守的文字纠正和术语规范：');
+
+    if (corrections.isNotEmpty) {
+      buf.writeln();
+      for (final e in corrections) {
+        final cat = (e.category != null && e.category!.isNotEmpty)
+            ? '[${e.category}] '
+            : '';
+        buf.writeln('- $cat遇到"${e.original}"时，应替换为"${e.corrected}"');
+      }
+    }
+
+    if (preserves.isNotEmpty) {
+      buf.writeln();
+      for (final e in preserves) {
+        final cat = (e.category != null && e.category!.isNotEmpty)
+            ? '[${e.category}] '
+            : '';
+        buf.writeln('- $cat遇到"${e.original}"时，保持原样不要改写');
+      }
+    }
+
+    return buf.toString();
+  }
+
+  // ===== 纠错设置 =====
+
+  Future<void> setCorrectionEnabled(bool enabled) async {
+    _correctionEnabled = enabled;
+    await _saveSetting(_correctionEnabledKey, enabled.toString());
+    notifyListeners();
+  }
+
+  /// 纠错是否实际生效（总开关已开 + 词典非空）
+  bool get correctionEffective =>
+      _correctionEnabled && _dictionaryEntries.any((e) => e.enabled);
 
   // ===== 通用持久化辅助 =====
 

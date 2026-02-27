@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/recording_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../widgets/dictionary_entry_dialog.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -14,6 +16,9 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
+
+  /// 记录哪些 item id 的原始文本处于展开状态
+  final Set<String> _expandedRawText = {};
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +167,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              // 文本内容
+              // 文本内容（右键可加入词典）
               SelectableText(
                 item.text,
                 style: TextStyle(
@@ -170,11 +175,117 @@ class _HistoryPageState extends State<HistoryPage> {
                   color: _cs.onSurface,
                   height: 1.6,
                 ),
+                contextMenuBuilder: (ctx, editableTextState) {
+                  final selectedText = editableTextState
+                      .textEditingValue
+                      .selection
+                      .textInside(editableTextState.textEditingValue.text);
+                  final builtinItems = editableTextState.contextMenuButtonItems;
+                  return AdaptiveTextSelectionToolbar.buttonItems(
+                    anchors: editableTextState.contextMenuAnchors,
+                    buttonItems: [
+                      ...builtinItems,
+                      if (selectedText.trim().isNotEmpty)
+                        ContextMenuButtonItem(
+                          label: l10n.addToDictionary,
+                          onPressed: () {
+                            ContextMenuController.removeAny();
+                            _addToDictionary(selectedText.trim());
+                          },
+                        ),
+                    ],
+                  );
+                },
               ),
+              // 原始录音文字（折叠/展开）
+              if (item.hasRawText) ...[
+                const SizedBox(height: 8),
+                _buildRawTextToggle(item, l10n),
+              ],
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildRawTextToggle(dynamic item, AppLocalizations l10n) {
+    final isExpanded = _expandedRawText.contains(item.id);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () {
+            setState(() {
+              if (isExpanded) {
+                _expandedRawText.remove(item.id);
+              } else {
+                _expandedRawText.add(item.id);
+              }
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: _cs.outline,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  l10n.originalSttText,
+                  style: TextStyle(fontSize: 12, color: _cs.outline),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded) ...[
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _cs.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SelectableText(
+              item.rawText ?? '',
+              style: TextStyle(
+                fontSize: 13,
+                color: _cs.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _addToDictionary(String selectedWord) async {
+    if (selectedWord.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+
+    final entry = await showDictionaryEntryDialog(
+      context,
+      initialOriginal: selectedWord,
+    );
+    if (entry == null || !mounted) return;
+
+    await settings.addDictionaryEntry(entry);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${l10n.addedToDictionary}: ${entry.original}'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 

@@ -60,11 +60,16 @@ class _MeetingListPageState extends State<MeetingListPage> {
               // 当前录制中的提示
               if (meetingProvider.isRecording)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -158,16 +163,22 @@ class _MeetingListPageState extends State<MeetingListPage> {
     final dateStr = DateFormat('M月d日 HH:mm').format(meeting.createdAt);
     final statusLabel = _statusLabel(meeting.status, l10n);
     final statusColor = _statusColor(meeting.status);
-    final isEmpty = meeting.status == MeetingStatus.completed &&
-        (meeting.fullTranscription == null || meeting.fullTranscription!.trim().isEmpty);
+    final isEmpty =
+        meeting.status == MeetingStatus.completed &&
+        (meeting.fullTranscription == null ||
+            meeting.fullTranscription!.trim().isEmpty);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isEmpty ? _cs.errorContainer.withValues(alpha: 0.15) : _cs.surface,
+        color: isEmpty
+            ? _cs.errorContainer.withValues(alpha: 0.15)
+            : _cs.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isEmpty ? _cs.error.withValues(alpha: 0.3) : _cs.outlineVariant,
+          color: isEmpty
+              ? _cs.error.withValues(alpha: 0.3)
+              : _cs.outlineVariant,
         ),
       ),
       child: InkWell(
@@ -216,21 +227,34 @@ class _MeetingListPageState extends State<MeetingListPage> {
                       children: [
                         Text(
                           dateStr,
-                          style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _cs.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         if (meeting.totalDuration.inSeconds > 0) ...[
-                          Icon(Icons.timer_outlined, size: 14, color: _cs.outline),
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 14,
+                            color: _cs.outline,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             meeting.formattedDuration,
-                            style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _cs.onSurfaceVariant,
+                            ),
                           ),
                           const SizedBox(width: 12),
                         ],
                         // 状态标签
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
@@ -248,7 +272,10 @@ class _MeetingListPageState extends State<MeetingListPage> {
                         if (isEmpty) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: _cs.error.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
@@ -271,7 +298,11 @@ class _MeetingListPageState extends State<MeetingListPage> {
               // 操作按钮
               if (meeting.status == MeetingStatus.completed) ...[
                 IconButton(
-                  icon: Icon(Icons.delete_outline, size: 20, color: isEmpty ? _cs.error : _cs.outline),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: isEmpty ? _cs.error : _cs.outline,
+                  ),
                   tooltip: l10n.delete,
                   onPressed: () {
                     if (isEmpty) {
@@ -335,6 +366,7 @@ class _MeetingListPageState extends State<MeetingListPage> {
             sttConfig: settings.config,
             aiConfig: settings.effectiveAiEnhanceConfig,
             aiEnhanceEnabled: settings.aiEnhanceEnabled,
+            dictionarySuffix: settings.dictionaryWordsForPrompt,
           ),
         ),
       ),
@@ -351,6 +383,7 @@ class _MeetingListPageState extends State<MeetingListPage> {
             sttConfig: settings.config,
             aiConfig: settings.effectiveAiEnhanceConfig,
             aiEnhanceEnabled: settings.aiEnhanceEnabled,
+            dictionarySuffix: settings.dictionaryWordsForPrompt,
           ),
         ),
       ),

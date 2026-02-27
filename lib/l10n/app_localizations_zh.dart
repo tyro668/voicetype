@@ -802,31 +802,67 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dictionarySettings => '词典设置';
 
   @override
-  String get dictionaryDescription => '保存常用词语，AI 会优先使用词典中的词语来生成更准确的输出。';
+  String get dictionaryDescription => '设置词语纠正和保留规则，帮助 AI 更准确地输出专业术语和固定用语。';
 
   @override
-  String get dictionaryAdd => '添加词语';
+  String get dictionaryAdd => '添加规则';
 
   @override
-  String get dictionaryEdit => '编辑词语';
+  String get dictionaryEdit => '编辑规则';
 
   @override
-  String get dictionaryWord => '词语';
+  String get dictionaryOriginal => '原始词';
 
   @override
-  String get dictionaryWordHint => '输入常用词语，如专业术语、人名等';
+  String get dictionaryOriginalHint => '语音识别可能输出的错误写法，或需要保留的正确写法';
 
   @override
-  String get dictionaryWordDescription => '说明（选填）';
+  String get dictionaryCorrected => '纠正为（选填）';
 
   @override
-  String get dictionaryWordDescriptionHint => '简要说明该词语的含义或使用场景';
+  String get dictionaryCorrectedHint => '留空表示保留原词不改写';
+
+  @override
+  String get dictionaryCorrectedTip => '填写“纠正为”则为纠正规则（A→B），留空则为保留规则（不要改写此词）';
+
+  @override
+  String get dictionaryCategory => '分类（选填）';
+
+  @override
+  String get dictionaryCategoryHint => '如：人名、术语、品牌';
+
+  @override
+  String get dictionaryCategoryAll => '全部';
+
+  @override
+  String get dictionaryTypeCorrection => '纠正';
+
+  @override
+  String get dictionaryTypePreserve => '保留';
 
   @override
   String get dictionaryEmpty => '词典为空';
 
   @override
-  String get dictionaryEmptyHint => '添加常用词语，帮助 AI 更好地输出';
+  String get dictionaryEmptyHint => '添加纠正或保留规则，帮助 AI 更准确地输出';
+
+  @override
+  String get correctionEnabled => '智能纠错';
+
+  @override
+  String get correctionDescription => '基于拼音匹配自动纠正同音字，仅在词典非空时生效';
+
+  @override
+  String get pinyinPreview => '拼音';
+
+  @override
+  String get pinyinOverride => '自定义拼音（选填）';
+
+  @override
+  String get pinyinOverrideHint => '处理多音字，如 le 或 yue，空格分隔多音节';
+
+  @override
+  String get pinyinReset => '恢复自动拼音';
 
   @override
   String get meetingMinutes => '会议记录';
@@ -1019,6 +1055,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get addedToDictionary => '已加入词典';
+
+  @override
+  String get originalSttText => '原始语音识别文本';
 
   @override
   String get home => '首页';

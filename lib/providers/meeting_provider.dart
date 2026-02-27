@@ -12,6 +12,7 @@ import '../services/ai_enhance_service.dart';
 import '../services/overlay_service.dart';
 import '../services/log_service.dart';
 import '../services/token_stats_service.dart';
+import '../services/pinyin_matcher.dart';
 
 /// 会议记录状态管理
 class MeetingProvider extends ChangeNotifier {
@@ -61,6 +62,9 @@ class MeetingProvider extends ChangeNotifier {
   /// AI 增强配置（会议期间保留，用于结束时合并整理）
   AiEnhanceConfig? _aiConfig;
   bool _aiEnhanceEnabled = false;
+
+  /// 词典提示词后缀（会议期间保留，追加到各专用 prompt 后）
+  String _dictionarySuffix = '';
 
   /// 事件流订阅
   StreamSubscription<MeetingSegment>? _segmentReadySub;
@@ -194,11 +198,15 @@ class MeetingProvider extends ChangeNotifier {
     bool aiEnhanceEnabled = false,
     int segmentSeconds = 30,
     int windowSize = 5,
+    String dictionarySuffix = '',
+    PinyinMatcher? pinyinMatcher,
+    String? correctionPrompt,
   }) async {
     _error = '';
     _currentSegments = [];
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
+    _dictionarySuffix = dictionarySuffix;
 
     // 重置合并纪要状态
     _mergedNote = '';
@@ -223,6 +231,8 @@ class MeetingProvider extends ChangeNotifier {
         aiEnhanceEnabled: aiEnhanceEnabled,
         segmentSeconds: segmentSeconds,
         windowSize: windowSize,
+        pinyinMatcher: pinyinMatcher,
+        correctionPrompt: correctionPrompt,
       );
 
       // 监听合并器事件流
@@ -387,8 +397,10 @@ class MeetingProvider extends ChangeNotifier {
         'assets/prompts/meeting_merge_prompt.md',
       );
 
-      // 使用会议合并提示词覆盖默认提示词
-      final mergeConfig = _aiConfig!.copyWith(prompt: mergePrompt);
+      // 使用会议合并提示词覆盖默认提示词，并追加词典后缀
+      final mergeConfig = _aiConfig!.copyWith(
+        prompt: mergePrompt + _dictionarySuffix,
+      );
       final enhancer = AiEnhanceService(mergeConfig);
       final result = await enhancer.enhance(
         rawText,
@@ -432,7 +444,9 @@ class MeetingProvider extends ChangeNotifier {
         'assets/prompts/meeting_summary_prompt.md',
       );
 
-      final summaryConfig = _aiConfig!.copyWith(prompt: summaryPrompt);
+      final summaryConfig = _aiConfig!.copyWith(
+        prompt: summaryPrompt + _dictionarySuffix,
+      );
       final enhancer = AiEnhanceService(summaryConfig);
       final result = await enhancer.enhance(
         content,
@@ -471,6 +485,7 @@ class MeetingProvider extends ChangeNotifier {
     String meetingId, {
     String? content,
     AiEnhanceConfig? aiConfig,
+    String dictionarySuffix = '',
   }) async {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return false;
@@ -484,9 +499,11 @@ class MeetingProvider extends ChangeNotifier {
 
     final oldEnabled = _aiEnhanceEnabled;
     final oldConfig = _aiConfig;
+    final oldDictSuffix = _dictionarySuffix;
     try {
       _aiEnhanceEnabled = true;
       _aiConfig = config;
+      _dictionarySuffix = dictionarySuffix;
 
       final summary = await _generateSummary(mergedContent);
       if (summary.isEmpty) return false;
@@ -500,6 +517,7 @@ class MeetingProvider extends ChangeNotifier {
     } finally {
       _aiEnhanceEnabled = oldEnabled;
       _aiConfig = oldConfig;
+      _dictionarySuffix = oldDictSuffix;
     }
   }
 
@@ -507,6 +525,7 @@ class MeetingProvider extends ChangeNotifier {
   Stream<String> regenerateSummaryStream(
     String meetingId, {
     required AiEnhanceConfig aiConfig,
+    String dictionarySuffix = '',
   }) async* {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return;
@@ -523,7 +542,9 @@ class MeetingProvider extends ChangeNotifier {
       'assets/prompts/meeting_summary_prompt.md',
     );
 
-    final summaryConfig = aiConfig.copyWith(prompt: summaryPrompt);
+    final summaryConfig = aiConfig.copyWith(
+      prompt: summaryPrompt + dictionarySuffix,
+    );
     final enhancer = AiEnhanceService(summaryConfig);
 
     final buffer = StringBuffer();

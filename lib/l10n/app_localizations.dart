@@ -1649,44 +1649,80 @@ abstract class AppLocalizations {
   /// No description provided for @dictionaryDescription.
   ///
   /// In en, this message translates to:
-  /// **'Save commonly used words and phrases. The AI will prioritize using dictionary entries for more accurate output.'**
+  /// **'Set up correction and preservation rules to help AI output professional terms and fixed expressions more accurately.'**
   String get dictionaryDescription;
 
   /// No description provided for @dictionaryAdd.
   ///
   /// In en, this message translates to:
-  /// **'Add Word'**
+  /// **'Add Rule'**
   String get dictionaryAdd;
 
   /// No description provided for @dictionaryEdit.
   ///
   /// In en, this message translates to:
-  /// **'Edit Word'**
+  /// **'Edit Rule'**
   String get dictionaryEdit;
 
-  /// No description provided for @dictionaryWord.
+  /// No description provided for @dictionaryOriginal.
   ///
   /// In en, this message translates to:
-  /// **'Word'**
-  String get dictionaryWord;
+  /// **'Original Word'**
+  String get dictionaryOriginal;
 
-  /// No description provided for @dictionaryWordHint.
+  /// No description provided for @dictionaryOriginalHint.
   ///
   /// In en, this message translates to:
-  /// **'Enter a commonly used word, e.g., technical terms, names'**
-  String get dictionaryWordHint;
+  /// **'Incorrect form from speech recognition, or correct form to preserve'**
+  String get dictionaryOriginalHint;
 
-  /// No description provided for @dictionaryWordDescription.
+  /// No description provided for @dictionaryCorrected.
   ///
   /// In en, this message translates to:
-  /// **'Description (optional)'**
-  String get dictionaryWordDescription;
+  /// **'Correct To (optional)'**
+  String get dictionaryCorrected;
 
-  /// No description provided for @dictionaryWordDescriptionHint.
+  /// No description provided for @dictionaryCorrectedHint.
   ///
   /// In en, this message translates to:
-  /// **'Brief description of the word\'s meaning or usage context'**
-  String get dictionaryWordDescriptionHint;
+  /// **'Leave empty to preserve the original word as-is'**
+  String get dictionaryCorrectedHint;
+
+  /// No description provided for @dictionaryCorrectedTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in \'Correct To\' for correction rules (A→B); leave empty for preservation rules (keep as-is)'**
+  String get dictionaryCorrectedTip;
+
+  /// No description provided for @dictionaryCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category (optional)'**
+  String get dictionaryCategory;
+
+  /// No description provided for @dictionaryCategoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., Names, Terms, Brands'**
+  String get dictionaryCategoryHint;
+
+  /// No description provided for @dictionaryCategoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get dictionaryCategoryAll;
+
+  /// No description provided for @dictionaryTypeCorrection.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get dictionaryTypeCorrection;
+
+  /// No description provided for @dictionaryTypePreserve.
+  ///
+  /// In en, this message translates to:
+  /// **'Preserve'**
+  String get dictionaryTypePreserve;
 
   /// No description provided for @dictionaryEmpty.
   ///
@@ -1697,8 +1733,44 @@ abstract class AppLocalizations {
   /// No description provided for @dictionaryEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Add commonly used words to help AI produce better output'**
+  /// **'Add correction or preservation rules to help AI output more accurately'**
   String get dictionaryEmptyHint;
+
+  /// No description provided for @correctionEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart Correction'**
+  String get correctionEnabled;
+
+  /// No description provided for @correctionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty'**
+  String get correctionDescription;
+
+  /// No description provided for @pinyinPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinyin'**
+  String get pinyinPreview;
+
+  /// No description provided for @pinyinOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Pinyin (optional)'**
+  String get pinyinOverride;
+
+  /// No description provided for @pinyinOverrideHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Handle polyphonic chars, e.g. le or yue, space-separated'**
+  String get pinyinOverrideHint;
+
+  /// No description provided for @pinyinReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to auto pinyin'**
+  String get pinyinReset;
 
   /// No description provided for @meetingMinutes.
   ///
@@ -2083,6 +2155,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added to dictionary'**
   String get addedToDictionary;
+
+  /// No description provided for @originalSttText.
+  ///
+  /// In en, this message translates to:
+  /// **'Original speech-to-text'**
+  String get originalSttText;
 
   /// No description provided for @home.
   ///

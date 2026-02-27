@@ -841,34 +841,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dictionaryDescription =>
-      'Save commonly used words and phrases. The AI will prioritize using dictionary entries for more accurate output.';
+      'Set up correction and preservation rules to help AI output professional terms and fixed expressions more accurately.';
 
   @override
-  String get dictionaryAdd => 'Add Word';
+  String get dictionaryAdd => 'Add Rule';
 
   @override
-  String get dictionaryEdit => 'Edit Word';
+  String get dictionaryEdit => 'Edit Rule';
 
   @override
-  String get dictionaryWord => 'Word';
+  String get dictionaryOriginal => 'Original Word';
 
   @override
-  String get dictionaryWordHint =>
-      'Enter a commonly used word, e.g., technical terms, names';
+  String get dictionaryOriginalHint =>
+      'Incorrect form from speech recognition, or correct form to preserve';
 
   @override
-  String get dictionaryWordDescription => 'Description (optional)';
+  String get dictionaryCorrected => 'Correct To (optional)';
 
   @override
-  String get dictionaryWordDescriptionHint =>
-      'Brief description of the word\'s meaning or usage context';
+  String get dictionaryCorrectedHint =>
+      'Leave empty to preserve the original word as-is';
+
+  @override
+  String get dictionaryCorrectedTip =>
+      'Fill in \'Correct To\' for correction rules (A→B); leave empty for preservation rules (keep as-is)';
+
+  @override
+  String get dictionaryCategory => 'Category (optional)';
+
+  @override
+  String get dictionaryCategoryHint => 'e.g., Names, Terms, Brands';
+
+  @override
+  String get dictionaryCategoryAll => 'All';
+
+  @override
+  String get dictionaryTypeCorrection => 'Correct';
+
+  @override
+  String get dictionaryTypePreserve => 'Preserve';
 
   @override
   String get dictionaryEmpty => 'Dictionary is empty';
 
   @override
   String get dictionaryEmptyHint =>
-      'Add commonly used words to help AI produce better output';
+      'Add correction or preservation rules to help AI output more accurately';
+
+  @override
+  String get correctionEnabled => 'Smart Correction';
+
+  @override
+  String get correctionDescription =>
+      'Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty';
+
+  @override
+  String get pinyinPreview => 'Pinyin';
+
+  @override
+  String get pinyinOverride => 'Custom Pinyin (optional)';
+
+  @override
+  String get pinyinOverrideHint =>
+      'Handle polyphonic chars, e.g. le or yue, space-separated';
+
+  @override
+  String get pinyinReset => 'Reset to auto pinyin';
 
   @override
   String get meetingMinutes => 'Meeting Minutes';
@@ -1066,6 +1105,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addedToDictionary => 'Added to dictionary';
+
+  @override
+  String get originalSttText => 'Original speech-to-text';
 
   @override
   String get home => 'Home';

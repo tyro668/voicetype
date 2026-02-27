@@ -4,10 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../models/dictionary_entry.dart';
 import '../../models/meeting.dart';
 import '../../providers/meeting_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/dictionary_entry_dialog.dart';
 
 class MeetingDetailPage extends StatefulWidget {
   final String meetingId;
@@ -111,9 +111,12 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                         icon: Icons.summarize_outlined,
                         title: l10n.meetingSummary,
                         trailing: _buildSummaryActions(l10n),
-                        body: _buildReadOnlyText(
-                          text: _summaryController.text,
+                        body: _buildTextEditor(
+                          controller: _summaryController,
                           emptyHint: l10n.meetingNoSummary,
+                          readOnly: true,
+                          enableDictionaryMenu: true,
+                          scrollController: _summaryScrollController,
                         ),
                       ),
                     ),
@@ -129,7 +132,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                         controller: _detailController,
                         emptyHint: l10n.meetingNoContent,
                         readOnly: !_editingDetail,
-                        enableDictionaryMenu: _editingDetail,
+                        enableDictionaryMenu: true,
                       ),
                     ),
                   ),
@@ -506,48 +509,43 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     required String emptyHint,
     bool readOnly = false,
     bool enableDictionaryMenu = true,
+    ScrollController? scrollController,
   }) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onSecondaryTapDown: enableDictionaryMenu
-          ? (details) {
-              _showDictionaryContextMenu(details.globalPosition, controller);
+    return TextField(
+      controller: controller,
+      scrollController: scrollController,
+      maxLines: null,
+      expands: true,
+      readOnly: readOnly,
+      textAlignVertical: TextAlignVertical.top,
+      style: TextStyle(fontSize: 13, color: _cs.onSurface, height: 1.8),
+      decoration: InputDecoration(
+        hintText: emptyHint,
+        hintStyle: TextStyle(color: _cs.outline),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.all(14),
+      ),
+      contextMenuBuilder: enableDictionaryMenu
+          ? (context, editableTextState) {
+              final l10n = AppLocalizations.of(context)!;
+              final selectedText = _getSelectedText(controller);
+              final builtinItems = editableTextState.contextMenuButtonItems;
+              return AdaptiveTextSelectionToolbar.buttonItems(
+                anchors: editableTextState.contextMenuAnchors,
+                buttonItems: [
+                  ...builtinItems,
+                  if (selectedText.isNotEmpty)
+                    ContextMenuButtonItem(
+                      label: l10n.addToDictionary,
+                      onPressed: () {
+                        ContextMenuController.removeAny();
+                        _addToDictionary(selectedText);
+                      },
+                    ),
+                ],
+              );
             }
           : null,
-      child: TextField(
-        controller: controller,
-        maxLines: null,
-        expands: true,
-        readOnly: readOnly,
-        textAlignVertical: TextAlignVertical.top,
-        style: TextStyle(fontSize: 13, color: _cs.onSurface, height: 1.8),
-        decoration: InputDecoration(
-          hintText: emptyHint,
-          hintStyle: TextStyle(color: _cs.outline),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(14),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReadOnlyText({required String text, required String emptyHint}) {
-    final trimmed = text.trim();
-    return Scrollbar(
-      controller: _summaryScrollController,
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        controller: _summaryScrollController,
-        padding: const EdgeInsets.all(14),
-        child: SelectableText(
-          trimmed.isEmpty ? emptyHint : text,
-          style: TextStyle(
-            fontSize: 13,
-            color: trimmed.isEmpty ? _cs.outline : _cs.onSurface,
-            height: 1.8,
-          ),
-        ),
-      ),
     );
   }
 
@@ -692,6 +690,9 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       return;
     }
 
+    final confirmed = await _confirmRegenerateSummary(l10n);
+    if (!confirmed) return;
+
     setState(() => _regeneratingSummary = true);
     final oldSummary = _summaryController.text.trim();
     try {
@@ -702,6 +703,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
             widget.meetingId,
             content: content,
             aiConfig: settings.effectiveAiEnhanceConfig,
+            dictionarySuffix: settings.dictionaryWordsForPrompt,
           );
       if (!mounted) return;
       if (!regenerated) {
@@ -726,33 +728,25 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     }
   }
 
-  Future<void> _showDictionaryContextMenu(
-    Offset globalPosition,
-    TextEditingController controller,
-  ) async {
-    final l10n = AppLocalizations.of(context)!;
-    final selectedText = _getSelectedText(controller);
-    if (selectedText.isEmpty) return;
-
-    final overlay = Overlay.of(context).context.findRenderObject();
-    if (overlay is! RenderBox) return;
-
-    final selected = await showMenu<String>(
+  Future<bool> _confirmRegenerateSummary(AppLocalizations l10n) async {
+    final result = await showDialog<bool>(
       context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0),
-        Offset.zero & overlay.size,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.meetingRegenerateSummary),
+        content: Text('${l10n.confirm}${l10n.meetingRegenerateSummary}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.confirm),
+          ),
+        ],
       ),
-      items: [
-        PopupMenuItem<String>(
-          value: 'add_dict',
-          child: Text(l10n.addToDictionary),
-        ),
-      ],
     );
-    if (selected == 'add_dict') {
-      await _addToDictionary(selectedText);
-    }
+    return result ?? false;
   }
 
   String _getSelectedText(TextEditingController controller) {
@@ -765,16 +759,22 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     return text.substring(start, end).trim();
   }
 
-  Future<void> _addToDictionary(String word) async {
-    if (word.isEmpty) return;
+  Future<void> _addToDictionary(String selectedWord) async {
+    if (selectedWord.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
-    await context.read<SettingsProvider>().addDictionaryEntry(
-      DictionaryEntry.create(word: word),
+    final settings = context.read<SettingsProvider>();
+
+    final entry = await showDictionaryEntryDialog(
+      context,
+      initialOriginal: selectedWord,
     );
+    if (entry == null || !mounted) return;
+
+    await settings.addDictionaryEntry(entry);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${l10n.addedToDictionary}: $word'),
+        content: Text('${l10n.addedToDictionary}: ${entry.original}'),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),

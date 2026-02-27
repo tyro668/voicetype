@@ -12,6 +12,9 @@ import 'ai_enhance_service.dart';
 import 'log_service.dart';
 import 'sliding_window_merger.dart';
 import 'token_stats_service.dart';
+import 'correction_service.dart';
+import 'correction_context.dart';
+import 'pinyin_matcher.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
 class MeetingRecordingService {
@@ -79,6 +82,10 @@ class MeetingRecordingService {
   /// 暴露合并器实例，供 MeetingProvider 监听其事件流
   SlidingWindowMerger? get merger => _merger;
 
+  /// 纠错服务
+  CorrectionService? _correctionService;
+  final CorrectionContext _correctionContext = CorrectionContext();
+
   /// 开始新的会议录音
   Future<MeetingRecord> startMeeting({
     String? title,
@@ -87,6 +94,8 @@ class MeetingRecordingService {
     bool aiEnhanceEnabled = false,
     int? segmentSeconds,
     int windowSize = 5,
+    PinyinMatcher? pinyinMatcher,
+    String? correctionPrompt,
   }) async {
     if (_isRecording) {
       throw MeetingRecordingException('已有会议正在录制中');
@@ -96,6 +105,22 @@ class MeetingRecordingService {
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
     if (segmentSeconds != null) segmentDurationSeconds = segmentSeconds;
+
+    // 初始化纠错服务
+    _correctionContext.reset();
+    if (pinyinMatcher != null &&
+        aiConfig != null &&
+        correctionPrompt != null &&
+        correctionPrompt.isNotEmpty) {
+      _correctionService = CorrectionService(
+        matcher: pinyinMatcher,
+        context: _correctionContext,
+        aiConfig: aiConfig,
+        correctionPrompt: correctionPrompt,
+      );
+    } else {
+      _correctionService = null;
+    }
 
     // 创建滑动窗口合并器（需要 AI 配置）
     if (_aiConfig != null) {
@@ -109,7 +134,9 @@ class MeetingRecordingService {
     final now = DateTime.now();
     final meeting = MeetingRecord(
       id: _uuid.v4(),
-      title: title ?? '会议 ${now.month}/${now.day} ${now.hour}:${now.minute.toString().padLeft(2, '0')}',
+      title:
+          title ??
+          '会议 ${now.month}/${now.day} ${now.hour}:${now.minute.toString().padLeft(2, '0')}',
       createdAt: now,
       updatedAt: now,
       status: MeetingStatus.recording,
@@ -134,7 +161,10 @@ class MeetingRecordingService {
       // 录音启动失败，清理已写入的会议记录
       await db.deleteMeetingById(meeting.id);
       _currentMeeting = null;
-      await LogService.error('MEETING', 'start recording failed, cleaned up: $e');
+      await LogService.error(
+        'MEETING',
+        'start recording failed, cleaned up: $e',
+      );
       rethrow;
     }
 
@@ -142,7 +172,8 @@ class MeetingRecordingService {
     _recordingStartTime = now;
     _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_isPaused) {
-        _recordingDuration = DateTime.now().difference(_recordingStartTime!) - _pausedDuration;
+        _recordingDuration =
+            DateTime.now().difference(_recordingStartTime!) - _pausedDuration;
         _onDurationChanged.add(_recordingDuration);
       }
     });
@@ -241,7 +272,10 @@ class MeetingRecordingService {
     _isPaused = false;
     _onStatusChanged.add('completed');
 
-    await LogService.info('MEETING', 'meeting completed: ${meeting.id}, duration: ${meeting.formattedDuration}');
+    await LogService.info(
+      'MEETING',
+      'meeting completed: ${meeting.id}, duration: ${meeting.formattedDuration}',
+    );
 
     final result = meeting;
     _currentMeeting = null;
@@ -284,7 +318,10 @@ class MeetingRecordingService {
 
     try {
       await _recorder.start();
-      await LogService.info('MEETING', 'segment ${_segmentIndex + 1} recording started');
+      await LogService.info(
+        'MEETING',
+        'segment ${_segmentIndex + 1} recording started',
+      );
     } catch (e) {
       // 重试一次
       try {
@@ -323,7 +360,10 @@ class MeetingRecordingService {
     final fileSize = await file.length();
     if (fileSize < 1000) {
       // 文件太小，可能是空录音
-      await LogService.info('MEETING', 'segment audio too small ($fileSize bytes), skipping');
+      await LogService.info(
+        'MEETING',
+        'segment audio too small ($fileSize bytes), skipping',
+      );
       return;
     }
 
@@ -347,10 +387,15 @@ class MeetingRecordingService {
     _onSegmentReady.add(segment);
 
     // 加入处理队列
-    _processingQueue.add(_PendingSegment(segment: segment, audioPath: audioPath));
+    _processingQueue.add(
+      _PendingSegment(segment: segment, audioPath: audioPath),
+    );
     _startProcessingWorker();
 
-    await LogService.info('MEETING', 'segment ${segment.segmentIndex} finalized: $audioPath ($fileSize bytes)');
+    await LogService.info(
+      'MEETING',
+      'segment ${segment.segmentIndex} finalized: $audioPath ($fileSize bytes)',
+    );
   }
 
   /// 启动处理工作线程（如果尚未运行）
@@ -397,6 +442,22 @@ class MeetingRecordingService {
 
       segment.transcription = rawText;
 
+      // 1.5 纠错：拼音匹配 + LLM 同音字纠正
+      if (_correctionService != null) {
+        try {
+          final corrResult = await _correctionService!.correct(rawText);
+          if (corrResult.text.trim().isNotEmpty) {
+            segment.transcription = corrResult.text;
+          }
+        } catch (e) {
+          await LogService.error(
+            'MEETING',
+            'correction failed for segment ${segment.segmentIndex}: $e',
+          );
+          // 纠错失败不影响主流程
+        }
+      }
+
       // 2. AI 文字增强（如果启用）
       if (_aiEnhanceEnabled && _aiConfig != null) {
         segment.status = SegmentStatus.enhancing;
@@ -416,7 +477,10 @@ class MeetingRecordingService {
             );
           }
         } catch (e) {
-          await LogService.error('MEETING', 'AI enhance failed for segment ${segment.segmentIndex}: $e');
+          await LogService.error(
+            'MEETING',
+            'AI enhance failed for segment ${segment.segmentIndex}: $e',
+          );
           // 增强失败不影响转写结果
         }
       }
@@ -440,7 +504,10 @@ class MeetingRecordingService {
       segment.errorMessage = e.toString();
       await db.updateMeetingSegment(segment);
       _onSegmentUpdated.add(segment);
-      await LogService.error('MEETING', 'segment ${segment.segmentIndex} processing failed: $e');
+      await LogService.error(
+        'MEETING',
+        'segment ${segment.segmentIndex} processing failed: $e',
+      );
     }
   }
 
@@ -462,10 +529,9 @@ class MeetingRecordingService {
     await AppDatabase.instance.updateMeetingSegment(segment);
     _onSegmentUpdated.add(segment);
 
-    _processingQueue.add(_PendingSegment(
-      segment: segment,
-      audioPath: segment.audioFilePath!,
-    ));
+    _processingQueue.add(
+      _PendingSegment(segment: segment, audioPath: segment.audioFilePath!),
+    );
     _startProcessingWorker();
   }
 
@@ -477,10 +543,14 @@ class MeetingRecordingService {
     AppDatabase.instance
         .getMeetingSegments(_currentMeeting!.id)
         .then((segments) {
-      _merger?.onSegmentCompleted(segments);
-    }).catchError((e) {
-      LogService.error('MEETING', 'failed to fetch segments for merger: $e');
-    });
+          _merger?.onSegmentCompleted(segments);
+        })
+        .catchError((e) {
+          LogService.error(
+            'MEETING',
+            'failed to fetch segments for merger: $e',
+          );
+        });
   }
 
   /// 等待合并器当前任务完成
@@ -510,10 +580,7 @@ class _PendingSegment {
   final MeetingSegment segment;
   final String audioPath;
 
-  _PendingSegment({
-    required this.segment,
-    required this.audioPath,
-  });
+  _PendingSegment({required this.segment, required this.audioPath});
 }
 
 class MeetingRecordingException implements Exception {

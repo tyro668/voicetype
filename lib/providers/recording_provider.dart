@@ -14,6 +14,9 @@ import '../services/overlay_service.dart';
 import '../services/log_service.dart';
 import '../services/token_stats_service.dart';
 import '../services/vad_service.dart';
+import '../services/correction_service.dart';
+import '../services/correction_context.dart';
+import '../services/pinyin_matcher.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
@@ -48,6 +51,10 @@ class RecordingProvider extends ChangeNotifier {
   SttProviderConfig? _activeSttConfig;
   // VAD auto-stop callback — set by the screen that owns the provider
   void Function()? onVadTriggered;
+
+  // Correction pipeline
+  CorrectionService? _correctionService;
+  final CorrectionContext _correctionContext = CorrectionContext();
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
   String _transcribingLabel = 'Transcribing';
@@ -56,6 +63,29 @@ class RecordingProvider extends ChangeNotifier {
 
   RecordingProvider() {
     _loadHistory();
+  }
+
+  /// 配置纠错服务。在 startRecording 之前调用。
+  ///
+  /// [matcher] 拼音匹配器实例（来自 SettingsProvider）
+  /// [aiConfig] 用于纠错 LLM 调用的配置
+  /// [correctionPrompt] 纠错专用 prompt
+  void configureCorrectionService({
+    required PinyinMatcher matcher,
+    required AiEnhanceConfig aiConfig,
+    required String correctionPrompt,
+  }) {
+    _correctionService = CorrectionService(
+      matcher: matcher,
+      context: _correctionContext,
+      aiConfig: aiConfig,
+      correctionPrompt: correctionPrompt,
+    );
+  }
+
+  /// 禁用纠错服务。
+  void disableCorrectionService() {
+    _correctionService = null;
   }
 
   RecordingState get state => _state;
@@ -138,6 +168,8 @@ class RecordingProvider extends ChangeNotifier {
     _transcribedText = '';
     _amplitudeSub?.cancel();
     _amplitudeSub = null;
+    _correctionContext.reset();
+    _correctionService = null;
 
     // 无论当前状态如何，都先 reset recorder，确保干净状态
     await LogService.info('RECORDING', 'resetting recorder');
@@ -148,8 +180,10 @@ class RecordingProvider extends ChangeNotifier {
       await LogService.info('RECORDING', 'reset timeout, continuing');
     }
     await LogService.info('RECORDING', 'checking permission');
-    final hasPermission = await _recorder.hasPermission()
-        .timeout(const Duration(seconds: 3), onTimeout: () => false);
+    final hasPermission = await _recorder.hasPermission().timeout(
+      const Duration(seconds: 3),
+      onTimeout: () => false,
+    );
     if (!hasPermission) {
       _error = '需要麦克风权限才能录音';
       notifyListeners();
@@ -158,18 +192,23 @@ class RecordingProvider extends ChangeNotifier {
 
     await LogService.info('RECORDING', 'showing starting overlay');
     // 不 await overlay 调用，避免阻塞录音流程
-    unawaited(OverlayService.showOverlay(
-      state: 'starting',
-      duration: '00:00',
-      level: 0.0,
-      stateLabel: _startingLabel,
-    ));
+    unawaited(
+      OverlayService.showOverlay(
+        state: 'starting',
+        duration: '00:00',
+        level: 0.0,
+        stateLabel: _startingLabel,
+      ),
+    );
 
     await LogService.info('RECORDING', 'starting recorder');
     try {
       await _recorder.startWithTimeout(const Duration(seconds: 2));
     } catch (e) {
-      await LogService.info('RECORDING', 'start failed ($e), resetting and retrying');
+      await LogService.info(
+        'RECORDING',
+        'start failed ($e), resetting and retrying',
+      );
       try {
         await _recorder.reset().timeout(const Duration(seconds: 3));
       } catch (_) {}
@@ -180,12 +219,14 @@ class RecordingProvider extends ChangeNotifier {
     _recordingStartTime = DateTime.now();
     _recordingDuration = Duration.zero;
 
-    unawaited(OverlayService.showOverlay(
-      state: 'recording',
-      duration: '00:00',
-      level: 0.0,
-      stateLabel: _recordingLabel,
-    ));
+    unawaited(
+      OverlayService.showOverlay(
+        state: 'recording',
+        duration: '00:00',
+        level: 0.0,
+        stateLabel: _recordingLabel,
+      ),
+    );
 
     _amplitudeSub = _recorder.amplitudeStream.listen((level) {
       OverlayService.updateOverlay(
@@ -244,10 +285,7 @@ class RecordingProvider extends ChangeNotifier {
     );
 
     if (path == null && fallbackPath != null) {
-      path = await _waitForFileReady(
-        fallbackPath,
-        const Duration(seconds: 20),
-      );
+      path = await _waitForFileReady(fallbackPath, const Duration(seconds: 20));
     }
 
     if (path != null) {
@@ -259,7 +297,10 @@ class RecordingProvider extends ChangeNotifier {
     try {
       await _recorder.startWithTimeout(const Duration(seconds: 2));
     } catch (e) {
-      await LogService.info('SEGMENT', 'restart failed ($e), resetting and retrying');
+      await LogService.info(
+        'SEGMENT',
+        'restart failed ($e), resetting and retrying',
+      );
       try {
         await _recorder.reset().timeout(const Duration(seconds: 3));
       } catch (_) {}
@@ -286,7 +327,19 @@ class RecordingProvider extends ChangeNotifier {
           continue;
         }
         try {
-          final text = await SttService(config).transcribe(path);
+          var text = await SttService(config).transcribe(path);
+          // 纠错：若已配置 CorrectionService，对 STT 结果做拼音匹配 + LLM 纠错
+          if (sessionId == _sessionId &&
+              _correctionService != null &&
+              text.trim().isNotEmpty) {
+            try {
+              final result = await _correctionService!.correct(text);
+              text = result.text;
+            } catch (e) {
+              await LogService.error('SEGMENT', 'correction failed: $e');
+              // 纠错失败不影响主流程
+            }
+          }
           if (sessionId == _sessionId) {
             _appendRealtimeText(text);
           }
@@ -395,10 +448,12 @@ class RecordingProvider extends ChangeNotifier {
         return;
       }
 
-      unawaited(OverlayService.showOverlay(
-        state: 'transcribing',
-        stateLabel: _transcribingLabel,
-      ));
+      unawaited(
+        OverlayService.showOverlay(
+          state: 'transcribing',
+          stateLabel: _transcribingLabel,
+        ),
+      );
       _state = RecordingState.idle;
       notifyListeners();
 
@@ -449,15 +504,24 @@ class RecordingProvider extends ChangeNotifier {
         const Duration(seconds: 20),
         onTimeout: () => null,
       );
-      await LogService.info('TRANSCRIBE', 'step1 done: recorder.stop() ${sw.elapsedMilliseconds}ms, path=${path != null}');
+      await LogService.info(
+        'TRANSCRIBE',
+        'step1 done: recorder.stop() ${sw.elapsedMilliseconds}ms, path=${path != null}',
+      );
 
       if (path == null && fallbackPath != null) {
-        await LogService.info('TRANSCRIBE', 'step2: waiting for file ready fallbackPath=$fallbackPath');
+        await LogService.info(
+          'TRANSCRIBE',
+          'step2: waiting for file ready fallbackPath=$fallbackPath',
+        );
         path = await _waitForFileReady(
           fallbackPath,
           const Duration(seconds: 20),
         );
-        await LogService.info('TRANSCRIBE', 'step2 done: ${sw.elapsedMilliseconds}ms, path=${path != null}');
+        await LogService.info(
+          'TRANSCRIBE',
+          'step2 done: ${sw.elapsedMilliseconds}ms, path=${path != null}',
+        );
       }
 
       if (path == null) {
@@ -466,7 +530,10 @@ class RecordingProvider extends ChangeNotifier {
           const Duration(seconds: 10),
           onTimeout: () => null,
         );
-        await LogService.info('TRANSCRIBE', 'step3 done: ${sw.elapsedMilliseconds}ms, path=${path != null}');
+        await LogService.info(
+          'TRANSCRIBE',
+          'step3 done: ${sw.elapsedMilliseconds}ms, path=${path != null}',
+        );
       }
 
       // recorder 已停止，允许下一次录音
@@ -475,7 +542,10 @@ class RecordingProvider extends ChangeNotifier {
       }
 
       if (path == null) {
-        await LogService.info('TRANSCRIBE', 'final segment path unavailable, continue with queued segments');
+        await LogService.info(
+          'TRANSCRIBE',
+          'final segment path unavailable, continue with queued segments',
+        );
       } else {
         _enqueueSegmentPath(path, _sessionId);
       }
@@ -483,11 +553,17 @@ class RecordingProvider extends ChangeNotifier {
       await _waitForSegmentDrain();
 
       final rawText = _rawTextBuffer.toString().trim();
-      await LogService.info('TRANSCRIBE', 'segment collection done: ${sw.elapsedMilliseconds}ms, textLength=${rawText.length}');
+      await LogService.info(
+        'TRANSCRIBE',
+        'segment collection done: ${sw.elapsedMilliseconds}ms, textLength=${rawText.length}',
+      );
 
       if (rawText.isEmpty) {
         _error = '转录结果为空';
-        await LogService.error('TRANSCRIBE', 'empty segment result after ${sw.elapsedMilliseconds}ms');
+        await LogService.error(
+          'TRANSCRIBE',
+          'empty segment result after ${sw.elapsedMilliseconds}ms',
+        );
         _showTranscribeFailedOverlay();
         notifyListeners();
         return;
@@ -503,7 +579,10 @@ class RecordingProvider extends ChangeNotifier {
       );
     } catch (e) {
       _error = '停止录音失败: $e';
-      await LogService.error('TRANSCRIBE', 'stop failed after ${sw.elapsedMilliseconds}ms: $e');
+      await LogService.error(
+        'TRANSCRIBE',
+        'stop failed after ${sw.elapsedMilliseconds}ms: $e',
+      );
       if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
         _stopCompleter!.complete();
       }
@@ -539,16 +618,21 @@ class RecordingProvider extends ChangeNotifier {
   }) async {
     final sw = Stopwatch()..start();
     try {
-      await LogService.info('TRANSCRIBE', 'finalize start: provider=${config.name} model=${config.model} rawTextLength=${rawText.length}');
+      await LogService.info(
+        'TRANSCRIBE',
+        'finalize start: provider=${config.name} model=${config.model} rawTextLength=${rawText.length}',
+      );
       var finalText = rawText;
 
       if (aiEnhanceEnabled && aiEnhanceConfig != null) {
         try {
           await LogService.info('TRANSCRIBE', 'ai enhance start...');
-          unawaited(OverlayService.showOverlay(
-            state: 'enhancing',
-            stateLabel: _enhancingLabel,
-          ));
+          unawaited(
+            OverlayService.showOverlay(
+              state: 'enhancing',
+              stateLabel: _enhancingLabel,
+            ),
+          );
           final enhancer = AiEnhanceService(aiEnhanceConfig);
 
           if (useStreaming) {
@@ -557,14 +641,15 @@ class RecordingProvider extends ChangeNotifier {
             try {
               await for (final chunk in enhancer.enhanceStream(rawText)) {
                 buffer.write(chunk);
-                unawaited(OverlayService.updateOverlayText(
-                  buffer.toString(),
-                ));
+                unawaited(OverlayService.updateOverlayText(buffer.toString()));
               }
               finalText = buffer.toString().trim();
               if (finalText.isEmpty) finalText = rawText;
             } catch (e) {
-              await LogService.error('TRANSCRIBE', 'streaming enhance failed: $e, falling back to batch');
+              await LogService.error(
+                'TRANSCRIBE',
+                'streaming enhance failed: $e, falling back to batch',
+              );
               // Fallback to batch mode
               final enhanceResult = await enhancer.enhance(rawText);
               finalText = enhanceResult.text;
@@ -591,7 +676,10 @@ class RecordingProvider extends ChangeNotifier {
               } catch (_) {}
             }
           }
-          await LogService.info('TRANSCRIBE', 'ai enhance done: ${sw.elapsedMilliseconds}ms');
+          await LogService.info(
+            'TRANSCRIBE',
+            'ai enhance done: ${sw.elapsedMilliseconds}ms',
+          );
         } catch (e) {
           await LogService.error('TRANSCRIBE', 'ai enhance failed: $e');
           finalText = rawText;
@@ -605,6 +693,7 @@ class RecordingProvider extends ChangeNotifier {
         final item = Transcription(
           id: const Uuid().v4(),
           text: finalText,
+          rawText: aiEnhanceEnabled ? rawText : null,
           createdAt: DateTime.now(),
           duration: duration,
           provider: config.name,
@@ -620,22 +709,34 @@ class RecordingProvider extends ChangeNotifier {
         try {
           await LogService.info('TRANSCRIBE', 'inserting text...');
           await OverlayService.insertText(finalText);
-          await LogService.info('TRANSCRIBE', 'insertText done: ${sw.elapsedMilliseconds}ms');
+          await LogService.info(
+            'TRANSCRIBE',
+            'insertText done: ${sw.elapsedMilliseconds}ms',
+          );
         } catch (e) {
           await LogService.error('TRANSCRIBE', 'insertText failed: $e');
         }
         unawaited(OverlayService.hideOverlay());
-        await LogService.info('TRANSCRIBE', 'complete success: total ${sw.elapsedMilliseconds}ms');
+        await LogService.info(
+          'TRANSCRIBE',
+          'complete success: total ${sw.elapsedMilliseconds}ms',
+        );
       } else {
         _error = '转录结果为空';
-        await LogService.error('TRANSCRIBE', 'empty result after ${sw.elapsedMilliseconds}ms');
+        await LogService.error(
+          'TRANSCRIBE',
+          'empty result after ${sw.elapsedMilliseconds}ms',
+        );
         _showTranscribeFailedOverlay();
       }
 
       notifyListeners();
     } catch (e) {
       _error = '转录失败: $e';
-      await LogService.error('TRANSCRIBE', 'failed after ${sw.elapsedMilliseconds}ms: $e');
+      await LogService.error(
+        'TRANSCRIBE',
+        'failed after ${sw.elapsedMilliseconds}ms: $e',
+      );
       _showTranscribeFailedOverlay();
       notifyListeners();
     }

@@ -7,18 +7,21 @@ import '../../models/meeting.dart';
 import '../../models/provider_config.dart';
 import '../../models/ai_enhance_config.dart';
 import '../../providers/meeting_provider.dart';
+import '../../providers/settings_provider.dart';
 
 /// 会议录制页面
 class MeetingRecordingPage extends StatefulWidget {
   final SttProviderConfig sttConfig;
   final AiEnhanceConfig? aiConfig;
   final bool aiEnhanceEnabled;
+  final String dictionarySuffix;
 
   const MeetingRecordingPage({
     super.key,
     required this.sttConfig,
     this.aiConfig,
     this.aiEnhanceEnabled = false,
+    this.dictionarySuffix = '',
   });
 
   @override
@@ -60,10 +63,18 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
 
     setState(() => _isStarting = true);
     try {
+      final settings = context.read<SettingsProvider>();
       final meeting = await provider.startMeeting(
         sttConfig: widget.sttConfig,
         aiConfig: widget.aiConfig,
         aiEnhanceEnabled: widget.aiEnhanceEnabled,
+        dictionarySuffix: widget.dictionarySuffix,
+        pinyinMatcher: settings.correctionEffective
+            ? settings.pinyinMatcher
+            : null,
+        correctionPrompt: settings.correctionEffective
+            ? settings.correctionPrompt
+            : null,
       );
       _titleController.text = meeting.title;
     } catch (e) {
@@ -163,7 +174,8 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) {
           // 保存标题（录音在后台继续）
-          if (_titleController.text.isNotEmpty && provider.currentMeeting != null) {
+          if (_titleController.text.isNotEmpty &&
+              provider.currentMeeting != null) {
             provider.updateMeetingTitle(
               provider.currentMeeting!.id,
               _titleController.text,
@@ -172,158 +184,166 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
         }
       },
       child: Scaffold(
-      backgroundColor: _cs.surfaceContainerLow,
-      appBar: AppBar(
-        backgroundColor: _cs.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => _handleBack(provider, l10n),
-        ),
-        title: SizedBox(
-          width: 300,
-          child: TextField(
-            controller: _titleController,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: l10n.meetingTitleHint,
-              hintStyle: TextStyle(
-                color: _cs.onSurfaceVariant,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-            onSubmitted: (value) {
-              if (provider.currentMeeting != null && value.isNotEmpty) {
-                provider.updateMeetingTitle(provider.currentMeeting!.id, value);
-              }
-            },
+        backgroundColor: _cs.surfaceContainerLow,
+        appBar: AppBar(
+          backgroundColor: _cs.surface,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _handleBack(provider, l10n),
           ),
-        ),
-        actions: [
-          // 暂停/继续 + 长按结束会议
-          if (provider.isRecording)
-            GestureDetector(
-              onLongPressStart: (_) => _startLongPress(),
-              onLongPressEnd: (_) => _cancelLongPress(),
-              onLongPressCancel: () => _cancelLongPress(),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // 长按进度环
-                  if (_isLongPressing)
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        value: _longPressProgress,
-                        strokeWidth: 3,
-                        color: Colors.red,
-                        backgroundColor: Colors.red.withValues(alpha: 0.15),
+          title: SizedBox(
+            width: 300,
+            child: TextField(
+              controller: _titleController,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: l10n.meetingTitleHint,
+                hintStyle: TextStyle(
+                  color: _cs.onSurfaceVariant,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+              onSubmitted: (value) {
+                if (provider.currentMeeting != null && value.isNotEmpty) {
+                  provider.updateMeetingTitle(
+                    provider.currentMeeting!.id,
+                    value,
+                  );
+                }
+              },
+            ),
+          ),
+          actions: [
+            // 暂停/继续 + 长按结束会议
+            if (provider.isRecording)
+              GestureDetector(
+                onLongPressStart: (_) => _startLongPress(),
+                onLongPressEnd: (_) => _cancelLongPress(),
+                onLongPressCancel: () => _cancelLongPress(),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 长按进度环
+                    if (_isLongPressing)
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          value: _longPressProgress,
+                          strokeWidth: 3,
+                          color: Colors.red,
+                          backgroundColor: Colors.red.withValues(alpha: 0.15),
+                        ),
                       ),
+                    IconButton(
+                      onPressed: () {
+                        if (provider.isPaused) {
+                          provider.resumeMeeting();
+                        } else {
+                          provider.pauseMeeting();
+                        }
+                      },
+                      icon: Icon(
+                        _isLongPressing
+                            ? Icons.stop_rounded
+                            : provider.isPaused
+                            ? Icons.play_arrow_rounded
+                            : Icons.pause_rounded,
+                        size: 20,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isLongPressing
+                            ? Colors.red
+                            : provider.isPaused
+                            ? _cs.primary
+                            : Colors.orange,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(36, 36),
+                        padding: const EdgeInsets.all(6),
+                      ),
+                      tooltip: provider.isPaused
+                          ? l10n.meetingResume
+                          : l10n.meetingPause,
                     ),
-                  IconButton(
-                    onPressed: () {
-                      if (provider.isPaused) {
-                        provider.resumeMeeting();
-                      } else {
-                        provider.pauseMeeting();
-                      }
-                    },
-                    icon: Icon(
-                      _isLongPressing
-                          ? Icons.stop_rounded
-                          : provider.isPaused
-                              ? Icons.play_arrow_rounded
-                              : Icons.pause_rounded,
-                      size: 20,
+                  ],
+                ),
+              ),
+            const SizedBox(width: 4),
+            // 停止会议按钮
+            if (provider.isRecording)
+              IconButton(
+                onPressed: () => _confirmEndMeeting(),
+                icon: const Icon(Icons.stop_rounded, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(36, 36),
+                  padding: const EdgeInsets.all(6),
+                ),
+                tooltip: l10n.meetingStop,
+              ),
+            const SizedBox(width: 6),
+            // 录音时长
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: _cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 16,
+                    color: _cs.onSecondaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDuration(provider.recordingDuration),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'monospace',
+                      color: _cs.onSecondaryContainer,
                     ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: _isLongPressing
-                          ? Colors.red
-                          : provider.isPaused
-                              ? _cs.primary
-                              : Colors.orange,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(36, 36),
-                      padding: const EdgeInsets.all(6),
-                    ),
-                    tooltip: provider.isPaused ? l10n.meetingResume : l10n.meetingPause,
                   ),
                 ],
               ),
             ),
-          const SizedBox(width: 4),
-          // 停止会议按钮
-          if (provider.isRecording)
-            IconButton(
-              onPressed: () => _confirmEndMeeting(),
-              icon: const Icon(Icons.stop_rounded, size: 20),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(36, 36),
-                padding: const EdgeInsets.all(6),
-              ),
-              tooltip: l10n.meetingStop,
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: Column(
+          children: [
+            // 视图切换栏
+            _buildViewToggle(l10n),
+            // 内容区域
+            Expanded(
+              child: _isStarting
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(l10n.meetingStarting),
+                        ],
+                      ),
+                    )
+                  : _showMergedView
+                  ? _buildMergedNoteArea(provider, l10n)
+                  : _buildTranscriptionArea(segments, provider, l10n),
             ),
-          const SizedBox(width: 6),
-          // 录音时长
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: _cs.secondaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.timer_outlined, size: 16, color: _cs.onSecondaryContainer),
-                const SizedBox(width: 4),
-                Text(
-                  _formatDuration(provider.recordingDuration),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                    color: _cs.onSecondaryContainer,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          // 视图切换栏
-          _buildViewToggle(l10n),
-          // 内容区域
-          Expanded(
-            child: _isStarting
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        Text(l10n.meetingStarting),
-                      ],
-                    ),
-                  )
-                : _showMergedView
-                    ? _buildMergedNoteArea(provider, l10n)
-                    : _buildTranscriptionArea(segments, provider, l10n),
-          ),
-
-        ],
-      ),
+          ],
+        ),
       ), // end Scaffold / PopScope child
     ); // end PopScope
   }
@@ -431,11 +451,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
           // 合并纪要文本
           SelectableText(
             content,
-            style: TextStyle(
-              fontSize: 14,
-              color: _cs.onSurface,
-              height: 1.6,
-            ),
+            style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
           ),
         ],
       ),
@@ -488,9 +504,14 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
     );
   }
 
-  Widget _buildSegmentCard(MeetingSegment segment, AppLocalizations l10n, int index) {
+  Widget _buildSegmentCard(
+    MeetingSegment segment,
+    AppLocalizations l10n,
+    int index,
+  ) {
     final text = segment.enhancedText ?? segment.transcription;
-    final isProcessing = segment.status == SegmentStatus.pending ||
+    final isProcessing =
+        segment.status == SegmentStatus.pending ||
         segment.status == SegmentStatus.transcribing;
     final isEnhancing = segment.status == SegmentStatus.enhancing;
 
@@ -514,7 +535,11 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
             children: [
               Text(
                 segment.formattedTimestamp,
-                style: TextStyle(fontSize: 11, color: _cs.outline, fontFamily: 'monospace'),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _cs.outline,
+                  fontFamily: 'monospace',
+                ),
               ),
               if (isProcessing || isEnhancing) ...[
                 const SizedBox(width: 8),
@@ -528,7 +553,9 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  isEnhancing ? l10n.meetingEnhancing : l10n.meetingTranscribing,
+                  isEnhancing
+                      ? l10n.meetingEnhancing
+                      : l10n.meetingTranscribing,
                   style: TextStyle(
                     fontSize: 11,
                     color: isEnhancing ? Colors.purple : _cs.primary,
@@ -548,10 +575,15 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                 ),
                 const SizedBox(width: 8),
                 InkWell(
-                  onTap: () => context.read<MeetingProvider>().retrySegment(segment),
+                  onTap: () =>
+                      context.read<MeetingProvider>().retrySegment(segment),
                   child: Text(
                     l10n.meetingRetry,
-                    style: TextStyle(fontSize: 13, color: _cs.primary, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _cs.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
@@ -599,8 +631,6 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
       ),
     );
   }
-
-
 
   void _handleBack(MeetingProvider provider, AppLocalizations l10n) {
     // 保存标题
@@ -711,7 +741,9 @@ class _PulsingDotState extends State<_PulsingDot>
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: 0.4 + _controller.value * 0.6),
+            color: widget.color.withValues(
+              alpha: 0.4 + _controller.value * 0.6,
+            ),
             shape: BoxShape.circle,
           ),
         );

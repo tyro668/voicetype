@@ -380,6 +380,7 @@ class _MainScreenState extends State<MainScreen> {
             _promptSttConfig();
             return;
           }
+          _configureCorrection(settings, recording);
           recording.startRecording(settings.config);
           _startVadIfEnabled(settings, recording);
         }
@@ -392,6 +393,7 @@ class _MainScreenState extends State<MainScreen> {
           _promptSttConfig();
           return;
         }
+        _configureCorrection(settings, recording);
         recording.startRecording(settings.config);
         _startVadIfEnabled(settings, recording);
       } else if (type == 'up' && recording.state == RecordingState.recording) {
@@ -428,7 +430,30 @@ class _MainScreenState extends State<MainScreen> {
         sttConfig: settings.config,
         aiConfig: settings.effectiveAiEnhanceConfig,
         aiEnhanceEnabled: settings.aiEnhanceEnabled,
+        dictionarySuffix: settings.dictionaryWordsForPrompt,
+        pinyinMatcher: settings.correctionEffective
+            ? settings.pinyinMatcher
+            : null,
+        correctionPrompt: settings.correctionEffective
+            ? settings.correctionPrompt
+            : null,
       );
+    }
+  }
+
+  /// 根据 SettingsProvider 状态配置或禁用纠错服务。
+  void _configureCorrection(
+    SettingsProvider settings,
+    RecordingProvider recording,
+  ) {
+    if (settings.correctionEffective) {
+      recording.configureCorrectionService(
+        matcher: settings.pinyinMatcher,
+        aiConfig: settings.effectiveAiEnhanceConfig,
+        correctionPrompt: settings.correctionPrompt,
+      );
+    } else {
+      recording.disableCorrectionService();
     }
   }
 
@@ -649,13 +674,18 @@ class _MainScreenState extends State<MainScreen> {
     final templates = settings.promptTemplates;
     if (templates.isEmpty) return const SizedBox.shrink();
 
-    final activeTemplate = settings.activePromptTemplate ?? templates.first;
     final activeTemplateId =
         templates.any(
           (template) => template.id == settings.activePromptTemplateId,
         )
         ? settings.activePromptTemplateId
-        : activeTemplate.id;
+        : templates.first.id;
+    final activeTemplateIndex = templates.indexWhere(
+      (template) => template.id == activeTemplateId,
+    );
+    final activeTemplateNumber = activeTemplateIndex >= 0
+        ? activeTemplateIndex + 1
+        : 1;
 
     return PopupMenuButton<String>(
       tooltip: l10n.promptTemplates,
@@ -679,7 +709,7 @@ class _MainScreenState extends State<MainScreen> {
         );
       }).toList(),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -688,19 +718,13 @@ class _MainScreenState extends State<MainScreen> {
               size: 14,
               color: _cs.onSurfaceVariant.withValues(alpha: 0.8),
             ),
-            const SizedBox(width: 4),
-            SizedBox(
-              width: 68,
-              child: Text(
-                _localizedTemplateName(activeTemplate, l10n),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: _cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w400,
-                ),
+            const SizedBox(width: 2),
+            Text(
+              '#$activeTemplateNumber',
+              style: TextStyle(
+                fontSize: 10,
+                color: _cs.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -749,6 +773,7 @@ class _MainScreenState extends State<MainScreen> {
                   sttConfig: settings.config,
                   aiConfig: settings.effectiveAiEnhanceConfig,
                   aiEnhanceEnabled: settings.aiEnhanceEnabled,
+                  dictionarySuffix: settings.dictionaryWordsForPrompt,
                 ),
               ),
             ),

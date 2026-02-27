@@ -46,6 +46,7 @@ dependencies:
   fl_chart: ^0.70.2
   whisper_flutter_new: ^1.0.1
   ffi: ^2.1.0
+  lpinyin: ^2.0.3
 
 dev_dependencies:
   flutter_test:
@@ -89,6 +90,7 @@ flutter:
     - assets/prompts/meeting_segment_prompt.md
     - assets/prompts/meeting_summary_prompt.md
     - assets/prompts/meeting_merge_prompt.md
+    - assets/prompts/correction_prompt.md
     - assets/presets/models.json
 
   # To add assets to your application, add an assets section, like this:
