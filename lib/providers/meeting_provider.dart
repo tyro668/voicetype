@@ -196,7 +196,7 @@ class MeetingProvider extends ChangeNotifier {
     required SttProviderConfig sttConfig,
     AiEnhanceConfig? aiConfig,
     bool aiEnhanceEnabled = false,
-    int segmentSeconds = 30,
+    int? segmentSeconds,
     int windowSize = 5,
     String dictionarySuffix = '',
     PinyinMatcher? pinyinMatcher,

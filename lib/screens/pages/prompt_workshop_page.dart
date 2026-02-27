@@ -100,12 +100,16 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
 
   Widget _buildSplitLayout(SettingsProvider settings, AppLocalizations l10n) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Left: template list
-        SizedBox(width: 280, child: _buildTemplateList(settings, l10n)),
+        SizedBox(width: 260, child: _buildTemplateList(settings, l10n)),
         // Divider
-        Container(width: 1, color: _cs.outlineVariant),
+        Container(
+          width: 1,
+          margin: const EdgeInsets.symmetric(vertical: 16),
+          color: _cs.outlineVariant.withValues(alpha: 0.5),
+        ),
         // Right: detail / test panel
         Expanded(child: _buildDetailPanel(settings, l10n)),
       ],
@@ -133,36 +137,37 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
   Widget _buildTemplateList(SettingsProvider settings, AppLocalizations l10n) {
     final templates = settings.promptTemplates;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with add button
+        // Header — aligned with right panel title
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+          padding: const EdgeInsets.fromLTRB(24, 28, 16, 16),
           child: Row(
             children: [
-              Icon(
-                Icons.description_outlined,
-                size: 18,
-                color: _cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l10n.promptTemplates,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurfaceVariant,
-                  ),
+              Text(
+                l10n.promptTemplates,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _cs.onSurface,
+                  letterSpacing: -0.2,
                 ),
               ),
-              SizedBox(
-                height: 28,
-                width: 28,
-                child: IconButton(
-                  onPressed: () => _showCreateTemplateDialog(settings, l10n),
-                  icon: Icon(Icons.add, size: 16, color: _cs.primary),
-                  padding: EdgeInsets.zero,
-                  tooltip: l10n.promptCreateTemplate,
+              const Spacer(),
+              Material(
+                color: _cs.primaryContainer.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _showCreateTemplateDialog(settings, l10n),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: _cs.primary,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -170,9 +175,10 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
         ),
         // Template items
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
             itemCount: templates.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 2),
             itemBuilder: (_, i) =>
                 _buildTemplateListItem(templates[i], settings, l10n),
           ),
@@ -189,92 +195,102 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
     final isActive = settings.activePromptTemplateId == template.id;
     final isPreviewing = _previewTemplateId == template.id;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: isPreviewing ? _cs.secondaryContainer : Colors.transparent,
+    return Material(
+      color: isPreviewing
+          ? _cs.primaryContainer.withValues(alpha: 0.35)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            setState(() {
-              _previewTemplateId = template.id;
-              _showTest = false;
-            });
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                // Active indicator
-                Container(
-                  width: 4,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: isActive ? _cs.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        hoverColor: _cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        onTap: () {
+          setState(() {
+            _previewTemplateId = template.id;
+            _showTest = false;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: isPreviewing
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _cs.primary.withValues(alpha: 0.3)),
+                )
+              : null,
+          child: Row(
+            children: [
+              // Active indicator bar
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 3,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isActive ? _cs.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _localizedTemplateName(template, l10n),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isPreviewing || isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: isActive ? _cs.primary : _cs.onSurface,
+                              height: 1.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (template.isBuiltin) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _cs.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                             child: Text(
-                              _localizedTemplateName(template, l10n),
+                              l10n.promptBuiltin,
                               style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isActive
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                                color: isActive ? _cs.primary : _cs.onSurface,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                                color: _cs.onSurfaceVariant,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (template.isBuiltin) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 1,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _cs.primaryContainer,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                l10n.promptBuiltin,
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: _cs.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
-                          ],
                         ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _localizedTemplateSummary(template, l10n),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _cs.outline,
+                        height: 1.3,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _localizedTemplateSummary(template, l10n),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: _cs.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                if (isActive)
-                  Icon(Icons.check_circle, size: 14, color: _cs.primary),
-              ],
-            ),
+              ),
+              if (isActive)
+                Icon(Icons.check_circle_rounded, size: 16, color: _cs.primary),
+            ],
           ),
         ),
       ),
@@ -309,16 +325,16 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(32, 28, 32, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Template header
           _buildDetailHeader(template, settings, l10n),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           // Toggle: preview / test
           _buildDetailToggle(l10n),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (!_showTest)
             _buildPreviewContent(template)
           else
@@ -335,6 +351,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
   ) {
     final isActive = settings.activePromptTemplateId == template.id;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Column(
@@ -343,15 +360,17 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
               Text(
                 _localizedTemplateName(template, l10n),
                 style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: _cs.onSurface,
+                  letterSpacing: -0.3,
+                  height: 1.3,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 _localizedTemplateSummary(template, l10n),
-                style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+                style: TextStyle(fontSize: 13, color: _cs.outline, height: 1.4),
               ),
             ],
           ),
@@ -463,17 +482,22 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: selected ? _cs.secondaryContainer : Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
+      color: selected
+          ? _cs.primary.withValues(alpha: 0.08)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: _cs.surfaceContainerHighest.withValues(alpha: 0.5),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected ? _cs.secondary : _cs.outlineVariant,
+              color: selected
+                  ? _cs.primary.withValues(alpha: 0.4)
+                  : _cs.outlineVariant,
             ),
           ),
           child: Row(
@@ -482,9 +506,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
               Icon(
                 icon,
                 size: 15,
-                color: selected
-                    ? _cs.onSecondaryContainer
-                    : _cs.onSurfaceVariant,
+                color: selected ? _cs.primary : _cs.onSurfaceVariant,
               ),
               const SizedBox(width: 6),
               Text(
@@ -492,9 +514,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected
-                      ? _cs.onSecondaryContainer
-                      : _cs.onSurfaceVariant,
+                  color: selected ? _cs.primary : _cs.onSurfaceVariant,
                 ),
               ),
             ],
@@ -507,20 +527,15 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
   Widget _buildPreviewContent(PromptTemplate template) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: SelectableText(
         template.content,
-        style: TextStyle(
-          fontSize: 13,
-          height: 1.6,
-          color: _cs.onSurface,
-          fontFamily: 'monospace',
-        ),
+        style: TextStyle(fontSize: 13, height: 1.7, color: _cs.onSurface),
       ),
     );
   }

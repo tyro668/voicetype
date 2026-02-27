@@ -15,6 +15,7 @@ import 'token_stats_service.dart';
 import 'correction_service.dart';
 import 'correction_context.dart';
 import 'pinyin_matcher.dart';
+import 'vad_service.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
 class MeetingRecordingService {
@@ -22,8 +23,25 @@ class MeetingRecordingService {
 
   final AudioRecorderService _recorder = AudioRecorderService();
 
-  /// 分段时长（秒），默认 30 秒
+  /// 分段时长（秒），默认 30 秒（仅回退模式使用）
   int segmentDurationSeconds = 30;
+
+  /// 智能分段参数
+  int _softMinSeconds = 20;
+  int _hardMaxSeconds = 30;
+  double _silenceThreshold = 0.05;
+  int _silenceDurationMs = 500;
+  bool _useSmartSegment = true;
+
+  /// VAD 静音检测服务（智能分段模式）
+  VadService? _vadService;
+  StreamSubscription<void>? _vadSubscription;
+
+  /// 硬截断计时器（到 hardMaxSeconds 强制截断）
+  Timer? _hardCutTimer;
+
+  /// 当前分段开始时间（用于计算实际段时长）
+  DateTime? _segmentStartTime;
 
   /// 当前会议记录
   MeetingRecord? _currentMeeting;
@@ -98,6 +116,10 @@ class MeetingRecordingService {
     String? correctionPrompt,
     int maxReferenceEntries = 15,
     double minCandidateScore = 0.30,
+    int softMinSeconds = 20,
+    int hardMaxSeconds = 30,
+    double silenceThreshold = 0.05,
+    int silenceDurationMs = 500,
   }) async {
     if (_isRecording) {
       throw MeetingRecordingException('已有会议正在录制中');
@@ -106,7 +128,21 @@ class MeetingRecordingService {
     _sttConfig = sttConfig;
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
-    if (segmentSeconds != null) segmentDurationSeconds = segmentSeconds;
+
+    // 智能分段参数
+    _softMinSeconds = softMinSeconds;
+    _hardMaxSeconds = hardMaxSeconds;
+    _silenceThreshold = silenceThreshold;
+    _silenceDurationMs = silenceDurationMs;
+
+    // 如果外部显式传入 segmentSeconds，回退到固定截断模式
+    if (segmentSeconds != null) {
+      segmentDurationSeconds = segmentSeconds;
+      _useSmartSegment = false;
+    } else {
+      segmentDurationSeconds = hardMaxSeconds;
+      _useSmartSegment = true;
+    }
 
     // 初始化纠错服务
     _correctionContext.reset();
@@ -182,17 +218,113 @@ class MeetingRecordingService {
       }
     });
 
-    // 启动分段计时器
-    _segmentTimer = Timer.periodic(
-      Duration(seconds: segmentDurationSeconds),
-      (_) => _handleSegmentTick(),
-    );
+    // 启动分段控制
+    _startSegmentControl();
 
     _isRecording = true;
     _isPaused = false;
     _onStatusChanged.add('recording');
 
     return meeting;
+  }
+
+  /// 启动分段控制（智能模式或固定模式）
+  void _startSegmentControl() {
+    if (_useSmartSegment) {
+      _startSmartSegmentControl();
+    } else {
+      // 回退到固定周期截断
+      _segmentTimer = Timer.periodic(
+        Duration(seconds: segmentDurationSeconds),
+        (_) => _handleSegmentTick(),
+      );
+    }
+  }
+
+  /// 启动智能分段控制：VAD 监听 + 硬截断计时器
+  void _startSmartSegmentControl() {
+    _segmentStartTime = DateTime.now();
+
+    // 创建 VAD 实例
+    _vadService?.dispose();
+    _vadService = VadService(
+      silenceThreshold: _silenceThreshold,
+      silenceDuration: Duration(milliseconds: _silenceDurationMs),
+      minRecordingDuration: Duration(seconds: _softMinSeconds),
+    );
+
+    // 监听静音事件
+    _vadSubscription?.cancel();
+    _vadSubscription = _vadService!.onSilenceDetected.listen((_) {
+      _handleSilenceDetected();
+    });
+
+    // 启动 VAD 监听振幅流
+    _vadService!.start(_recorder.amplitudeStream);
+
+    // 设置硬截断计时器
+    _hardCutTimer?.cancel();
+    _hardCutTimer = Timer(
+      Duration(seconds: _hardMaxSeconds),
+      () => _handleHardCut(),
+    );
+  }
+
+  /// 停止智能分段控制
+  void _stopSmartSegmentControl() {
+    _vadSubscription?.cancel();
+    _vadSubscription = null;
+    _vadService?.stop();
+    _hardCutTimer?.cancel();
+    _hardCutTimer = null;
+  }
+
+  /// VAD 检测到静音 — 柔性截断
+  Future<void> _handleSilenceDetected() async {
+    if (!_isRecording || _isPaused || _stopping) return;
+    if (_segmentSwitching) return;
+
+    _segmentSwitching = true;
+    try {
+      _stopSmartSegmentControl();
+
+      final elapsed = _segmentStartTime != null
+          ? DateTime.now().difference(_segmentStartTime!).inSeconds
+          : 0;
+      await LogService.info(
+        'MEETING',
+        'silence detected at ${elapsed}s, soft-cutting segment',
+      );
+
+      await _finalizeCurrentSegment();
+      await _startSegmentRecording();
+      _startSmartSegmentControl();
+    } catch (e) {
+      await LogService.error('MEETING', 'smart segment rotation failed: $e');
+    } finally {
+      _segmentSwitching = false;
+    }
+  }
+
+  /// 到达硬上限 — 强制截断
+  Future<void> _handleHardCut() async {
+    if (!_isRecording || _isPaused || _stopping) return;
+    if (_segmentSwitching) return;
+
+    _segmentSwitching = true;
+    try {
+      _stopSmartSegmentControl();
+
+      await LogService.info('MEETING', 'hard cut at ${_hardMaxSeconds}s');
+
+      await _finalizeCurrentSegment();
+      await _startSegmentRecording();
+      _startSmartSegmentControl();
+    } catch (e) {
+      await LogService.error('MEETING', 'hard cut rotation failed: $e');
+    } finally {
+      _segmentSwitching = false;
+    }
   }
 
   /// 暂停会议录音
@@ -203,6 +335,7 @@ class MeetingRecordingService {
     _pauseStartTime = DateTime.now();
     _segmentTimer?.cancel();
     _segmentTimer = null;
+    _stopSmartSegmentControl();
 
     // 停止当前录音段并保存
     await _finalizeCurrentSegment();
@@ -229,11 +362,8 @@ class MeetingRecordingService {
     // 开始新的录音段
     await _startSegmentRecording();
 
-    // 重新启动分段计时器
-    _segmentTimer = Timer.periodic(
-      Duration(seconds: segmentDurationSeconds),
-      (_) => _handleSegmentTick(),
-    );
+    // 重新启动分段控制
+    _startSegmentControl();
 
     _onStatusChanged.add('recording');
     await LogService.info('MEETING', 'meeting resumed');
@@ -248,6 +378,7 @@ class MeetingRecordingService {
     _stopping = true;
     _segmentTimer?.cancel();
     _segmentTimer = null;
+    _stopSmartSegmentControl();
     _durationTimer?.cancel();
     _durationTimer = null;
 
@@ -293,6 +424,7 @@ class MeetingRecordingService {
     _stopping = true;
     _segmentTimer?.cancel();
     _segmentTimer = null;
+    _stopSmartSegmentControl();
     _durationTimer?.cancel();
     _durationTimer = null;
 
@@ -372,12 +504,16 @@ class MeetingRecordingService {
     }
 
     final now = DateTime.now();
+    final actualDuration = _segmentStartTime != null
+        ? now.difference(_segmentStartTime!)
+        : Duration(seconds: segmentDurationSeconds);
+    final segmentStart = _segmentStartTime ?? now.subtract(actualDuration);
     final segment = MeetingSegment(
       id: _uuid.v4(),
       meetingId: _currentMeeting!.id,
       segmentIndex: _segmentIndex,
-      startTime: now.subtract(Duration(seconds: segmentDurationSeconds)),
-      duration: Duration(seconds: segmentDurationSeconds),
+      startTime: segmentStart,
+      duration: actualDuration,
       audioFilePath: audioPath,
       status: SegmentStatus.pending,
     );
@@ -568,6 +704,9 @@ class MeetingRecordingService {
 
   void dispose() {
     _segmentTimer?.cancel();
+    _stopSmartSegmentControl();
+    _vadService?.dispose();
+    _vadService = null;
     _durationTimer?.cancel();
     _merger?.dispose();
     _merger = null;

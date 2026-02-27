@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 class AudioRecorderService {
   AudioRecorder _recorder = AudioRecorder();
   String? _currentPath;
+  DateTime? _recordingStartedAt;
   final _amplitudeController = StreamController<double>.broadcast();
 
   Stream<double> get amplitudeStream => _amplitudeController.stream;
@@ -36,14 +37,16 @@ class AudioRecorderService {
       await recordingsDir.create(recursive: true);
     }
     final now = DateTime.now();
-    final ts = '${now.year}'
+    _recordingStartedAt = now;
+    final ts =
+        '${now.year}'
         '${now.month.toString().padLeft(2, '0')}'
         '${now.day.toString().padLeft(2, '0')}'
         '${now.hour.toString().padLeft(2, '0')}'
         '${now.minute.toString().padLeft(2, '0')}'
         '${now.second.toString().padLeft(2, '0')}';
-    final shortId = const Uuid().v4().substring(0, 8);
-    _currentPath = path.join(recordingsDir.path, '${ts}_$shortId.wav');
+    final shortId = const Uuid().v4().substring(0, 6);
+    _currentPath = path.join(recordingsDir.path, '${ts}-$shortId.wav');
 
     final file = File(_currentPath!);
     if (!await file.exists()) {
@@ -69,17 +72,50 @@ class AudioRecorderService {
     });
   }
 
+  /// 停止后将文件重命名为「日期时间-6位uuid-录音秒数.wav」
+  Future<String?> _renameWithDuration(String? rawPath) async {
+    if (rawPath == null) return null;
+    final file = File(rawPath);
+    if (!await file.exists()) return rawPath;
+
+    final durationSecs = _recordingStartedAt != null
+        ? DateTime.now().difference(_recordingStartedAt!).inSeconds
+        : 0;
+    _recordingStartedAt = null;
+
+    // 原文件名: 20260227143000-a1b2c3.wav → 20260227143000-a1b2c3-25.wav
+    final dir = path.dirname(rawPath);
+    final basename = path.basenameWithoutExtension(rawPath);
+    final ext = path.extension(rawPath);
+    final newName = '$basename-${durationSecs}s$ext';
+    final newPath = path.join(dir, newName);
+
+    try {
+      final renamed = await file.rename(newPath);
+      _currentPath = renamed.path;
+      return renamed.path;
+    } catch (_) {
+      // 重命名失败则保留原路径
+      return rawPath;
+    }
+  }
+
   Future<String?> stop() async {
     _amplitudeTimer?.cancel();
     _amplitudeTimer = null;
-    return await _recorder.stop();
+    final rawPath = await _recorder.stop();
+    return await _renameWithDuration(rawPath);
   }
 
   Future<String?> stopWithTimeout(Duration timeout) async {
     _amplitudeTimer?.cancel();
     _amplitudeTimer = null;
     try {
-      return await _recorder.stop().timeout(timeout, onTimeout: () => null);
+      final rawPath = await _recorder.stop().timeout(
+        timeout,
+        onTimeout: () => null,
+      );
+      return await _renameWithDuration(rawPath);
     } catch (_) {
       return null;
     }
