@@ -122,5 +122,30 @@ void main() {
       expect(cleared.corrected, 'FanRuan');
       expect(cleared.category, '品牌');
     });
+
+    test('pinyinPattern round-trip and normalization', () {
+      final entry = DictionaryEntry.create(
+        original: '',
+        corrected: '帆软',
+        pinyinPattern: '  FAN   RUAN ',
+      );
+
+      final json = entry.toJson();
+      final restored = DictionaryEntry.fromJson(json);
+
+      expect(restored.pinyinPattern, 'fan ruan');
+      expect(restored.pinyinNormalized, 'fan ruan');
+    });
+
+    test('pinyinPattern has higher priority than pinyinOverride', () {
+      final entry = DictionaryEntry.create(
+        original: '乐谱',
+        corrected: '乐谱',
+        pinyinOverride: 'yue pu',
+        pinyinPattern: 'le pu',
+      );
+
+      expect(entry.pinyinNormalized, 'le pu');
+    });
   });
 }

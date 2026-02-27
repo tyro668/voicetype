@@ -49,8 +49,10 @@ class PinyinMatcher {
       if (!entry.enabled) continue;
 
       // 1. 精确字面索引（original 原文）
-      final lowerOriginal = entry.original.toLowerCase();
-      _literalIndex.putIfAbsent(lowerOriginal, () => []).add(entry);
+      final lowerOriginal = entry.original.trim().toLowerCase();
+      if (lowerOriginal.isNotEmpty) {
+        _literalIndex.putIfAbsent(lowerOriginal, () => []).add(entry);
+      }
 
       // 2. 拼音索引
       final pinyin = entry.pinyinNormalized;
@@ -67,7 +69,7 @@ class PinyinMatcher {
           _addPinyinKey(correctedPinyin);
         }
         final lowerCorrected = entry.corrected!.toLowerCase();
-        if (lowerCorrected != lowerOriginal) {
+        if (lowerCorrected.isNotEmpty && lowerCorrected != lowerOriginal) {
           _literalIndex.putIfAbsent(lowerCorrected, () => []).add(entry);
         }
       }
@@ -191,6 +193,14 @@ class PinyinMatcher {
         if (e.corrected != null) {
           final corrLen = e.corrected!.replaceAll(RegExp(r'\s+'), '').length;
           if (corrLen > maxLen) maxLen = corrLen;
+        }
+        if (e.pinyinPattern != null && e.pinyinPattern!.trim().isNotEmpty) {
+          final syllableCount = e.pinyinPattern!
+              .trim()
+              .split(RegExp(r'\s+'))
+              .where((s) => s.isNotEmpty)
+              .length;
+          if (syllableCount > maxLen) maxLen = syllableCount;
         }
       }
     }

@@ -30,6 +30,10 @@ class DictionaryEntry {
   /// 若为 null，则自动从 original 计算。格式：无声调空格分隔，如 "mo ti si"。
   final String? pinyinOverride;
 
+  /// 拼音匹配规则（可选）。
+  /// 填写后可在不依赖 original 的情况下按拼音命中文本片段。
+  final String? pinyinPattern;
+
   final DateTime createdAt;
 
   const DictionaryEntry({
@@ -39,6 +43,7 @@ class DictionaryEntry {
     this.category,
     this.enabled = true,
     this.pinyinOverride,
+    this.pinyinPattern,
     required this.createdAt,
   });
 
@@ -48,13 +53,19 @@ class DictionaryEntry {
       : DictionaryEntryType.preserve;
 
   /// 标准化拼音（无声调、小写、空格分隔）。
-  /// 优先使用 pinyinOverride，否则自动从 original 计算。
+  /// 优先使用 pinyinPattern，其次 pinyinOverride，否则自动从 original 计算。
   String get pinyinNormalized {
+    if (pinyinPattern != null && pinyinPattern!.trim().isNotEmpty) {
+      return _normalizePinyinPattern(pinyinPattern!);
+    }
     if (pinyinOverride != null && pinyinOverride!.trim().isNotEmpty) {
       return pinyinOverride!.trim().toLowerCase();
     }
     return _computePinyin(original);
   }
+
+  bool get hasPinyinPattern =>
+      pinyinPattern != null && pinyinPattern!.trim().isNotEmpty;
 
   /// 自动计算文本的拼音（无声调、小写、空格分隔）。
   static String _computePinyin(String text) {
@@ -78,20 +89,31 @@ class DictionaryEntry {
   /// 获取 original 的自动拼音（用于 UI 预览）。
   String get autoPinyin => _computePinyin(original);
 
+  static String _normalizePinyinPattern(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
   factory DictionaryEntry.create({
     required String original,
     String? corrected,
     String? category,
     bool enabled = true,
     String? pinyinOverride,
+    String? pinyinPattern,
   }) {
+    final normalizedOriginal = original.trim();
+    final normalizedPattern =
+        (pinyinPattern == null || pinyinPattern.trim().isEmpty)
+        ? null
+        : _normalizePinyinPattern(pinyinPattern);
     return DictionaryEntry(
       id: const Uuid().v4(),
-      original: original,
+      original: normalizedOriginal,
       corrected: corrected,
       category: category,
       enabled: enabled,
       pinyinOverride: pinyinOverride,
+      pinyinPattern: normalizedPattern,
       createdAt: DateTime.now(),
     );
   }
@@ -103,6 +125,7 @@ class DictionaryEntry {
     'category': category,
     'enabled': enabled,
     'pinyinOverride': pinyinOverride,
+    'pinyinPattern': pinyinPattern,
     'createdAt': createdAt.toIso8601String(),
   };
 
@@ -120,6 +143,10 @@ class DictionaryEntry {
       category: json['category'] as String?,
       enabled: json['enabled'] as bool? ?? true,
       pinyinOverride: json['pinyinOverride'] as String?,
+      pinyinPattern:
+          (json['pinyinPattern'] as String?)?.trim().isNotEmpty == true
+          ? _normalizePinyinPattern(json['pinyinPattern'] as String)
+          : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -130,6 +157,7 @@ class DictionaryEntry {
     String? category,
     bool? enabled,
     String? pinyinOverride,
+    String? pinyinPattern,
   }) {
     return DictionaryEntry(
       id: id,
@@ -138,6 +166,7 @@ class DictionaryEntry {
       category: category ?? this.category,
       enabled: enabled ?? this.enabled,
       pinyinOverride: pinyinOverride ?? this.pinyinOverride,
+      pinyinPattern: pinyinPattern ?? this.pinyinPattern,
       createdAt: createdAt,
     );
   }
@@ -151,6 +180,7 @@ class DictionaryEntry {
       category: category,
       enabled: enabled,
       pinyinOverride: pinyinOverride,
+      pinyinPattern: pinyinPattern,
       createdAt: createdAt,
     );
   }
@@ -164,6 +194,20 @@ class DictionaryEntry {
       category: category,
       enabled: enabled,
       pinyinOverride: null,
+      pinyinPattern: pinyinPattern,
+      createdAt: createdAt,
+    );
+  }
+
+  DictionaryEntry clearPinyinPattern() {
+    return DictionaryEntry(
+      id: id,
+      original: original,
+      corrected: corrected,
+      category: category,
+      enabled: enabled,
+      pinyinOverride: pinyinOverride,
+      pinyinPattern: null,
       createdAt: createdAt,
     );
   }

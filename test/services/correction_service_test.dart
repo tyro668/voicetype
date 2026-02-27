@@ -70,7 +70,7 @@ void main() {
 
     test('returns original text for empty input', () async {
       matcher.buildIndex([
-        DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
       ]);
 
       final service = CorrectionService(
@@ -93,10 +93,10 @@ void main() {
 
     test('calls LLM when dictionary match found', () async {
       matcher.buildIndex([
-        DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
       ]);
 
-      setupMockServer('今天用了FanRuan做报表');
+      setupMockServer('今天用了Metis做报表');
 
       final service = CorrectionService(
         matcher: matcher,
@@ -111,11 +111,103 @@ void main() {
         correctionPrompt: '纠错 prompt',
       );
 
-      final result = await service.correct('今天用了帆软做报表');
-      expect(result.text, '今天用了帆软做报表');
+      final result = await service.correct('今天用了墨提斯做报表');
+      expect(result.text, '今天用了墨提斯做报表');
       expect(result.llmInvoked, isTrue);
       expect(result.promptTokens, 50);
       expect(result.completionTokens, 20);
+    });
+
+    test('calls LLM when only pinyinPattern rule matches', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(
+          original: '',
+          corrected: 'Metis',
+          pinyinPattern: 'mo ti si',
+        ),
+      ]);
+
+      setupMockServer('今天用了Metis做报表');
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      final result = await service.correct('今天用了莫提斯做报表');
+      expect(result.text, '今天用了Metis做报表');
+      expect(result.llmInvoked, isTrue);
+      expect(result.totalTokens, greaterThan(0));
+    });
+
+    test('literal match outranks pinyin-only rule when both match', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '莫提斯', corrected: '模型A'),
+        DictionaryEntry.create(
+          original: '',
+          corrected: '模型B',
+          pinyinPattern: 'mo ti si',
+        ),
+      ]);
+
+      String capturedReference = '';
+      server.listen((request) async {
+        final body = await utf8.decoder.bind(request).join();
+        final payload = json.decode(body) as Map<String, dynamic>;
+        final messages = payload['messages'] as List<dynamic>? ?? [];
+        final userMessage = messages.isNotEmpty
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ??
+                  ''
+            : '';
+        for (final line in userMessage.split('\n')) {
+          if (line.startsWith('#R: ')) {
+            capturedReference = line.substring(4).trim();
+            break;
+          }
+        }
+
+        final responseJson = json.encode({
+          'choices': [
+            {
+              'message': {'content': '模型A已生效'},
+            },
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 5},
+        });
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(responseJson);
+        await request.response.close();
+      });
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+        maxReferenceEntries: 1,
+        minCandidateScore: 0,
+      );
+
+      final result = await service.correct('莫提斯已经接入');
+      expect(result.llmInvoked, isTrue);
+      expect(capturedReference, contains('莫提斯->模型A'));
+      expect(capturedReference, isNot(contains('莫提斯->模型B')));
     });
 
     test(
@@ -149,10 +241,10 @@ void main() {
 
     test('context is updated after correction', () async {
       matcher.buildIndex([
-        DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
       ]);
 
-      setupMockServer('FanRuan数据');
+      setupMockServer('Metis数据');
 
       final service = CorrectionService(
         matcher: matcher,
@@ -167,14 +259,14 @@ void main() {
         correctionPrompt: '纠错 prompt',
       );
 
-      await service.correct('帆软数据');
+      await service.correct('墨提斯数据');
       expect(context.hasContext, isTrue);
       expect(context.segmentCount, 1);
     });
 
     test('falls back to original text on LLM failure', () async {
       matcher.buildIndex([
-        DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
       ]);
 
       // Server returns error
@@ -198,9 +290,9 @@ void main() {
         correctionPrompt: '纠错 prompt',
       );
 
-      final result = await service.correct('帆软数据');
+      final result = await service.correct('墨提斯数据');
       // Should fall back to original text
-      expect(result.text, '帆软数据');
+      expect(result.text, '墨提斯数据');
       expect(result.llmInvoked, isFalse);
     });
 
@@ -209,7 +301,7 @@ void main() {
       () async {
         matcher.buildIndex([
           DictionaryEntry.create(original: '好数连', corrected: 'hao shu lian'),
-          DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+          DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
         ]);
 
         server.listen((request) async {
@@ -232,9 +324,9 @@ void main() {
           correctionPrompt: '纠错 prompt',
         );
 
-        final input = '好数联这个产品跟帆软的其他产品不太一样，它是一个底层数据治理工具。';
+        final input = '好数联这个产品跟墨提斯的其他产品不太一样，它是一个底层数据治理工具。';
         final result = await service.correct(input);
-        expect(result.text, '好数连这个产品跟帆软的其他产品不太一样，它是一个底层数据治理工具。');
+        expect(result.text, '好数连这个产品跟墨提斯的其他产品不太一样，它是一个底层数据治理工具。');
         expect(result.llmInvoked, isFalse);
       },
     );

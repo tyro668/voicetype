@@ -1015,14 +1015,14 @@ class SettingsProvider extends ChangeNotifier {
 
   String exportDictionaryAsCsv() {
     final rows = <List<dynamic>>[
-      ['original', 'corrected', 'category', 'enabled', 'pinyinOverride'],
+      ['pinyinPattern', 'corrected', 'enabled', 'category', 'original'],
       ..._dictionaryEntries.map(
         (entry) => [
-          entry.original,
+          entry.pinyinPattern ?? entry.pinyinNormalized,
           entry.corrected ?? '',
-          entry.category ?? '',
           entry.enabled ? 'true' : 'false',
-          entry.pinyinOverride ?? '',
+          entry.category ?? '',
+          entry.original,
         ],
       ),
     ];
@@ -1068,24 +1068,32 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     final originalIndex = indexFor(['original', 'originalword', '原始词']);
-    if (originalIndex == null) {
-      throw const FormatException('Missing required column: original');
+    final pinyinPatternIndex = indexFor([
+      'pinyinpattern',
+      'pinyin_pattern',
+      '拼音规则',
+      '拼音',
+      'pinyinoverride',
+      '自定义拼音',
+    ]);
+    if (pinyinPatternIndex == null) {
+      throw const FormatException('Missing required column: pinyinPattern');
     }
     final correctedIndex = indexFor(['corrected', 'correctto', '纠正为']);
     final categoryIndex = indexFor(['category', '分类']);
     final enabledIndex = indexFor(['enabled', '启用']);
-    final pinyinOverrideIndex = indexFor([
-      'pinyinoverride',
-      'pinyin_override',
-      '自定义拼音',
-    ]);
 
     final nextEntries = replaceExisting
         ? <DictionaryEntry>[]
         : List<DictionaryEntry>.from(_dictionaryEntries);
     final dedup = <String>{
       for (final item in nextEntries)
-        _dictionaryDedupKey(item.original, item.corrected, item.category),
+        _dictionaryDedupKey(
+          item.original,
+          item.corrected,
+          item.category,
+          item.pinyinPattern,
+        ),
     };
 
     var totalRows = 0;
@@ -1101,16 +1109,19 @@ class SettingsProvider extends ChangeNotifier {
 
       totalRows += 1;
 
-      final original = _csvValueAt(row, originalIndex).trim();
-      if (original.isEmpty) {
+      final pinyinPattern = _csvValueAt(row, pinyinPatternIndex).trim();
+      final correctedRaw = correctedIndex == null
+          ? ''
+          : _csvValueAt(row, correctedIndex).trim();
+      if (pinyinPattern.isEmpty || correctedRaw.isEmpty) {
         skippedRows += 1;
         continue;
       }
 
-      final correctedRaw = correctedIndex == null
-          ? ''
-          : _csvValueAt(row, correctedIndex).trim();
       final corrected = correctedRaw.isEmpty ? null : correctedRaw;
+      final original = originalIndex == null
+          ? ''
+          : _csvValueAt(row, originalIndex).trim();
 
       final categoryRaw = categoryIndex == null
           ? ''
@@ -1121,12 +1132,12 @@ class SettingsProvider extends ChangeNotifier {
           ? true
           : _parseCsvEnabled(_csvValueAt(row, enabledIndex));
 
-      final pinyinRaw = pinyinOverrideIndex == null
-          ? ''
-          : _csvValueAt(row, pinyinOverrideIndex).trim();
-      final pinyinOverride = pinyinRaw.isEmpty ? null : pinyinRaw;
-
-      final dedupKey = _dictionaryDedupKey(original, corrected, category);
+      final dedupKey = _dictionaryDedupKey(
+        original,
+        corrected,
+        category,
+        pinyinPattern,
+      );
       if (dedup.contains(dedupKey)) {
         skippedRows += 1;
         continue;
@@ -1138,7 +1149,7 @@ class SettingsProvider extends ChangeNotifier {
           corrected: corrected,
           category: category,
           enabled: enabled,
-          pinyinOverride: pinyinOverride,
+          pinyinPattern: pinyinPattern,
         ),
       );
       dedup.add(dedupKey);
@@ -1211,11 +1222,13 @@ class SettingsProvider extends ChangeNotifier {
     String original,
     String? corrected,
     String? category,
+    String? pinyinPattern,
   ) {
     final originalPart = original.trim().toLowerCase();
     final correctedPart = (corrected ?? '').trim().toLowerCase();
     final categoryPart = (category ?? '').trim().toLowerCase();
-    return '$originalPart|$correctedPart|$categoryPart';
+    final pinyinPart = (pinyinPattern ?? '').trim().toLowerCase();
+    return '$originalPart|$correctedPart|$categoryPart|$pinyinPart';
   }
 
   /// 获取所有不重复的词典分类
@@ -1258,7 +1271,12 @@ class SettingsProvider extends ChangeNotifier {
         final original = e.original.trim();
         final corrected = (e.corrected ?? '').trim();
         final target = _correctionTargetText(e);
-        buf.writeln('- $cat遇到"$original"时，应替换为"$target"');
+        final pinyinPattern = e.pinyinPattern?.trim() ?? '';
+        if (original.isNotEmpty) {
+          buf.writeln('- $cat遇到"$original"时，应替换为"$target"');
+        } else if (pinyinPattern.isNotEmpty) {
+          buf.writeln('- $cat遇到发音接近 "$pinyinPattern" 的词时，应替换为"$target"');
+        }
         if (_isChineseToLatinAliasEntry(e) && corrected.isNotEmpty) {
           buf.writeln('- $cat遇到"$corrected"时，应替换为"$original"');
         }
@@ -1268,7 +1286,9 @@ class SettingsProvider extends ChangeNotifier {
     // 收集所有需要保留原样的词：显式 preserve 条目 + correction 条目的纠正后形式
     final preserveWords = <String>{};
     for (final e in preserves) {
-      preserveWords.add(e.original);
+      if (e.original.trim().isNotEmpty) {
+        preserveWords.add(e.original);
+      }
     }
     for (final e in corrections) {
       if (e.corrected != null && e.corrected!.isNotEmpty) {
@@ -1280,6 +1300,17 @@ class SettingsProvider extends ChangeNotifier {
       buf.writeln();
       for (final word in preserveWords) {
         buf.writeln('- 遇到"$word"时，保持原样不要改写');
+      }
+    }
+
+    final preservePatterns = preserves
+        .map((e) => e.pinyinPattern?.trim() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    if (preservePatterns.isNotEmpty) {
+      buf.writeln();
+      for (final pattern in preservePatterns) {
+        buf.writeln('- 遇到发音接近 "$pattern" 的词时，保持原样不要改写');
       }
     }
 

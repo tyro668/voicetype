@@ -229,7 +229,11 @@ class CorrectionService {
         }
       } else {
         // preserve 类型：告知 LLM 保持原样
-        final keep = '${entry.original}->${entry.original}';
+        final source = hit.observedText.trim().isNotEmpty
+            ? hit.observedText.trim()
+            : entry.original.trim();
+        if (source.isEmpty) continue;
+        final keep = '$source->$source';
         if (dedup.add(keep)) {
           parts.add(keep);
         }

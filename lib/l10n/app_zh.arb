@@ -329,10 +329,10 @@
   "dictionaryAdd": "添加规则",
   "dictionaryEdit": "编辑规则",
   "dictionaryOriginal": "原始词",
-  "dictionaryOriginalHint": "语音识别可能输出的错误写法，或需要保留的正确写法",
+  "dictionaryOriginalHint": "可选：直接指定要纠正的原始词；留空时按拼音规则匹配",
   "dictionaryCorrected": "纠正为（选填）",
-  "dictionaryCorrectedHint": "留空表示保留原词不改写",
-  "dictionaryCorrectedTip": "填写“纠正为”则为纠正规则（A→B），留空则为保留规则（不要改写此词）",
+  "dictionaryCorrectedHint": "填写表示纠正目标；留空表示保留命中的词不改写",
+  "dictionaryCorrectedTip": "可仅填写“自定义拼音 + 纠正为”实现同音纠正；若“纠正为”留空则为保留规则",
   "dictionaryCategory": "分类（选填）",
   "dictionaryCategoryHint": "如：人名、术语、品牌",
   "dictionaryCategoryAll": "全部",
@@ -390,14 +390,14 @@
       "total": {"type": "int"}
     }
   },
-  "dictionaryImportInvalidFormat": "CSV 格式无效：缺少 original 列",
+  "dictionaryImportInvalidFormat": "CSV 格式无效：缺少 pinyinPattern 列",
   "dictionaryImportFailed": "导入 CSV 失败",
 
   "correctionEnabled": "智能纠错",
   "correctionDescription": "基于拼音匹配自动纠正同音字，仅在词典非空时生效",
   "pinyinPreview": "拼音",
-  "pinyinOverride": "自定义拼音（选填）",
-  "pinyinOverrideHint": "处理多音字，如 le 或 yue，空格分隔多音节",
+  "pinyinOverride": "拼音规则（选填）",
+  "pinyinOverrideHint": "如 fan ruan，支持仅拼音匹配；空格分隔多音节",
   "pinyinReset": "恢复自动拼音",
 
   "meetingMinutes": "会议记录",

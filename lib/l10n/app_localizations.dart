@@ -1709,7 +1709,7 @@ abstract class AppLocalizations {
   /// No description provided for @dictionaryOriginalHint.
   ///
   /// In en, this message translates to:
-  /// **'Incorrect form from speech recognition, or correct form to preserve'**
+  /// **'Optional: specific source word to correct; leave empty to match by pinyin pattern'**
   String get dictionaryOriginalHint;
 
   /// No description provided for @dictionaryCorrected.
@@ -1721,13 +1721,13 @@ abstract class AppLocalizations {
   /// No description provided for @dictionaryCorrectedHint.
   ///
   /// In en, this message translates to:
-  /// **'Leave empty to preserve the original word as-is'**
+  /// **'Fill to set correction target; leave empty to preserve matched words as-is'**
   String get dictionaryCorrectedHint;
 
   /// No description provided for @dictionaryCorrectedTip.
   ///
   /// In en, this message translates to:
-  /// **'Fill in \'Correct To\' for correction rules (A→B); leave empty for preservation rules (keep as-is)'**
+  /// **'You can use only \'Pinyin Pattern + Correct To\' for homophone correction; leave \'Correct To\' empty for preserve rules'**
   String get dictionaryCorrectedTip;
 
   /// No description provided for @dictionaryCategory.
@@ -1889,7 +1889,7 @@ abstract class AppLocalizations {
   /// No description provided for @dictionaryImportInvalidFormat.
   ///
   /// In en, this message translates to:
-  /// **'Invalid CSV format: missing original column'**
+  /// **'Invalid CSV format: missing pinyinPattern column'**
   String get dictionaryImportInvalidFormat;
 
   /// No description provided for @dictionaryImportFailed.
@@ -1919,13 +1919,13 @@ abstract class AppLocalizations {
   /// No description provided for @pinyinOverride.
   ///
   /// In en, this message translates to:
-  /// **'Custom Pinyin (optional)'**
+  /// **'Pinyin Pattern (optional)'**
   String get pinyinOverride;
 
   /// No description provided for @pinyinOverrideHint.
   ///
   /// In en, this message translates to:
-  /// **'Handle polyphonic chars, e.g. le or yue, space-separated'**
+  /// **'E.g. fan ruan; supports pinyin-only matching, space-separated syllables'**
   String get pinyinOverrideHint;
 
   /// No description provided for @pinyinReset.

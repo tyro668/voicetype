@@ -2,9 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:data_table_2/data_table_2.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/dictionary_entry.dart';
@@ -444,7 +443,9 @@ class _DictionaryPageState extends State<DictionaryPage> {
                                   ),
                                   DataCell(
                                     Text(
-                                      entry.original,
+                                      entry.original.trim().isEmpty
+                                          ? '—'
+                                          : entry.original,
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: isCorr
@@ -708,17 +709,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
       final csv = settings.exportDictionaryAsCsv();
       await File(targetPath).writeAsString('\uFEFF$csv', encoding: utf8);
 
-      final targetDir = File(targetPath).parent.path;
-      final baseName = p.basenameWithoutExtension(targetPath);
-      final examplePath = p.join(targetDir, '${baseName}_example.csv');
-      final exampleCsv = settings.exportDictionaryExampleCsv();
-      await File(
-        examplePath,
-      ).writeAsString('\uFEFF$exampleCsv', encoding: utf8);
-
-      _showSnackBar(
-        l10n.dictionaryExportWithExampleSuccess(targetPath, examplePath),
-      );
+      _showSnackBar(l10n.dictionaryExportSuccess(targetPath));
     } catch (_) {
       _showSnackBar(l10n.dictionaryExportFailed, isError: true);
     }

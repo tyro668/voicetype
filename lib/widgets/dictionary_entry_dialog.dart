@@ -26,7 +26,7 @@ Future<DictionaryEntry?> showDictionaryEntryDialog(
   final correctedCtrl = TextEditingController(text: existing?.corrected ?? '');
   final categoryCtrl = TextEditingController(text: existing?.category ?? '');
   final pinyinCtrl = TextEditingController(
-    text: existing?.pinyinOverride ?? '',
+    text: existing?.pinyinPattern ?? existing?.pinyinOverride ?? '',
   );
 
   final confirmed = await showDialog<bool>(
@@ -45,23 +45,30 @@ Future<DictionaryEntry?> showDictionaryEntryDialog(
   if (confirmed != true) return null;
 
   final orig = originalCtrl.text.trim();
-  if (orig.isEmpty) return null;
   final corr = correctedCtrl.text.trim();
   final cat = categoryCtrl.text.trim();
   final pin = pinyinCtrl.text.trim();
+
+  if (orig.isEmpty && pin.isEmpty) return null;
 
   if (isEditing) {
     var updated = existing.copyWith(
       original: orig,
       corrected: corr.isEmpty ? existing.corrected : corr,
       category: cat.isEmpty ? existing.category : cat,
-      pinyinOverride: pin.isEmpty ? existing.pinyinOverride : pin,
+      pinyinPattern: pin.isEmpty ? existing.pinyinPattern : pin,
+      pinyinOverride: pin.isEmpty ? existing.pinyinOverride : null,
     );
     if (corr.isEmpty && existing.corrected != null) {
       updated = updated.clearCorrected();
     }
-    if (pin.isEmpty && existing.pinyinOverride != null) {
-      updated = updated.clearPinyinOverride();
+    if (pin.isEmpty) {
+      if (existing.pinyinPattern != null) {
+        updated = updated.clearPinyinPattern();
+      }
+      if (existing.pinyinOverride != null) {
+        updated = updated.clearPinyinOverride();
+      }
     }
     if (cat.isEmpty && existing.category != null) {
       updated = DictionaryEntry(
@@ -71,6 +78,7 @@ Future<DictionaryEntry?> showDictionaryEntryDialog(
         category: null,
         enabled: updated.enabled,
         pinyinOverride: updated.pinyinOverride,
+        pinyinPattern: updated.pinyinPattern,
         createdAt: updated.createdAt,
       );
     }
@@ -80,7 +88,7 @@ Future<DictionaryEntry?> showDictionaryEntryDialog(
       original: orig,
       corrected: corr.isEmpty ? null : corr,
       category: cat.isEmpty ? null : cat,
-      pinyinOverride: pin.isEmpty ? null : pin,
+      pinyinPattern: pin.isEmpty ? null : pin,
     );
   }
 }
@@ -254,7 +262,9 @@ class _DictionaryEntryDialogContentState
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 labelText: l10n.pinyinOverride,
-                hintText: _autoPinyin.isEmpty ? '...' : _autoPinyin,
+                hintText: _autoPinyin.isEmpty
+                    ? l10n.pinyinOverrideHint
+                    : _autoPinyin,
                 border: const OutlineInputBorder(),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(

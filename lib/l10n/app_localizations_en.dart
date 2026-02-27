@@ -872,18 +872,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dictionaryOriginalHint =>
-      'Incorrect form from speech recognition, or correct form to preserve';
+      'Optional: specific source word to correct; leave empty to match by pinyin pattern';
 
   @override
   String get dictionaryCorrected => 'Correct To (optional)';
 
   @override
   String get dictionaryCorrectedHint =>
-      'Leave empty to preserve the original word as-is';
+      'Fill to set correction target; leave empty to preserve matched words as-is';
 
   @override
   String get dictionaryCorrectedTip =>
-      'Fill in \'Correct To\' for correction rules (A→B); leave empty for preservation rules (keep as-is)';
+      'You can use only \'Pinyin Pattern + Correct To\' for homophone correction; leave \'Correct To\' empty for preserve rules';
 
   @override
   String get dictionaryCategory => 'Category (optional)';
@@ -977,7 +977,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dictionaryImportInvalidFormat =>
-      'Invalid CSV format: missing original column';
+      'Invalid CSV format: missing pinyinPattern column';
 
   @override
   String get dictionaryImportFailed => 'Failed to import CSV';
@@ -993,11 +993,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pinyinPreview => 'Pinyin';
 
   @override
-  String get pinyinOverride => 'Custom Pinyin (optional)';
+  String get pinyinOverride => 'Pinyin Pattern (optional)';
 
   @override
   String get pinyinOverrideHint =>
-      'Handle polyphonic chars, e.g. le or yue, space-separated';
+      'E.g. fan ruan; supports pinyin-only matching, space-separated syllables';
 
   @override
   String get pinyinReset => 'Reset to auto pinyin';

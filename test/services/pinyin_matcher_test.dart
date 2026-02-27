@@ -18,36 +18,30 @@ void main() {
 
     test('empty text returns no matches', () {
       matcher.buildIndex([
-        DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
       ]);
       final results = matcher.findMatches('');
       expect(results, isEmpty);
     });
 
     test('exact literal match for original', () {
-      final entry = DictionaryEntry.create(
-        original: '帆软',
-        corrected: 'FanRuan',
-      );
+      final entry = DictionaryEntry.create(original: '墨提斯', corrected: 'Metis');
       matcher.buildIndex([entry]);
 
-      final results = matcher.findMatches('今天用了帆软做报表');
+      final results = matcher.findMatches('今天用了墨提斯做报表');
       expect(results, hasLength(1));
-      expect(results.first.original, '帆软');
-      expect(results.first.corrected, 'FanRuan');
+      expect(results.first.original, '墨提斯');
+      expect(results.first.corrected, 'Metis');
     });
 
     test('pinyin match: same pinyin different characters', () {
-      final entry = DictionaryEntry.create(
-        original: '帆软',
-        corrected: 'FanRuan',
-      );
+      final entry = DictionaryEntry.create(original: '墨提斯', corrected: 'Metis');
       matcher.buildIndex([entry]);
 
-      // "翻软" has the same pinyin as "帆软" (fan ruan)
-      final results = matcher.findMatches('今天用了翻软做报表');
+      // "莫提斯" has the same pinyin as "墨提斯" (mo ti si)
+      final results = matcher.findMatches('今天用了莫提斯做报表');
       expect(results, hasLength(1));
-      expect(results.first.corrected, 'FanRuan');
+      expect(results.first.corrected, 'Metis');
     });
 
     test('no match for unrelated text', () {
@@ -60,24 +54,24 @@ void main() {
 
     test('multiple matches in same text', () {
       final entries = [
-        DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
         DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+        DictionaryEntry.create(original: '星阔', corrected: 'XingKuo'),
       ];
       matcher.buildIndex(entries);
 
-      final results = matcher.findMatches('在墨提斯里看了帆软的数据');
+      final results = matcher.findMatches('在墨提斯里看了星阔的数据');
       expect(results, hasLength(2));
     });
 
     test('disabled entries are not indexed', () {
       final entry = DictionaryEntry.create(
-        original: '帆软',
-        corrected: 'FanRuan',
+        original: '墨提斯',
+        corrected: 'Metis',
         enabled: false,
       );
       matcher.buildIndex([entry]);
 
-      final results = matcher.findMatches('帆软');
+      final results = matcher.findMatches('墨提斯');
       expect(results, isEmpty);
     });
 
@@ -92,11 +86,11 @@ void main() {
 
     test('rebuildIndex clears old data', () {
       final entry1 = DictionaryEntry.create(
-        original: '帆软',
-        corrected: 'FanRuan',
+        original: '墨提斯',
+        corrected: 'Metis',
       );
       matcher.buildIndex([entry1]);
-      expect(matcher.findMatches('帆软'), hasLength(1));
+      expect(matcher.findMatches('墨提斯'), hasLength(1));
 
       // Rebuild with different data
       final entry2 = DictionaryEntry.create(
@@ -106,7 +100,7 @@ void main() {
       matcher.buildIndex([entry2]);
 
       // Old entry should not match
-      expect(matcher.findMatches('帆软'), isEmpty);
+      expect(matcher.findMatches('墨提斯'), isEmpty);
       // New entry should match
       expect(matcher.findMatches('墨提斯'), hasLength(1));
     });
@@ -132,14 +126,11 @@ void main() {
     });
 
     test('corrected word in text also triggers match', () {
-      final entry = DictionaryEntry.create(
-        original: '翻软',
-        corrected: 'FanRuan',
-      );
+      final entry = DictionaryEntry.create(original: '莫提斯', corrected: 'Metis');
       matcher.buildIndex([entry]);
 
       // Text already contains the corrected form
-      final results = matcher.findMatches('今天用了FanRuan做报表');
+      final results = matcher.findMatches('今天用了Metis做报表');
       expect(results, hasLength(1));
     });
 
@@ -159,6 +150,20 @@ void main() {
 
       final results = fuzzyMatcher.findMatches('库存充足');
       expect(results, hasLength(1));
+    });
+
+    test('pinyinPattern-only entry can match even when original is empty', () {
+      final entry = DictionaryEntry.create(
+        original: '',
+        corrected: '墨提斯',
+        pinyinPattern: 'mo ti si',
+      );
+      matcher.buildIndex([entry]);
+
+      final results = matcher.findMatches('今天用了莫提斯做报表');
+      expect(results, hasLength(1));
+      expect(results.first.corrected, '墨提斯');
+      expect(results.first.original, isEmpty);
     });
   });
 }

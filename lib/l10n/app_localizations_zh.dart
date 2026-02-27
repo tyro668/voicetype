@@ -832,16 +832,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dictionaryOriginal => '原始词';
 
   @override
-  String get dictionaryOriginalHint => '语音识别可能输出的错误写法，或需要保留的正确写法';
+  String get dictionaryOriginalHint => '可选：直接指定要纠正的原始词；留空时按拼音规则匹配';
 
   @override
   String get dictionaryCorrected => '纠正为（选填）';
 
   @override
-  String get dictionaryCorrectedHint => '留空表示保留原词不改写';
+  String get dictionaryCorrectedHint => '填写表示纠正目标；留空表示保留命中的词不改写';
 
   @override
-  String get dictionaryCorrectedTip => '填写“纠正为”则为纠正规则（A→B），留空则为保留规则（不要改写此词）';
+  String get dictionaryCorrectedTip => '可仅填写“自定义拼音 + 纠正为”实现同音纠正；若“纠正为”留空则为保留规则';
 
   @override
   String get dictionaryCategory => '分类（选填）';
@@ -932,7 +932,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get dictionaryImportInvalidFormat => 'CSV 格式无效：缺少 original 列';
+  String get dictionaryImportInvalidFormat => 'CSV 格式无效：缺少 pinyinPattern 列';
 
   @override
   String get dictionaryImportFailed => '导入 CSV 失败';
@@ -947,10 +947,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pinyinPreview => '拼音';
 
   @override
-  String get pinyinOverride => '自定义拼音（选填）';
+  String get pinyinOverride => '拼音规则（选填）';
 
   @override
-  String get pinyinOverrideHint => '处理多音字，如 le 或 yue，空格分隔多音节';
+  String get pinyinOverrideHint => '如 fan ruan，支持仅拼音匹配；空格分隔多音节';
 
   @override
   String get pinyinReset => '恢复自动拼音';
