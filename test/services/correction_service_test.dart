@@ -204,6 +204,41 @@ void main() {
       expect(result.llmInvoked, isFalse);
     });
 
+    test(
+      'uses local normalization fallback on LLM failure for homophones',
+      () async {
+        matcher.buildIndex([
+          DictionaryEntry.create(original: '好数连', corrected: 'hao shu lian'),
+          DictionaryEntry.create(original: '帆软', corrected: 'FanRuan'),
+        ]);
+
+        server.listen((request) async {
+          request.response
+            ..statusCode = 500
+            ..write('Internal Server Error');
+          await request.response.close();
+        });
+
+        final service = CorrectionService(
+          matcher: matcher,
+          context: context,
+          aiConfig: AiEnhanceConfig(
+            agentName: 'test',
+            baseUrl: baseUrl,
+            apiKey: 'test-key',
+            model: 'test-model',
+            prompt: '',
+          ),
+          correctionPrompt: '纠错 prompt',
+        );
+
+        final input = '好数联这个产品跟帆软的其他产品不太一样，它是一个底层数据治理工具。';
+        final result = await service.correct(input);
+        expect(result.text, '好数连这个产品跟帆软的其他产品不太一样，它是一个底层数据治理工具。');
+        expect(result.llmInvoked, isFalse);
+      },
+    );
+
     test('limits #R references by maxReferenceEntries', () async {
       matcher.buildIndex([
         DictionaryEntry.create(original: '兴阔', corrected: '星阔'),

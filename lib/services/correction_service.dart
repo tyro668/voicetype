@@ -64,6 +64,7 @@ class CorrectionService {
     var matchesCount = 0;
     var selectedCount = 0;
     var referenceChars = 0;
+    var fallbackText = rawSttText;
 
     try {
       // 1. 拼音模糊匹配
@@ -108,6 +109,8 @@ class CorrectionService {
         return CorrectionResult(text: rawSttText);
       }
 
+      fallbackText = _normalizeMatchedTermsFromHits(rawSttText, selectedHits);
+
       // 2. 构建 #R 引用表
       final referenceStr = _buildReferenceStringFromHits(selectedHits);
       referenceChars = referenceStr.length;
@@ -134,7 +137,7 @@ class CorrectionService {
 
       // 安全校验：若 LLM 返回空，退回原文
       if (correctedText.isEmpty) {
-        correctedText = rawSttText;
+        correctedText = fallbackText;
       }
 
       correctedText = _normalizeMatchedTermsFromHits(
@@ -185,8 +188,8 @@ class CorrectionService {
         llmInvoked: false,
       );
       // 纠错失败不影响主流程，退回原文
-      context.addSegment(rawSttText);
-      return CorrectionResult(text: rawSttText);
+      context.addSegment(fallbackText);
+      return CorrectionResult(text: fallbackText);
     }
   }
 
