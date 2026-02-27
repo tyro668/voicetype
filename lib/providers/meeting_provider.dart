@@ -460,29 +460,47 @@ class MeetingProvider extends ChangeNotifier {
 
   /// 重新生成会议总结（供外部调用）
   Future<void> regenerateSummary(String meetingId) async {
+    await regenerateSummaryByContent(meetingId);
+  }
+
+  /// 基于指定会议纪要内容重新生成会议总结。
+  ///
+  /// 当 [content] 为空时，将回退到数据库中该会议的 fullTranscription。
+  /// 返回值表示是否成功生成并更新了总结。
+  Future<bool> regenerateSummaryByContent(
+    String meetingId, {
+    String? content,
+    AiEnhanceConfig? aiConfig,
+  }) async {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
-    if (meeting == null) return;
+    if (meeting == null) return false;
 
-    final content = (meeting.fullTranscription ?? '').trim();
-    if (content.isEmpty) return;
+    final mergedContent = (content ?? meeting.fullTranscription ?? '').trim();
+    if (mergedContent.isEmpty) return false;
 
-    // 读取当前 AI 配置
-    final config = _aiConfig;
-    if (config == null) return;
+    // 优先使用显式传入的 AI 配置，避免依赖会话态配置
+    final config = aiConfig ?? _aiConfig;
+    if (config == null) return false;
 
     final oldEnabled = _aiEnhanceEnabled;
-    _aiEnhanceEnabled = true;
-    _aiConfig = config;
+    final oldConfig = _aiConfig;
+    try {
+      _aiEnhanceEnabled = true;
+      _aiConfig = config;
 
-    final summary = await _generateSummary(content);
-    if (summary.isNotEmpty) {
+      final summary = await _generateSummary(mergedContent);
+      if (summary.isEmpty) return false;
+
       meeting.summary = summary;
+      meeting.fullTranscription = mergedContent;
       meeting.updatedAt = DateTime.now();
       await AppDatabase.instance.updateMeeting(meeting);
       await _loadMeetings();
+      return true;
+    } finally {
+      _aiEnhanceEnabled = oldEnabled;
+      _aiConfig = oldConfig;
     }
-
-    _aiEnhanceEnabled = oldEnabled;
   }
 
   /// 流式重新生成会议总结，逐块返回文本

@@ -589,7 +589,6 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               );
             }),
-            _buildPromptTemplateSelector(settings, l10n),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -629,6 +628,8 @@ class _MainScreenState extends State<MainScreen> {
                             color: _cs.onSurfaceVariant,
                           ),
                         ),
+                        const Spacer(),
+                        _buildPromptTemplateSelector(settings, l10n),
                       ],
                     ),
                   ),
@@ -656,58 +657,53 @@ class _MainScreenState extends State<MainScreen> {
         ? settings.activePromptTemplateId
         : activeTemplate.id;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-      child: Material(
-        color: _cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(10),
-        child: PopupMenuButton<String>(
-          tooltip: l10n.promptTemplates,
-          initialValue: activeTemplateId,
-          onSelected: (templateId) {
-            if (templateId == settings.activePromptTemplateId) return;
-            settings.setActivePromptTemplate(templateId);
-          },
-          itemBuilder: (_) => templates.map((template) {
-            return CheckedPopupMenuItem<String>(
-              value: template.id,
-              checked: template.id == activeTemplateId,
-              child: SizedBox(
-                width: 180,
-                child: Text(
-                  _localizedTemplateName(template, l10n),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            );
-          }).toList(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.auto_fix_high_outlined,
-                  size: 16,
-                  color: _cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _localizedTemplateName(activeTemplate, l10n),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _cs.onSurface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                Icon(Icons.expand_more, size: 16, color: _cs.onSurfaceVariant),
-              ],
+    return PopupMenuButton<String>(
+      tooltip: l10n.promptTemplates,
+      initialValue: activeTemplateId,
+      onSelected: (templateId) {
+        if (templateId == settings.activePromptTemplateId) return;
+        settings.setActivePromptTemplate(templateId);
+      },
+      itemBuilder: (_) => templates.map((template) {
+        return CheckedPopupMenuItem<String>(
+          value: template.id,
+          checked: template.id == activeTemplateId,
+          child: SizedBox(
+            width: 180,
+            child: Text(
+              _localizedTemplateName(template, l10n),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+        );
+      }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_fix_high_outlined,
+              size: 14,
+              color: _cs.onSurfaceVariant.withValues(alpha: 0.8),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(
+              width: 68,
+              child: Text(
+                _localizedTemplateName(activeTemplate, l10n),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
