@@ -4,6 +4,10 @@ import '../../l10n/app_localizations.dart';
 import '../../models/prompt_template.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/ai_enhance_service.dart';
+import '../../services/correction_context.dart';
+import '../../services/correction_service.dart';
+import 'package:lpinyin/lpinyin.dart';
+import '../../models/dictionary_entry.dart';
 
 class PromptWorkshopPage extends StatefulWidget {
   const PromptWorkshopPage({super.key});
@@ -753,11 +757,42 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       _testError = '';
     });
 
+    final correctionEntries = _activeCorrectionEntries(settings);
+
     try {
+      var inputText = _testInputController.text;
+
+      // 若纠错已启用且词典非空，先执行字典纠错
+      if (settings.correctionEnabled &&
+          settings.dictionaryEntries.isNotEmpty &&
+          settings.correctionPrompt.isNotEmpty) {
+        final correctionService = CorrectionService(
+          matcher: settings.pinyinMatcher,
+          context: CorrectionContext(),
+          aiConfig: settings.effectiveAiEnhanceConfig,
+          correctionPrompt: settings.correctionPrompt,
+          maxReferenceEntries: settings.correctionMaxReferenceEntries,
+          minCandidateScore: settings.correctionMinCandidateScore,
+        );
+        final correctionResult = await correctionService.correct(inputText);
+        inputText = correctionResult.text;
+      }
+      if (correctionEntries.isNotEmpty) {
+        inputText = _applyDictionaryCorrections(inputText, correctionEntries);
+      }
+
       final config = settings.effectiveAiEnhanceConfig;
       final service = AiEnhanceService(config);
-      final result = await service.enhance(_testInputController.text);
-      _testOutputController.text = result.text;
+      final result = await service.enhance(inputText);
+      var outputText = result.text;
+      if (correctionEntries.isNotEmpty) {
+        outputText = _applyDictionaryCorrections(outputText, correctionEntries);
+        outputText = _restoreChineseTermsFromTransliteration(
+          outputText,
+          correctionEntries,
+        );
+      }
+      _testOutputController.text = outputText;
     } catch (e) {
       setState(() {
         _testError = e.toString();
@@ -767,6 +802,114 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
         setState(() => _testing = false);
       }
     }
+  }
+
+  List<DictionaryEntry> _activeCorrectionEntries(SettingsProvider settings) {
+    return settings.dictionaryEntries
+        .where(
+          (e) =>
+              e.enabled &&
+              e.type == DictionaryEntryType.correction &&
+              e.corrected != null &&
+              e.corrected!.trim().isNotEmpty,
+        )
+        .toList(growable: false);
+  }
+
+  String _applyDictionaryCorrections(
+    String text,
+    List<DictionaryEntry> entries,
+  ) {
+    var output = text;
+    for (final entry in entries) {
+      final original = entry.original.trim();
+      final corrected = (entry.corrected ?? '').trim();
+      if (original.isEmpty || corrected.isEmpty) continue;
+      final target = _dictionaryOutputTarget(entry);
+      output = output.replaceAll(original, target);
+      if (_isChineseToLatinAlias(entry)) {
+        output = output.replaceAll(
+          RegExp(RegExp.escape(corrected), caseSensitive: false),
+          original,
+        );
+      }
+    }
+    return output;
+  }
+
+  bool _containsChinese(String text) {
+    return RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
+  }
+
+  String _pinyinWithSeparator(String text, {required String separator}) {
+    if (text.trim().isEmpty) return '';
+    try {
+      return PinyinHelper.getPinyinE(
+        text,
+        separator: separator,
+        defPinyin: '#',
+        format: PinyinFormat.WITHOUT_TONE,
+      ).toLowerCase().replaceAll('#', '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _restoreChineseTermsFromTransliteration(
+    String text,
+    List<DictionaryEntry> entries,
+  ) {
+    var output = text;
+    for (final entry in entries) {
+      final corrected = _preferredChineseTerm(entry);
+      if (corrected == null || corrected.isEmpty) continue;
+
+      final pinyinSpaced = _pinyinWithSeparator(corrected, separator: ' ');
+      if (pinyinSpaced.isEmpty) continue;
+
+      final syllables = pinyinSpaced
+          .split(RegExp(r'\s+'))
+          .where((s) => s.isNotEmpty)
+          .toList(growable: false);
+      if (syllables.isEmpty) continue;
+
+      final pattern = RegExp(
+        '\\b${syllables.map(RegExp.escape).join(r'[\\s_-]*')}\\b',
+        caseSensitive: false,
+      );
+      output = output.replaceAll(pattern, corrected);
+    }
+    return output;
+  }
+
+  bool _isChineseToLatinAlias(DictionaryEntry entry) {
+    final original = entry.original.trim();
+    final corrected = (entry.corrected ?? '').trim();
+    return corrected.isNotEmpty &&
+        _containsChinese(original) &&
+        !_containsChinese(corrected);
+  }
+
+  String _dictionaryOutputTarget(DictionaryEntry entry) {
+    final original = entry.original.trim();
+    final corrected = (entry.corrected ?? '').trim();
+    if (corrected.isEmpty) return original;
+    if (_isChineseToLatinAlias(entry)) {
+      return original;
+    }
+    return corrected;
+  }
+
+  String? _preferredChineseTerm(DictionaryEntry entry) {
+    final original = entry.original.trim();
+    if (_containsChinese(original)) {
+      return original;
+    }
+    final corrected = (entry.corrected ?? '').trim();
+    if (_containsChinese(corrected)) {
+      return corrected;
+    }
+    return null;
   }
 
   void _showEditTemplateDialog(

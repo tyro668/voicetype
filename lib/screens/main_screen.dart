@@ -437,6 +437,8 @@ class _MainScreenState extends State<MainScreen> {
         correctionPrompt: settings.correctionEffective
             ? settings.correctionPrompt
             : null,
+        maxReferenceEntries: settings.correctionMaxReferenceEntries,
+        minCandidateScore: settings.correctionMinCandidateScore,
       );
     }
   }
@@ -451,6 +453,8 @@ class _MainScreenState extends State<MainScreen> {
         matcher: settings.pinyinMatcher,
         aiConfig: settings.effectiveAiEnhanceConfig,
         correctionPrompt: settings.correctionPrompt,
+        maxReferenceEntries: settings.correctionMaxReferenceEntries,
+        minCandidateScore: settings.correctionMinCandidateScore,
       );
     } else {
       recording.disableCorrectionService();

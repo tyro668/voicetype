@@ -1412,6 +1412,42 @@ abstract class AppLocalizations {
   /// **'Meeting Recording Tokens'**
   String get meetingTokenUsage;
 
+  /// No description provided for @correctionTokenUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction Tokens'**
+  String get correctionTokenUsage;
+
+  /// No description provided for @correctionRecallEfficiency.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction Recall Efficiency'**
+  String get correctionRecallEfficiency;
+
+  /// No description provided for @correctionTotalCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction Calls'**
+  String get correctionTotalCalls;
+
+  /// No description provided for @correctionLlmCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'LLM Calls'**
+  String get correctionLlmCalls;
+
+  /// No description provided for @correctionLlmRate.
+  ///
+  /// In en, this message translates to:
+  /// **'LLM Call Rate'**
+  String get correctionLlmRate;
+
+  /// No description provided for @correctionSelectedRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Candidate Selection Rate'**
+  String get correctionSelectedRate;
+
   /// No description provided for @allTokenUsage.
   ///
   /// In en, this message translates to:

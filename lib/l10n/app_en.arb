@@ -278,6 +278,12 @@
   "enhanceOutputTokens": "Output Tokens",
   "enhanceTotalTokens": "Total Tokens",
   "meetingTokenUsage": "Meeting Recording Tokens",
+  "correctionTokenUsage": "Correction Tokens",
+  "correctionRecallEfficiency": "Correction Recall Efficiency",
+  "correctionTotalCalls": "Correction Calls",
+  "correctionLlmCalls": "LLM Calls",
+  "correctionLlmRate": "LLM Call Rate",
+  "correctionSelectedRate": "Candidate Selection Rate",
   "allTokenUsage": "All Tokens Summary",
 
   "showInDock": "Show in Dock",

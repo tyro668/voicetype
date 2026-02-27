@@ -96,6 +96,8 @@ class MeetingRecordingService {
     int windowSize = 5,
     PinyinMatcher? pinyinMatcher,
     String? correctionPrompt,
+    int maxReferenceEntries = 15,
+    double minCandidateScore = 0.30,
   }) async {
     if (_isRecording) {
       throw MeetingRecordingException('已有会议正在录制中');
@@ -117,6 +119,8 @@ class MeetingRecordingService {
         context: _correctionContext,
         aiConfig: aiConfig,
         correctionPrompt: correctionPrompt,
+        maxReferenceEntries: maxReferenceEntries,
+        minCandidateScore: minCandidateScore,
       );
     } else {
       _correctionService = null;

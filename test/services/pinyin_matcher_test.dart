@@ -142,5 +142,23 @@ void main() {
       final results = matcher.findMatches('今天用了FanRuan做报表');
       expect(results, hasLength(1));
     });
+
+    test('single char fuzzy is disabled by default', () {
+      final entry = DictionaryEntry.create(original: '柯', corrected: '科');
+      matcher.buildIndex([entry]);
+
+      // 库(ku) 与 柯(ke) 同声母 k，旧逻辑会被单字模糊误召回
+      final results = matcher.findMatches('库存充足');
+      expect(results, isEmpty);
+    });
+
+    test('single char fuzzy can be enabled explicitly', () {
+      final fuzzyMatcher = PinyinMatcher(enableSingleCharFuzzy: true);
+      final entry = DictionaryEntry.create(original: '柯', corrected: '科');
+      fuzzyMatcher.buildIndex([entry]);
+
+      final results = fuzzyMatcher.findMatches('库存充足');
+      expect(results, hasLength(1));
+    });
   });
 }

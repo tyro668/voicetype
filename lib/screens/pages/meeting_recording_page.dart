@@ -75,6 +75,8 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
         correctionPrompt: settings.correctionEffective
             ? settings.correctionPrompt
             : null,
+        maxReferenceEntries: settings.correctionMaxReferenceEntries,
+        minCandidateScore: settings.correctionMinCandidateScore,
       );
       _titleController.text = meeting.title;
     } catch (e) {

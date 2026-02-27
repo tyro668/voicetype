@@ -273,6 +273,12 @@
   "enhanceOutputTokens": "输出 Token",
   "enhanceTotalTokens": "总 Token",
   "meetingTokenUsage": "会议记录 Token 用量",
+  "correctionTokenUsage": "纠错 Token 用量",
+  "correctionRecallEfficiency": "纠错召回效率",
+  "correctionTotalCalls": "纠错调用次数",
+  "correctionLlmCalls": "LLM 调用次数",
+  "correctionLlmRate": "LLM 调用率",
+  "correctionSelectedRate": "候选入选率",
   "allTokenUsage": "全部 Token 汇总",
 
   "showInDock": "在 Dock 中显示",

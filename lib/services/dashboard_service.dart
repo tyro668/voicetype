@@ -1,5 +1,6 @@
 import '../database/app_database.dart';
 import '../models/dashboard_stats.dart';
+import 'correction_stats_service.dart';
 import 'token_stats_service.dart';
 
 /// 仪表盘统计计算服务。
@@ -120,7 +121,11 @@ class DashboardService {
     final tokenStats = await TokenStatsService.instance.getTokens();
 
     // ── 会议 AI 增强 token 用量 ──
-    final meetingTokenStats = await TokenStatsService.instance.getMeetingTokens();
+    final meetingTokenStats = await TokenStatsService.instance
+        .getMeetingTokens();
+
+    // ── 纠错 token 用量 ──
+    final correctionStats = await CorrectionStatsService.instance.getSnapshot();
 
     return DashboardStats(
       totalCount: totalCount,
@@ -150,6 +155,13 @@ class DashboardService {
       enhanceCompletionTokens: tokenStats.completionTokens,
       meetingEnhancePromptTokens: meetingTokenStats.promptTokens,
       meetingEnhanceCompletionTokens: meetingTokenStats.completionTokens,
+      correctionPromptTokens: correctionStats.promptTokens,
+      correctionCompletionTokens: correctionStats.completionTokens,
+      correctionCalls: correctionStats.calls,
+      correctionLlmCalls: correctionStats.llmCalls,
+      correctionMatches: correctionStats.matches,
+      correctionSelected: correctionStats.selected,
+      correctionReferenceChars: correctionStats.referenceChars,
     );
   }
 

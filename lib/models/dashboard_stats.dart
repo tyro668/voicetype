@@ -70,6 +70,17 @@ class DashboardStats {
   final int meetingEnhancePromptTokens;
   final int meetingEnhanceCompletionTokens;
 
+  // ── 纠错 token 用量 ──
+  final int correctionPromptTokens;
+  final int correctionCompletionTokens;
+
+  // ── 纠错召回效率 ──
+  final int correctionCalls;
+  final int correctionLlmCalls;
+  final int correctionMatches;
+  final int correctionSelected;
+  final int correctionReferenceChars;
+
   const DashboardStats({
     required this.totalCount,
     required this.totalDurationMs,
@@ -98,6 +109,13 @@ class DashboardStats {
     required this.enhanceCompletionTokens,
     this.meetingEnhancePromptTokens = 0,
     this.meetingEnhanceCompletionTokens = 0,
+    this.correctionPromptTokens = 0,
+    this.correctionCompletionTokens = 0,
+    this.correctionCalls = 0,
+    this.correctionLlmCalls = 0,
+    this.correctionMatches = 0,
+    this.correctionSelected = 0,
+    this.correctionReferenceChars = 0,
   });
 
   /// 空状态。
@@ -127,6 +145,13 @@ class DashboardStats {
     enhanceCompletionTokens: 0,
     meetingEnhancePromptTokens: 0,
     meetingEnhanceCompletionTokens: 0,
+    correctionPromptTokens: 0,
+    correctionCompletionTokens: 0,
+    correctionCalls: 0,
+    correctionLlmCalls: 0,
+    correctionMatches: 0,
+    correctionSelected: 0,
+    correctionReferenceChars: 0,
   );
 
   bool get isEmpty => totalCount == 0;
@@ -136,8 +161,21 @@ class DashboardStats {
   int get meetingEnhanceTotalTokens =>
       meetingEnhancePromptTokens + meetingEnhanceCompletionTokens;
 
+  int get correctionTotalTokens =>
+      correctionPromptTokens + correctionCompletionTokens;
+
+  double get correctionLlmInvokeRate =>
+      correctionCalls > 0 ? correctionLlmCalls / correctionCalls : 0;
+
+  double get correctionSelectedRate =>
+      correctionMatches > 0 ? correctionSelected / correctionMatches : 0;
+
   /// 所有来源的总 token 数
-  int get allPromptTokens => enhancePromptTokens + meetingEnhancePromptTokens;
-  int get allCompletionTokens => enhanceCompletionTokens + meetingEnhanceCompletionTokens;
+  int get allPromptTokens =>
+      enhancePromptTokens + meetingEnhancePromptTokens + correctionPromptTokens;
+  int get allCompletionTokens =>
+      enhanceCompletionTokens +
+      meetingEnhanceCompletionTokens +
+      correctionCompletionTokens;
   int get allTotalTokens => allPromptTokens + allCompletionTokens;
 }

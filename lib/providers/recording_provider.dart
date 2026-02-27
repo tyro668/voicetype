@@ -74,12 +74,16 @@ class RecordingProvider extends ChangeNotifier {
     required PinyinMatcher matcher,
     required AiEnhanceConfig aiConfig,
     required String correctionPrompt,
+    int maxReferenceEntries = 15,
+    double minCandidateScore = 0.30,
   }) {
     _correctionService = CorrectionService(
       matcher: matcher,
       context: _correctionContext,
       aiConfig: aiConfig,
       correctionPrompt: correctionPrompt,
+      maxReferenceEntries: maxReferenceEntries,
+      minCandidateScore: minCandidateScore,
     );
   }
 
@@ -169,7 +173,6 @@ class RecordingProvider extends ChangeNotifier {
     _amplitudeSub?.cancel();
     _amplitudeSub = null;
     _correctionContext.reset();
-    _correctionService = null;
 
     // 无论当前状态如何，都先 reset recorder，确保干净状态
     await LogService.info('RECORDING', 'resetting recorder');

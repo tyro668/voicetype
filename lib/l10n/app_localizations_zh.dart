@@ -683,6 +683,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingTokenUsage => '会议记录 Token 用量';
 
   @override
+  String get correctionTokenUsage => '纠错 Token 用量';
+
+  @override
+  String get correctionRecallEfficiency => '纠错召回效率';
+
+  @override
+  String get correctionTotalCalls => '纠错调用次数';
+
+  @override
+  String get correctionLlmCalls => 'LLM 调用次数';
+
+  @override
+  String get correctionLlmRate => 'LLM 调用率';
+
+  @override
+  String get correctionSelectedRate => '候选入选率';
+
+  @override
   String get allTokenUsage => '全部 Token 汇总';
 
   @override

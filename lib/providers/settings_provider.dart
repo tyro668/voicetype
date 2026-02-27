@@ -16,6 +16,10 @@ import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
 
 class SettingsProvider extends ChangeNotifier {
+  static const _correctionMaxReferenceEntries = 15;
+  static const _correctionMinCandidateScore = 0.30;
+  static const _correctionEnableSingleCharFuzzy = false;
+
   static const _configKey = 'stt_provider_config';
   static const _hotkeyKey = 'hotkey';
   static const _meetingHotkeyKey = 'meeting_hotkey';
@@ -100,7 +104,9 @@ class SettingsProvider extends ChangeNotifier {
   // Correction settings
   bool _correctionEnabled = true;
   String _correctionPrompt = '';
-  final PinyinMatcher _pinyinMatcher = PinyinMatcher();
+  final PinyinMatcher _pinyinMatcher = PinyinMatcher(
+    enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
+  );
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -167,6 +173,9 @@ class SettingsProvider extends ChangeNotifier {
   bool get correctionEnabled => _correctionEnabled;
   String get correctionPrompt => _correctionPrompt;
   PinyinMatcher get pinyinMatcher => _pinyinMatcher;
+  int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
+  double get correctionMinCandidateScore => _correctionMinCandidateScore;
+  bool get correctionEnableSingleCharFuzzy => _correctionEnableSingleCharFuzzy;
 
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
@@ -193,13 +202,11 @@ class SettingsProvider extends ChangeNotifier {
       resolvedPrompt += _sceneMode.promptSuffix;
     }
 
-    // Append dictionary words if available (only when correction is disabled,
-    // otherwise correction service handles dictionary via #R protocol)
-    if (!_correctionEnabled) {
-      final dictSuffix = dictionaryWordsForPrompt;
-      if (dictSuffix.isNotEmpty) {
-        resolvedPrompt += dictSuffix;
-      }
+    // Append dictionary words to AI enhance prompt so the LLM preserves
+    // corrected terms and does not rewrite them (e.g. 帆软 → FanRuan).
+    final dictSuffix = dictionaryWordsForPrompt;
+    if (dictSuffix.isNotEmpty) {
+      resolvedPrompt += dictSuffix;
     }
 
     return base.copyWith(prompt: resolvedPrompt);
@@ -1030,17 +1037,31 @@ class SettingsProvider extends ChangeNotifier {
         final cat = (e.category != null && e.category!.isNotEmpty)
             ? '[${e.category}] '
             : '';
-        buf.writeln('- $cat遇到"${e.original}"时，应替换为"${e.corrected}"');
+        final original = e.original.trim();
+        final corrected = (e.corrected ?? '').trim();
+        final target = _correctionTargetText(e);
+        buf.writeln('- $cat遇到"$original"时，应替换为"$target"');
+        if (_isChineseToLatinAliasEntry(e) && corrected.isNotEmpty) {
+          buf.writeln('- $cat遇到"$corrected"时，应替换为"$original"');
+        }
       }
     }
 
-    if (preserves.isNotEmpty) {
+    // 收集所有需要保留原样的词：显式 preserve 条目 + correction 条目的纠正后形式
+    final preserveWords = <String>{};
+    for (final e in preserves) {
+      preserveWords.add(e.original);
+    }
+    for (final e in corrections) {
+      if (e.corrected != null && e.corrected!.isNotEmpty) {
+        preserveWords.add(e.corrected!);
+      }
+    }
+
+    if (preserveWords.isNotEmpty) {
       buf.writeln();
-      for (final e in preserves) {
-        final cat = (e.category != null && e.category!.isNotEmpty)
-            ? '[${e.category}] '
-            : '';
-        buf.writeln('- $cat遇到"${e.original}"时，保持原样不要改写');
+      for (final word in preserveWords) {
+        buf.writeln('- 遇到"$word"时，保持原样不要改写');
       }
     }
 
@@ -1053,6 +1074,30 @@ class SettingsProvider extends ChangeNotifier {
     _correctionEnabled = enabled;
     await _saveSetting(_correctionEnabledKey, enabled.toString());
     notifyListeners();
+  }
+
+  bool _containsChinese(String text) {
+    return RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
+  }
+
+  bool _isChineseToLatinAliasEntry(DictionaryEntry entry) {
+    final original = entry.original.trim();
+    final corrected = (entry.corrected ?? '').trim();
+    return entry.type == DictionaryEntryType.correction &&
+        corrected.isNotEmpty &&
+        _containsChinese(original) &&
+        !_containsChinese(corrected);
+  }
+
+  String _correctionTargetText(DictionaryEntry entry) {
+    final corrected = (entry.corrected ?? '').trim();
+    if (corrected.isEmpty) {
+      return entry.original;
+    }
+    if (_isChineseToLatinAliasEntry(entry)) {
+      return entry.original;
+    }
+    return corrected;
   }
 
   /// 纠错是否实际生效（总开关已开 + 词典非空）

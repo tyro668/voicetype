@@ -1,14 +1,37 @@
 import 'package:lpinyin/lpinyin.dart';
 import '../models/dictionary_entry.dart';
 
+enum PinyinMatchType { literal, pinyinExact, pinyinFuzzy }
+
+class PinyinMatchHit {
+  final DictionaryEntry entry;
+  final String observedText;
+  final PinyinMatchType matchType;
+
+  const PinyinMatchHit({
+    required this.entry,
+    required this.observedText,
+    required this.matchType,
+  });
+}
+
 /// 拼音模糊匹配引擎。
 ///
 /// 维护一个 拼音 → DictionaryEntry 列表的哈希索引。
 /// 当 ASR 返回文本后，对文本计算拼音并与索引做模糊匹配，
 /// 返回命中的词典条目（即"最小化关联字典"）。
 class PinyinMatcher {
+  final bool enableSingleCharFuzzy;
+
+  PinyinMatcher({this.enableSingleCharFuzzy = false});
+
   /// 拼音倒排索引：无声调拼音 → 词典条目列表
   final Map<String, List<DictionaryEntry>> _pinyinIndex = {};
+
+  /// 模糊召回桶：声母签名+音节数 -> 拼音键集合
+  final Map<String, List<String>> _fuzzyBucketIndex = {};
+
+  final Set<String> _allPinyinKeys = {};
 
   /// 原始词字面索引：用于快速精确匹配
   final Map<String, List<DictionaryEntry>> _literalIndex = {};
@@ -19,6 +42,8 @@ class PinyinMatcher {
   void buildIndex(List<DictionaryEntry> entries) {
     _pinyinIndex.clear();
     _literalIndex.clear();
+    _fuzzyBucketIndex.clear();
+    _allPinyinKeys.clear();
 
     for (final entry in entries) {
       if (!entry.enabled) continue;
@@ -31,6 +56,7 @@ class PinyinMatcher {
       final pinyin = entry.pinyinNormalized;
       if (pinyin.isNotEmpty) {
         _pinyinIndex.putIfAbsent(pinyin, () => []).add(entry);
+        _addPinyinKey(pinyin);
       }
 
       // 3. 对 corrected 也建索引（用于检测 ASR 是否已正确输出）
@@ -38,6 +64,7 @@ class PinyinMatcher {
         final correctedPinyin = _normalizePinyin(entry.corrected!);
         if (correctedPinyin.isNotEmpty && correctedPinyin != pinyin) {
           _pinyinIndex.putIfAbsent(correctedPinyin, () => []).add(entry);
+          _addPinyinKey(correctedPinyin);
         }
         final lowerCorrected = entry.corrected!.toLowerCase();
         if (lowerCorrected != lowerOriginal) {
@@ -53,10 +80,23 @@ class PinyinMatcher {
   /// 先做字面精确匹配，再做拼音匹配。
   /// 返回去重后的命中条目列表。
   List<DictionaryEntry> findMatches(String text) {
+    final hits = findMatchHits(text);
+    final matched = <String, DictionaryEntry>{};
+    for (final hit in hits) {
+      matched.putIfAbsent(hit.entry.id, () => hit.entry);
+    }
+    return matched.values.toList();
+  }
+
+  /// 在输入文本中查找命中片段与词典条目的映射。
+  ///
+  /// 相比 [findMatches]，该方法保留了输入中实际命中的子串 observedText，
+  /// 可用于构建「命中变体 -> 标准词」的自动纠错规则。
+  List<PinyinMatchHit> findMatchHits(String text) {
     if (_pinyinIndex.isEmpty && _literalIndex.isEmpty) return [];
     if (text.trim().isEmpty) return [];
 
-    final matched = <String, DictionaryEntry>{};
+    final matched = <String, PinyinMatchHit>{};
     final chars = text.replaceAll(RegExp(r'\s+'), '');
 
     // 获取索引中最长词的字符数，作为窗口上限
@@ -72,9 +112,7 @@ class PinyinMatcher {
         final lowerSub = sub.toLowerCase();
         final literalHits = _literalIndex[lowerSub];
         if (literalHits != null) {
-          for (final entry in literalHits) {
-            matched.putIfAbsent(entry.id, () => entry);
-          }
+          _putHits(matched, literalHits, sub, PinyinMatchType.literal);
           continue; // 已匹配，无需拼音检查
         }
 
@@ -86,18 +124,19 @@ class PinyinMatcher {
           // 精确拼音匹配
           final pinyinHits = _pinyinIndex[subPinyin];
           if (pinyinHits != null) {
-            for (final entry in pinyinHits) {
-              matched.putIfAbsent(entry.id, () => entry);
-            }
+            _putHits(matched, pinyinHits, sub, PinyinMatchType.pinyinExact);
             continue;
           }
 
-          // 模糊拼音匹配：声母相同 + 韵母编辑距离 ≤ 1
-          for (final indexEntry in _pinyinIndex.entries) {
-            if (_isFuzzyMatch(subPinyin, indexEntry.key)) {
-              for (final entry in indexEntry.value) {
-                matched.putIfAbsent(entry.id, () => entry);
-              }
+          // 模糊拼音匹配：仅对长度>=2（默认），并使用桶索引缩小候选范围
+          if (len <= 1 && !enableSingleCharFuzzy) {
+            continue;
+          }
+          for (final key in _candidateFuzzyKeys(subPinyin)) {
+            final entries = _pinyinIndex[key];
+            if (entries == null) continue;
+            if (_isFuzzyMatch(subPinyin, key)) {
+              _putHits(matched, entries, sub, PinyinMatchType.pinyinFuzzy);
             }
           }
         }
@@ -105,6 +144,37 @@ class PinyinMatcher {
     }
 
     return matched.values.toList();
+  }
+
+  void _putHits(
+    Map<String, PinyinMatchHit> matched,
+    List<DictionaryEntry> entries,
+    String observedText,
+    PinyinMatchType matchType,
+  ) {
+    for (final entry in entries) {
+      final key = '${entry.id}|$observedText';
+      final existing = matched[key];
+      if (existing == null ||
+          _matchPriority(matchType) > _matchPriority(existing.matchType)) {
+        matched[key] = PinyinMatchHit(
+          entry: entry,
+          observedText: observedText,
+          matchType: matchType,
+        );
+      }
+    }
+  }
+
+  int _matchPriority(PinyinMatchType type) {
+    switch (type) {
+      case PinyinMatchType.literal:
+        return 3;
+      case PinyinMatchType.pinyinExact:
+        return 2;
+      case PinyinMatchType.pinyinFuzzy:
+        return 1;
+    }
   }
 
   /// 获取索引中最长词的字符数量
@@ -218,5 +288,26 @@ class PinyinMatcher {
   /// 检测字符串是否包含中文字符
   static bool _containsChinese(String text) {
     return RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
+  }
+
+  void _addPinyinKey(String pinyinKey) {
+    if (!_allPinyinKeys.add(pinyinKey)) return;
+    final bucketKey = _fuzzyBucketKey(pinyinKey);
+    _fuzzyBucketIndex.putIfAbsent(bucketKey, () => []).add(pinyinKey);
+  }
+
+  Iterable<String> _candidateFuzzyKeys(String pinyin) {
+    final bucketKey = _fuzzyBucketKey(pinyin);
+    final bucket = _fuzzyBucketIndex[bucketKey];
+    if (bucket == null || bucket.isEmpty) {
+      return _allPinyinKeys;
+    }
+    return bucket;
+  }
+
+  String _fuzzyBucketKey(String pinyin) {
+    final parts = pinyin.split(' ').where((e) => e.isNotEmpty).toList();
+    final shengmuSig = parts.map(_getShengmu).join('-');
+    return '${parts.length}|$shengmuSig';
   }
 }

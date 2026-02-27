@@ -4,6 +4,7 @@ import 'ai_enhance_service.dart';
 import 'correction_context.dart';
 import 'log_service.dart';
 import 'pinyin_matcher.dart';
+import 'correction_stats_service.dart';
 import 'token_stats_service.dart';
 
 /// 纠错结果
@@ -40,12 +41,16 @@ class CorrectionService {
   final CorrectionContext context;
   final AiEnhanceConfig aiConfig;
   final String correctionPrompt;
+  final int maxReferenceEntries;
+  final double minCandidateScore;
 
   CorrectionService({
     required this.matcher,
     required this.context,
     required this.aiConfig,
     required this.correctionPrompt,
+    this.maxReferenceEntries = 15,
+    this.minCandidateScore = 0.30,
   });
 
   /// 对 ASR 原始文本执行纠错。
@@ -56,15 +61,26 @@ class CorrectionService {
       return CorrectionResult(text: rawSttText);
     }
 
+    var matchesCount = 0;
+    var selectedCount = 0;
+    var referenceChars = 0;
+
     try {
       // 1. 拼音模糊匹配
-      final matches = matcher.findMatches(rawSttText);
+      final matchHits = matcher.findMatchHits(rawSttText);
+      matchesCount = matchHits.length;
 
-      if (matches.isEmpty) {
+      if (matchHits.isEmpty) {
         // 无匹配 → 跳过 LLM，直接输出
         await LogService.info(
           'CORRECTION',
           'no dictionary matches, skipping LLM',
+        );
+        await _recordStatsSafely(
+          matchesCount: 0,
+          selectedCount: 0,
+          referenceChars: 0,
+          llmInvoked: false,
         );
         context.addSegment(rawSttText);
         return CorrectionResult(text: rawSttText);
@@ -72,11 +88,35 @@ class CorrectionService {
 
       await LogService.info(
         'CORRECTION',
-        'found ${matches.length} dictionary matches',
+        'found ${matchHits.length} dictionary hit spans',
       );
 
+      final selectedHits = _selectHitsForReference(rawSttText, matchHits);
+      selectedCount = selectedHits.length;
+      if (selectedHits.isEmpty) {
+        await LogService.info(
+          'CORRECTION',
+          'all matches filtered out locally, skipping LLM',
+        );
+        await _recordStatsSafely(
+          matchesCount: matchesCount,
+          selectedCount: 0,
+          referenceChars: 0,
+          llmInvoked: false,
+        );
+        context.addSegment(rawSttText);
+        return CorrectionResult(text: rawSttText);
+      }
+
       // 2. 构建 #R 引用表
-      final referenceStr = _buildReferenceString(matches);
+      final referenceStr = _buildReferenceStringFromHits(selectedHits);
+      referenceChars = referenceStr.length;
+
+      await LogService.info(
+        'CORRECTION',
+        'reference selected ${selectedHits.length}/${matchHits.length}, '
+            'referenceChars=${referenceStr.length}',
+      );
 
       // 3. 构建完整 prompt 消息
       final userMessage = _buildUserMessage(
@@ -97,6 +137,11 @@ class CorrectionService {
         correctedText = rawSttText;
       }
 
+      correctedText = _normalizeMatchedTermsFromHits(
+        correctedText,
+        selectedHits,
+      );
+
       // 5. 记录 Token 消耗
       if (result.totalTokens > 0) {
         try {
@@ -106,6 +151,15 @@ class CorrectionService {
           );
         } catch (_) {}
       }
+
+      await _recordStatsSafely(
+        matchesCount: matchesCount,
+        selectedCount: selectedCount,
+        referenceChars: referenceChars,
+        llmInvoked: true,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+      );
 
       // 6. 更新上下文
       context.addSegment(correctedText);
@@ -124,6 +178,12 @@ class CorrectionService {
       );
     } catch (e) {
       await LogService.error('CORRECTION', 'correction failed: $e');
+      await _recordStatsSafely(
+        matchesCount: matchesCount,
+        selectedCount: selectedCount,
+        referenceChars: referenceChars,
+        llmInvoked: false,
+      );
       // 纠错失败不影响主流程，退回原文
       context.addSegment(rawSttText);
       return CorrectionResult(text: rawSttText);
@@ -135,14 +195,41 @@ class CorrectionService {
   /// 格式：`错词->正词|错词2->正词2`
   /// - correction 类型：`original->corrected`
   /// - preserve 类型：`original->original`（保持原样）
-  String _buildReferenceString(List<DictionaryEntry> matches) {
+  String _buildReferenceStringFromHits(List<PinyinMatchHit> hits) {
     final parts = <String>[];
-    for (final entry in matches) {
+    final dedup = <String>{};
+    for (final hit in hits) {
+      final entry = hit.entry;
       if (entry.type == DictionaryEntryType.correction) {
-        parts.add('${entry.original}->${entry.corrected}');
+        final target = _targetTextForEntry(entry);
+        final source = hit.observedText.trim().isNotEmpty
+            ? hit.observedText.trim()
+            : entry.original;
+        final forward = '$source->$target';
+        if (dedup.add(forward)) {
+          parts.add(forward);
+        }
+
+        final corrected = entry.corrected?.trim() ?? '';
+        final original = entry.original.trim();
+        if (_isChineseToLatinAlias(entry) && corrected.isNotEmpty) {
+          if (_containsChinese(source) && source != original) {
+            final observedToCanonical = '$source->$original';
+            if (dedup.add(observedToCanonical)) {
+              parts.add(observedToCanonical);
+            }
+          }
+          final reverse = '$corrected->$original';
+          if (dedup.add(reverse)) {
+            parts.add(reverse);
+          }
+        }
       } else {
         // preserve 类型：告知 LLM 保持原样
-        parts.add('${entry.original}->${entry.original}');
+        final keep = '${entry.original}->${entry.original}';
+        if (dedup.add(keep)) {
+          parts.add(keep);
+        }
       }
     }
     return parts.join('|');
@@ -162,4 +249,234 @@ class CorrectionService {
     buf.writeln('#I: $input');
     return buf.toString().trim();
   }
+
+  bool _containsChinese(String text) {
+    return RegExp(r'[\u4e00-\u9fff]').hasMatch(text);
+  }
+
+  bool _isChineseToLatinAlias(DictionaryEntry entry) {
+    final original = entry.original.trim();
+    final corrected = entry.corrected?.trim() ?? '';
+    return entry.type == DictionaryEntryType.correction &&
+        corrected.isNotEmpty &&
+        _containsChinese(original) &&
+        !_containsChinese(corrected);
+  }
+
+  String _targetTextForEntry(DictionaryEntry entry) {
+    if (entry.type != DictionaryEntryType.correction) {
+      return entry.original;
+    }
+    final corrected = entry.corrected?.trim() ?? '';
+    if (corrected.isEmpty) return entry.original;
+    if (_isChineseToLatinAlias(entry)) {
+      return entry.original;
+    }
+    return corrected;
+  }
+
+  String _normalizeMatchedTermsFromHits(
+    String text,
+    List<PinyinMatchHit> hits,
+  ) {
+    var output = text;
+    for (final hit in hits) {
+      final entry = hit.entry;
+      if (!_isChineseToLatinAlias(entry)) continue;
+      final alias = entry.corrected?.trim() ?? '';
+      final target = entry.original.trim();
+      if (alias.isEmpty || target.isEmpty) continue;
+
+      final observed = hit.observedText.trim();
+      if (observed.isNotEmpty &&
+          observed != target &&
+          _containsChinese(observed)) {
+        output = output.replaceAll(observed, target);
+      }
+
+      output = output.replaceAll(
+        RegExp(RegExp.escape(alias), caseSensitive: false),
+        target,
+      );
+
+      final pinyin = PinyinMatcher.computePinyin(target);
+      if (pinyin.isNotEmpty) {
+        final syllables = pinyin
+            .split(RegExp(r'\s+'))
+            .where((s) => s.isNotEmpty)
+            .toList(growable: false);
+        if (syllables.isNotEmpty) {
+          final pattern = RegExp(
+            '\\b${syllables.map(RegExp.escape).join(r'[\\s_-]*')}\\b',
+            caseSensitive: false,
+          );
+          output = output.replaceAll(pattern, target);
+        }
+      }
+    }
+    return output;
+  }
+
+  List<PinyinMatchHit> _selectHitsForReference(
+    String rawText,
+    List<PinyinMatchHit> hits,
+  ) {
+    if (hits.isEmpty) return const [];
+    final ranked = hits
+        .map((hit) => _RankedHit(hit: hit, score: _scoreHit(rawText, hit)))
+        .where((r) => r.score >= minCandidateScore)
+        .toList();
+
+    if (ranked.isEmpty) return const [];
+
+    ranked.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      final aLen = a.hit.observedText.length;
+      final bLen = b.hit.observedText.length;
+      final byLen = bLen.compareTo(aLen);
+      if (byLen != 0) return byLen;
+      return a.hit.entry.id.compareTo(b.hit.entry.id);
+    });
+
+    final result = <PinyinMatchHit>[];
+    final seen = <String>{};
+    for (final item in ranked) {
+      final key = _referenceDedupKey(item.hit);
+      if (!seen.add(key)) continue;
+      result.add(item.hit);
+      if (result.length >= maxReferenceEntries) break;
+    }
+    return result;
+  }
+
+  String _referenceDedupKey(PinyinMatchHit hit) {
+    final entry = hit.entry;
+    final target = _targetTextForEntry(entry);
+    final source = hit.observedText.trim().isNotEmpty
+        ? hit.observedText.trim()
+        : entry.original;
+    return '$source->$target';
+  }
+
+  double _scoreHit(String rawText, PinyinMatchHit hit) {
+    final source = rawText.trim();
+    if (source.isEmpty) return 0;
+
+    final entry = hit.entry;
+    final original = entry.original.trim();
+    final corrected = (entry.corrected ?? '').trim();
+    final observed = hit.observedText.trim();
+    if (original.isEmpty && corrected.isEmpty) return 0;
+
+    if (hit.matchType == PinyinMatchType.literal) {
+      return 1;
+    }
+
+    var bestCharSimilarity = 0.0;
+    if (observed.isNotEmpty && original.isNotEmpty) {
+      final s = _normalizedSimilarity(observed, original);
+      if (s > bestCharSimilarity) bestCharSimilarity = s;
+    }
+    if (observed.isNotEmpty && corrected.isNotEmpty) {
+      final s = _normalizedSimilarity(observed, corrected);
+      if (s > bestCharSimilarity) bestCharSimilarity = s;
+    }
+
+    var bestPinyinSimilarity = 0.0;
+    if (observed.isNotEmpty &&
+        original.isNotEmpty &&
+        _containsChinese(observed) &&
+        _containsChinese(original)) {
+      final observedPinyin = PinyinMatcher.computePinyin(observed);
+      final originalPinyin = PinyinMatcher.computePinyin(original);
+      final s = _normalizedSimilarity(observedPinyin, originalPinyin);
+      if (s > bestPinyinSimilarity) bestPinyinSimilarity = s;
+    }
+    if (observed.isNotEmpty &&
+        corrected.isNotEmpty &&
+        _containsChinese(observed) &&
+        _containsChinese(corrected)) {
+      final observedPinyin = PinyinMatcher.computePinyin(observed);
+      final correctedPinyin = PinyinMatcher.computePinyin(corrected);
+      final s = _normalizedSimilarity(observedPinyin, correctedPinyin);
+      if (s > bestPinyinSimilarity) bestPinyinSimilarity = s;
+    }
+
+    final typeBonus = entry.type == DictionaryEntryType.correction ? 0.05 : 0.0;
+    final matchTypeBonus = switch (hit.matchType) {
+      PinyinMatchType.pinyinExact => 0.12,
+      PinyinMatchType.pinyinFuzzy => 0.06,
+      PinyinMatchType.literal => 0.18,
+    };
+    final combined =
+        bestCharSimilarity * 0.55 +
+        bestPinyinSimilarity * 0.45 +
+        typeBonus +
+        matchTypeBonus;
+    return combined > 1.0 ? 1.0 : combined;
+  }
+
+  double _normalizedSimilarity(String a, String b) {
+    if (a.isEmpty || b.isEmpty) return 0;
+    if (a == b) return 1;
+    final distance = _levenshtein(a, b);
+    final base = a.length > b.length ? a.length : b.length;
+    if (base == 0) return 0;
+    final sim = 1 - (distance / base);
+    return sim < 0 ? 0 : sim;
+  }
+
+  int _levenshtein(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+
+    var prev = List.generate(b.length + 1, (i) => i);
+    var curr = List.filled(b.length + 1, 0);
+
+    for (var i = 1; i <= a.length; i++) {
+      curr[0] = i;
+      for (var j = 1; j <= b.length; j++) {
+        final cost = a.codeUnitAt(i - 1) == b.codeUnitAt(j - 1) ? 0 : 1;
+        final deletion = prev[j] + 1;
+        final insertion = curr[j - 1] + 1;
+        final substitution = prev[j - 1] + cost;
+        var value = deletion < insertion ? deletion : insertion;
+        if (substitution < value) value = substitution;
+        curr[j] = value;
+      }
+      final tmp = prev;
+      prev = curr;
+      curr = tmp;
+    }
+    return prev[b.length];
+  }
+
+  Future<void> _recordStatsSafely({
+    required int matchesCount,
+    required int selectedCount,
+    required int referenceChars,
+    required bool llmInvoked,
+    int promptTokens = 0,
+    int completionTokens = 0,
+  }) async {
+    try {
+      await CorrectionStatsService.instance.recordCall(
+        matchesCount: matchesCount,
+        selectedCount: selectedCount,
+        referenceChars: referenceChars,
+        llmInvoked: llmInvoked,
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+      );
+    } catch (_) {}
+  }
+}
+
+class _RankedHit {
+  final PinyinMatchHit hit;
+  final double score;
+
+  const _RankedHit({required this.hit, required this.score});
 }

@@ -101,6 +101,8 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 16),
           _buildTokenSection(),
           const SizedBox(height: 16),
+          _buildCorrectionEfficiencySection(),
+          const SizedBox(height: 16),
           _buildTrendSection(),
           const SizedBox(height: 16),
           _buildDistributionSection(),
@@ -830,9 +832,17 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildTokenSection() {
     final hasEnhance = _stats.enhanceTotalTokens > 0;
     final hasMeeting = _stats.meetingEnhanceTotalTokens > 0;
-    if (!hasEnhance && !hasMeeting) return const SizedBox.shrink();
+    final hasCorrection = _stats.correctionTotalTokens > 0;
+    if (!hasEnhance && !hasMeeting && !hasCorrection) {
+      return const SizedBox.shrink();
+    }
 
-    final showAll = hasEnhance && hasMeeting;
+    final categoryCount = [
+      hasEnhance,
+      hasMeeting,
+      hasCorrection,
+    ].where((v) => v).length;
+    final showAll = categoryCount >= 2;
 
     return _Card(
       cs: _cs,
@@ -900,8 +910,81 @@ class _DashboardPageState extends State<DashboardPage> {
               output: _stats.meetingEnhanceCompletionTokens,
               total: _stats.meetingEnhanceTotalTokens,
             ),
+          if ((hasEnhance || hasMeeting) && hasCorrection)
+            const SizedBox(height: 16),
+          if (hasCorrection)
+            _buildTokenBlock(
+              title: _l10n.correctionTokenUsage,
+              input: _stats.correctionPromptTokens,
+              output: _stats.correctionCompletionTokens,
+              total: _stats.correctionTotalTokens,
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCorrectionEfficiencySection() {
+    if (_stats.correctionCalls <= 0) return const SizedBox.shrink();
+
+    return _Card(
+      cs: _cs,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _l10n.correctionRecallEfficiency,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              _buildEfficiencyItem(
+                _l10n.correctionTotalCalls,
+                _formatNumber(_stats.correctionCalls),
+              ),
+              _buildEfficiencyItem(
+                _l10n.correctionLlmCalls,
+                _formatNumber(_stats.correctionLlmCalls),
+              ),
+              _buildEfficiencyItem(
+                _l10n.correctionLlmRate,
+                _formatPercent(_stats.correctionLlmInvokeRate),
+              ),
+              _buildEfficiencyItem(
+                _l10n.correctionSelectedRate,
+                _formatPercent(_stats.correctionSelectedRate),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEfficiencyItem(String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _cs.onSurface,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1016,6 +1099,10 @@ class _DashboardPageState extends State<DashboardPage> {
     return remainMin > 0
         ? '$hours${_l10n.hourShort}$remainMin${_l10n.minuteShort}'
         : '$hours${_l10n.hourShort}';
+  }
+
+  String _formatPercent(double value) {
+    return '${(value * 100).toStringAsFixed(1)}%';
   }
 
   String _formatTimeAgo(DateTime dt) {

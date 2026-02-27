@@ -201,6 +201,8 @@ class MeetingProvider extends ChangeNotifier {
     String dictionarySuffix = '',
     PinyinMatcher? pinyinMatcher,
     String? correctionPrompt,
+    int maxReferenceEntries = 15,
+    double minCandidateScore = 0.30,
   }) async {
     _error = '';
     _currentSegments = [];
@@ -233,6 +235,8 @@ class MeetingProvider extends ChangeNotifier {
         windowSize: windowSize,
         pinyinMatcher: pinyinMatcher,
         correctionPrompt: correctionPrompt,
+        maxReferenceEntries: maxReferenceEntries,
+        minCandidateScore: minCandidateScore,
       );
 
       // 监听合并器事件流

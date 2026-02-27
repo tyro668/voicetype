@@ -711,6 +711,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meetingTokenUsage => 'Meeting Recording Tokens';
 
   @override
+  String get correctionTokenUsage => 'Correction Tokens';
+
+  @override
+  String get correctionRecallEfficiency => 'Correction Recall Efficiency';
+
+  @override
+  String get correctionTotalCalls => 'Correction Calls';
+
+  @override
+  String get correctionLlmCalls => 'LLM Calls';
+
+  @override
+  String get correctionLlmRate => 'LLM Call Rate';
+
+  @override
+  String get correctionSelectedRate => 'Candidate Selection Rate';
+
+  @override
   String get allTokenUsage => 'All Tokens Summary';
 
   @override
