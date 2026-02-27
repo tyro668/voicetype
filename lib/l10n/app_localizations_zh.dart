@@ -859,6 +859,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dictionaryTypePreserve => '保留';
 
   @override
+  String get dictionarySearchHint => '搜索原词/纠正词/分类/拼音';
+
+  @override
+  String get dictionaryCountTotal => '总条目';
+
+  @override
+  String get dictionaryCountVisible => '当前显示';
+
+  @override
+  String get dictionaryCountEnabled => '已启用';
+
+  @override
+  String get dictionaryCountDisabled => '已禁用';
+
+  @override
+  String get dictionaryFilterAll => '全部状态';
+
+  @override
+  String get dictionaryFilterEnabled => '仅启用';
+
+  @override
+  String get dictionaryFilterDisabled => '仅禁用';
+
+  @override
+  String get dictionaryRowsPerPage => '每页';
+
+  @override
+  String get dictionaryPagePrev => '上一页';
+
+  @override
+  String get dictionaryPageNext => '下一页';
+
+  @override
+  String dictionaryPageIndicator(int current, int total) {
+    return '第 $current / $total 页';
+  }
+
+  @override
+  String dictionaryPageSummary(int from, int to, int total) {
+    return '显示 $from - $to / 共 $total';
+  }
+
+  @override
   String get dictionaryEmpty => '词典为空';
 
   @override

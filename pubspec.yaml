@@ -47,6 +47,7 @@ dependencies:
   whisper_flutter_new: ^1.0.1
   ffi: ^2.1.0
   lpinyin: ^2.0.3
+  data_table_2: ^2.7.2
 
 dev_dependencies:
   flutter_test:

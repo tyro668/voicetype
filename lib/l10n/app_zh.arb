@@ -338,6 +338,32 @@
   "dictionaryCategoryAll": "全部",
   "dictionaryTypeCorrection": "纠正",
   "dictionaryTypePreserve": "保留",
+  "dictionarySearchHint": "搜索原词/纠正词/分类/拼音",
+  "dictionaryCountTotal": "总条目",
+  "dictionaryCountVisible": "当前显示",
+  "dictionaryCountEnabled": "已启用",
+  "dictionaryCountDisabled": "已禁用",
+  "dictionaryFilterAll": "全部状态",
+  "dictionaryFilterEnabled": "仅启用",
+  "dictionaryFilterDisabled": "仅禁用",
+  "dictionaryRowsPerPage": "每页",
+  "dictionaryPagePrev": "上一页",
+  "dictionaryPageNext": "下一页",
+  "dictionaryPageIndicator": "第 {current} / {total} 页",
+  "@dictionaryPageIndicator": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "dictionaryPageSummary": "显示 {from} - {to} / 共 {total}",
+  "@dictionaryPageSummary": {
+    "placeholders": {
+      "from": {"type": "int"},
+      "to": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
   "dictionaryEmpty": "词典为空",
   "dictionaryEmptyHint": "添加纠正或保留规则，帮助 AI 更准确地输出",
 

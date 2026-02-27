@@ -1,3 +1,4 @@
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -17,6 +18,18 @@ class _DictionaryPageState extends State<DictionaryPage> {
 
   /// 当前选中的分类筛选（null = 全部）
   String? _selectedCategory;
+  final TextEditingController _searchCtrl = TextEditingController();
+  _EntryStatusFilter _statusFilter = _EntryStatusFilter.all;
+  int _rowsPerPage = 100;
+  int _currentPage = 0;
+
+  static const List<int> _pageSizeOptions = [50, 100, 200, 500];
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +37,51 @@ class _DictionaryPageState extends State<DictionaryPage> {
     final l10n = AppLocalizations.of(context)!;
     final allEntries = settings.dictionaryEntries;
     final categories = settings.dictionaryCategories;
+    final search = _searchCtrl.text.trim().toLowerCase();
 
-    // 按分类筛选
-    final entries = _selectedCategory == null
-        ? allEntries
-        : allEntries.where((e) => e.category == _selectedCategory).toList();
+    final entries = allEntries.where((entry) {
+      if (_selectedCategory != null && entry.category != _selectedCategory) {
+        return false;
+      }
+      if (_statusFilter == _EntryStatusFilter.enabledOnly && !entry.enabled) {
+        return false;
+      }
+      if (_statusFilter == _EntryStatusFilter.disabledOnly && entry.enabled) {
+        return false;
+      }
+      if (search.isEmpty) return true;
+      final inOriginal = entry.original.toLowerCase().contains(search);
+      final inCorrected = (entry.corrected ?? '').toLowerCase().contains(
+        search,
+      );
+      final inCategory = (entry.category ?? '').toLowerCase().contains(search);
+      final inPinyin = entry.pinyinNormalized.toLowerCase().contains(search);
+      return inOriginal || inCorrected || inCategory || inPinyin;
+    }).toList();
 
-    return SingleChildScrollView(
+    entries.sort((a, b) {
+      if (a.enabled != b.enabled) {
+        return a.enabled ? -1 : 1;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    final enabledCount = allEntries.where((e) => e.enabled).length;
+    final disabledCount = allEntries.length - enabledCount;
+
+    final totalPages = entries.isEmpty
+        ? 1
+        : ((entries.length - 1) ~/ _rowsPerPage) + 1;
+    if (_currentPage >= totalPages) {
+      _currentPage = totalPages - 1;
+    }
+    final pageStart = _currentPage * _rowsPerPage;
+    final pageEntries = entries
+        .skip(pageStart)
+        .take(_rowsPerPage)
+        .toList(growable: false);
+
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,36 +89,482 @@ class _DictionaryPageState extends State<DictionaryPage> {
           // 智能纠错开关
           _buildCorrectionToggle(settings, l10n),
           const SizedBox(height: 16),
-          // 分类筛选 chips
-          if (categories.isNotEmpty) ...[
-            _buildCategoryChips(categories, l10n),
-            const SizedBox(height: 16),
-          ],
-          if (entries.isEmpty)
-            _buildEmptyState(l10n)
-          else
-            ...entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildEntryCard(e, settings, l10n),
+          // 一体化表格卡片
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cs.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _cs.outlineVariant),
               ),
-            ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _handleAddEntry(settings),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(l10n.dictionaryAdd),
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── 顶部工具栏：搜索 + 筛选 + 添加 ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                    child: Row(
+                      children: [
+                        // 搜索框
+                        Expanded(
+                          child: SizedBox(
+                            height: 36,
+                            child: TextField(
+                              controller: _searchCtrl,
+                              onChanged: (_) => _resetToFirstPage(),
+                              style: const TextStyle(fontSize: 13),
+                              decoration: InputDecoration(
+                                hintText: l10n.dictionarySearchHint,
+                                hintStyle: TextStyle(
+                                  fontSize: 13,
+                                  color: _cs.outline,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  size: 18,
+                                  color: _cs.outline,
+                                ),
+                                suffixIcon: _searchCtrl.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: () {
+                                          _searchCtrl.clear();
+                                          _resetToFirstPage();
+                                        },
+                                        icon: Icon(
+                                          Icons.close,
+                                          size: 14,
+                                          color: _cs.outline,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                      ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 0,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: _cs.outlineVariant,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: _cs.outlineVariant,
+                                  ),
+                                ),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // 状态筛选下拉
+                        _buildDropdownFilter<_EntryStatusFilter>(
+                          value: _statusFilter,
+                          items: [
+                            (_EntryStatusFilter.all, l10n.dictionaryFilterAll),
+                            (
+                              _EntryStatusFilter.enabledOnly,
+                              l10n.dictionaryFilterEnabled,
+                            ),
+                            (
+                              _EntryStatusFilter.disabledOnly,
+                              l10n.dictionaryFilterDisabled,
+                            ),
+                          ],
+                          onChanged: (v) {
+                            setState(() {
+                              _statusFilter = v;
+                              _currentPage = 0;
+                            });
+                          },
+                        ),
+                        // 分类筛选下拉
+                        if (categories.isNotEmpty) ...[
+                          const SizedBox(width: 4),
+                          _buildDropdownFilter<String?>(
+                            value: _selectedCategory,
+                            items: [
+                              (null, l10n.dictionaryCategoryAll),
+                              ...categories.map((c) => (c, c)),
+                            ],
+                            onChanged: (v) {
+                              setState(() {
+                                _selectedCategory = v;
+                                _currentPage = 0;
+                              });
+                            },
+                          ),
+                        ],
+                        const SizedBox(width: 4),
+                        // 添加按钮
+                        IconButton(
+                          onPressed: () => _handleAddEntry(settings),
+                          icon: Icon(
+                            Icons.add_circle_outline,
+                            size: 22,
+                            color: _cs.primary,
+                          ),
+                          tooltip: l10n.dictionaryAdd,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // ── 统计 + 分页行 ──
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${l10n.dictionaryCountTotal} ${allEntries.length}',
+                          style: TextStyle(fontSize: 11, color: _cs.outline),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${l10n.dictionaryCountEnabled} $enabledCount',
+                          style: TextStyle(fontSize: 11, color: _cs.outline),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${l10n.dictionaryCountDisabled} $disabledCount',
+                          style: TextStyle(fontSize: 11, color: _cs.outline),
+                        ),
+                        const Spacer(),
+                        Text(
+                          l10n.dictionaryPageSummary(
+                            entries.isEmpty ? 0 : pageStart + 1,
+                            pageStart + pageEntries.length,
+                            entries.length,
+                          ),
+                          style: TextStyle(fontSize: 11, color: _cs.outline),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 28,
+                          child: DropdownButton<int>(
+                            value: _rowsPerPage,
+                            underline: const SizedBox.shrink(),
+                            isDense: true,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _cs.onSurface,
+                            ),
+                            items: _pageSizeOptions
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text('$e'),
+                                  ),
+                                )
+                                .toList(growable: false),
+                            onChanged: (v) {
+                              if (v == null) return;
+                              setState(() {
+                                _rowsPerPage = v;
+                                _currentPage = 0;
+                              });
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _currentPage > 0
+                              ? () => setState(() => _currentPage -= 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
+                          tooltip: l10n.dictionaryPagePrev,
+                        ),
+                        Text(
+                          '${_currentPage + 1}/$totalPages',
+                          style: TextStyle(fontSize: 11, color: _cs.outline),
+                        ),
+                        IconButton(
+                          onPressed: _currentPage + 1 < totalPages
+                              ? () => setState(() => _currentPage += 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_right, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
+                          tooltip: l10n.dictionaryPageNext,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: _cs.outlineVariant),
+                  // ── 表格主体 ──
+                  if (entries.isEmpty)
+                    _buildEmptyState(l10n)
+                  else
+                    Expanded(
+                      child: DataTable2(
+                        columnSpacing: 12,
+                        horizontalMargin: 16,
+                        minWidth: 760,
+                        headingRowHeight: 36,
+                        dataRowHeight: 44,
+                        headingRowColor: WidgetStateProperty.all(
+                          _cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        ),
+                        headingTextStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _cs.onSurfaceVariant,
+                        ),
+                        columns: [
+                          const DataColumn2(label: Text('#'), fixedWidth: 44),
+                          DataColumn2(
+                            label: Text(l10n.dictionaryFilterEnabled),
+                            fixedWidth: 60,
+                          ),
+                          DataColumn2(
+                            label: Text(l10n.dictionaryTypeCorrection),
+                            fixedWidth: 68,
+                          ),
+                          DataColumn2(
+                            label: Text(l10n.dictionaryOriginal),
+                            size: ColumnSize.L,
+                          ),
+                          DataColumn2(
+                            label: Text(l10n.dictionaryCorrected),
+                            size: ColumnSize.L,
+                          ),
+                          DataColumn2(
+                            label: Text(l10n.dictionaryCategoryAll),
+                            size: ColumnSize.S,
+                          ),
+                          if (settings.correctionEnabled)
+                            DataColumn2(
+                              label: Text(l10n.pinyinPreview),
+                              size: ColumnSize.M,
+                            ),
+                          DataColumn2(label: Text(l10n.edit), fixedWidth: 88),
+                        ],
+                        rows: pageEntries
+                            .asMap()
+                            .entries
+                            .map((e) {
+                              final idx = pageStart + e.key + 1;
+                              final entry = e.value;
+                              final isCorr =
+                                  entry.type == DictionaryEntryType.correction;
+                              final typeClr = isCorr
+                                  ? _cs.primary
+                                  : _cs.tertiary;
+
+                              return DataRow2(
+                                color: WidgetStateProperty.resolveWith<Color?>(
+                                  (states) => !entry.enabled
+                                      ? _cs.surfaceContainerHighest.withValues(
+                                          alpha: 0.3,
+                                        )
+                                      : null,
+                                ),
+                                cells: [
+                                  DataCell(
+                                    Text(
+                                      '$idx',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: _cs.outline,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Center(
+                                      child: Transform.scale(
+                                        scale: 0.6,
+                                        child: Switch(
+                                          value: entry.enabled,
+                                          onChanged: (v) =>
+                                              settings.toggleDictionaryEntry(
+                                                entry.id,
+                                                v,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: typeClr.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        isCorr
+                                            ? l10n.dictionaryTypeCorrection
+                                            : l10n.dictionaryTypePreserve,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: typeClr,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      entry.original,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isCorr
+                                            ? _cs.onSurfaceVariant
+                                            : _cs.onSurface,
+                                        decoration: isCorr
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                        fontWeight: isCorr
+                                            ? FontWeight.normal
+                                            : FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      entry.corrected ?? '—',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: _cs.onSurface,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  DataCell(
+                                    entry.category != null &&
+                                            entry.category!.isNotEmpty
+                                        ? _buildMetaTag(
+                                            entry.category!,
+                                            _cs.tertiary,
+                                          )
+                                        : Text(
+                                            '—',
+                                            style: TextStyle(
+                                              color: _cs.outline,
+                                            ),
+                                          ),
+                                  ),
+                                  if (settings.correctionEnabled)
+                                    DataCell(
+                                      Text(
+                                        entry.pinyinNormalized,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: _cs.outline,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () =>
+                                              _handleEditEntry(settings, entry),
+                                          icon: Icon(
+                                            Icons.edit_outlined,
+                                            size: 15,
+                                            color: _cs.onSurfaceVariant,
+                                          ),
+                                          tooltip: l10n.edit,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 30,
+                                            minHeight: 30,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () => settings
+                                              .deleteDictionaryEntry(entry.id),
+                                          icon: Icon(
+                                            Icons.delete_outline,
+                                            size: 15,
+                                            color: _cs.error,
+                                          ),
+                                          tooltip: l10n.delete,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 30,
+                                            minHeight: 30,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            })
+                            .toList(growable: false),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownFilter<T>({
+    required T value,
+    required List<(T, String)> items,
+    required ValueChanged<T> onChanged,
+  }) {
+    return SizedBox(
+      height: 36,
+      child: PopupMenuButton<T>(
+        initialValue: value,
+        onSelected: onChanged,
+        tooltip: '',
+        position: PopupMenuPosition.under,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _cs.outlineVariant),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                items.firstWhere((e) => e.$1 == value).$2,
+                style: TextStyle(fontSize: 12, color: _cs.onSurface),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.arrow_drop_down, size: 18, color: _cs.outline),
+            ],
+          ),
+        ),
+        itemBuilder: (_) => items
+            .map(
+              (e) => PopupMenuItem<T>(
+                value: e.$1,
+                height: 36,
+                child: Text(e.$2, style: const TextStyle(fontSize: 13)),
+              ),
+            )
+            .toList(growable: false),
       ),
     );
   }
@@ -119,31 +616,6 @@ class _DictionaryPageState extends State<DictionaryPage> {
     );
   }
 
-  Widget _buildCategoryChips(List<String> categories, AppLocalizations l10n) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 4,
-      children: [
-        FilterChip(
-          label: Text(l10n.dictionaryCategoryAll),
-          selected: _selectedCategory == null,
-          onSelected: (_) => setState(() => _selectedCategory = null),
-          visualDensity: VisualDensity.compact,
-        ),
-        ...categories.map(
-          (cat) => FilterChip(
-            label: Text(cat),
-            selected: _selectedCategory == cat,
-            onSelected: (_) => setState(
-              () => _selectedCategory = _selectedCategory == cat ? null : cat,
-            ),
-            visualDensity: VisualDensity.compact,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildEmptyState(AppLocalizations l10n) {
     return Container(
       width: double.infinity,
@@ -171,136 +643,6 @@ class _DictionaryPageState extends State<DictionaryPage> {
     );
   }
 
-  Widget _buildEntryCard(
-    DictionaryEntry entry,
-    SettingsProvider settings,
-    AppLocalizations l10n,
-  ) {
-    final isCorrection = entry.type == DictionaryEntryType.correction;
-    final typeColor = isCorrection ? _cs.primary : _cs.tertiary;
-
-    return Opacity(
-      opacity: entry.enabled ? 1.0 : 0.5,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: _cs.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _cs.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            // 启用/禁用开关
-            SizedBox(
-              width: 36,
-              child: Transform.scale(
-                scale: 0.75,
-                child: Switch(
-                  value: entry.enabled,
-                  onChanged: (v) => settings.toggleDictionaryEntry(entry.id, v),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // 类型标识
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                isCorrection
-                    ? l10n.dictionaryTypeCorrection
-                    : l10n.dictionaryTypePreserve,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: typeColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // 内容
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isCorrection)
-                    RichText(
-                      text: TextSpan(
-                        style: TextStyle(fontSize: 14, color: _cs.onSurface),
-                        children: [
-                          TextSpan(
-                            text: entry.original,
-                            style: TextStyle(
-                              decoration: TextDecoration.lineThrough,
-                              color: _cs.onSurfaceVariant,
-                            ),
-                          ),
-                          const TextSpan(text: ' → '),
-                          TextSpan(
-                            text: entry.corrected,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Text(
-                      entry.original,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _cs.onSurface,
-                      ),
-                    ),
-                  if (entry.category != null && entry.category!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      entry.category!,
-                      style: TextStyle(fontSize: 11, color: _cs.outline),
-                    ),
-                  ],
-                  // 拼音预览
-                  if (settings.correctionEnabled) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '${l10n.pinyinPreview}: ${entry.pinyinNormalized}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: _cs.outline.withValues(alpha: 0.6),
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () => _handleEditEntry(settings, entry),
-              icon: Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: _cs.onSurfaceVariant,
-              ),
-              tooltip: l10n.edit,
-            ),
-            IconButton(
-              onPressed: () => settings.deleteDictionaryEntry(entry.id),
-              icon: Icon(
-                Icons.delete_outline,
-                size: 18,
-                color: Colors.red.shade400,
-              ),
-              tooltip: l10n.delete,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// 统一的添加/编辑对话框
   Future<void> _handleAddEntry(SettingsProvider settings) async {
     final entry = await showDictionaryEntryDialog(context);
@@ -318,4 +660,23 @@ class _DictionaryPageState extends State<DictionaryPage> {
       await settings.updateDictionaryEntry(entry);
     }
   }
+
+  Widget _buildMetaTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.1),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 10, color: color)),
+    );
+  }
+
+  void _resetToFirstPage() {
+    setState(() {
+      _currentPage = 0;
+    });
+  }
 }
+
+enum _EntryStatusFilter { all, enabledOnly, disabledOnly }

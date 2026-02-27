@@ -1760,6 +1760,84 @@ abstract class AppLocalizations {
   /// **'Preserve'**
   String get dictionaryTypePreserve;
 
+  /// No description provided for @dictionarySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search original/corrected/category/pinyin'**
+  String get dictionarySearchHint;
+
+  /// No description provided for @dictionaryCountTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get dictionaryCountTotal;
+
+  /// No description provided for @dictionaryCountVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible'**
+  String get dictionaryCountVisible;
+
+  /// No description provided for @dictionaryCountEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get dictionaryCountEnabled;
+
+  /// No description provided for @dictionaryCountDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get dictionaryCountDisabled;
+
+  /// No description provided for @dictionaryFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All Status'**
+  String get dictionaryFilterAll;
+
+  /// No description provided for @dictionaryFilterEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled Only'**
+  String get dictionaryFilterEnabled;
+
+  /// No description provided for @dictionaryFilterDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled Only'**
+  String get dictionaryFilterDisabled;
+
+  /// No description provided for @dictionaryRowsPerPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows'**
+  String get dictionaryRowsPerPage;
+
+  /// No description provided for @dictionaryPagePrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Page'**
+  String get dictionaryPagePrev;
+
+  /// No description provided for @dictionaryPageNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Page'**
+  String get dictionaryPageNext;
+
+  /// No description provided for @dictionaryPageIndicator.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {current} / {total}'**
+  String dictionaryPageIndicator(int current, int total);
+
+  /// No description provided for @dictionaryPageSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing {from} - {to} of {total}'**
+  String dictionaryPageSummary(int from, int to, int total);
+
   /// No description provided for @dictionaryEmpty.
   ///
   /// In en, this message translates to:

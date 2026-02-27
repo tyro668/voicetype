@@ -901,6 +901,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dictionaryTypePreserve => 'Preserve';
 
   @override
+  String get dictionarySearchHint =>
+      'Search original/corrected/category/pinyin';
+
+  @override
+  String get dictionaryCountTotal => 'Total';
+
+  @override
+  String get dictionaryCountVisible => 'Visible';
+
+  @override
+  String get dictionaryCountEnabled => 'Enabled';
+
+  @override
+  String get dictionaryCountDisabled => 'Disabled';
+
+  @override
+  String get dictionaryFilterAll => 'All Status';
+
+  @override
+  String get dictionaryFilterEnabled => 'Enabled Only';
+
+  @override
+  String get dictionaryFilterDisabled => 'Disabled Only';
+
+  @override
+  String get dictionaryRowsPerPage => 'Rows';
+
+  @override
+  String get dictionaryPagePrev => 'Previous Page';
+
+  @override
+  String get dictionaryPageNext => 'Next Page';
+
+  @override
+  String dictionaryPageIndicator(int current, int total) {
+    return 'Page $current / $total';
+  }
+
+  @override
+  String dictionaryPageSummary(int from, int to, int total) {
+    return 'Showing $from - $to of $total';
+  }
+
+  @override
   String get dictionaryEmpty => 'Dictionary is empty';
 
   @override

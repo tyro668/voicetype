@@ -343,6 +343,32 @@
   "dictionaryCategoryAll": "All",
   "dictionaryTypeCorrection": "Correct",
   "dictionaryTypePreserve": "Preserve",
+  "dictionarySearchHint": "Search original/corrected/category/pinyin",
+  "dictionaryCountTotal": "Total",
+  "dictionaryCountVisible": "Visible",
+  "dictionaryCountEnabled": "Enabled",
+  "dictionaryCountDisabled": "Disabled",
+  "dictionaryFilterAll": "All Status",
+  "dictionaryFilterEnabled": "Enabled Only",
+  "dictionaryFilterDisabled": "Disabled Only",
+  "dictionaryRowsPerPage": "Rows",
+  "dictionaryPagePrev": "Previous Page",
+  "dictionaryPageNext": "Next Page",
+  "dictionaryPageIndicator": "Page {current} / {total}",
+  "@dictionaryPageIndicator": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "dictionaryPageSummary": "Showing {from} - {to} of {total}",
+  "@dictionaryPageSummary": {
+    "placeholders": {
+      "from": {"type": "int"},
+      "to": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
   "dictionaryEmpty": "Dictionary is empty",
   "dictionaryEmptyHint": "Add correction or preservation rules to help AI output more accurately",
 
