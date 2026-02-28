@@ -461,6 +461,9 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       recording.disableCorrectionService();
     }
+    // 终态回溯开关同步
+    recording.retrospectiveCorrectionEnabled =
+        settings.retrospectiveCorrectionEnabled;
   }
 
   void _startVadIfEnabled(

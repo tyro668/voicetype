@@ -5,6 +5,7 @@ import 'correction_context.dart';
 import 'log_service.dart';
 import 'pinyin_matcher.dart';
 import 'correction_stats_service.dart';
+import 'session_glossary.dart';
 import 'token_stats_service.dart';
 
 /// 纠错结果
@@ -43,6 +44,7 @@ class CorrectionService {
   final String correctionPrompt;
   final int maxReferenceEntries;
   final double minCandidateScore;
+  final SessionGlossary? sessionGlossary;
 
   CorrectionService({
     required this.matcher,
@@ -51,6 +53,7 @@ class CorrectionService {
     required this.correctionPrompt,
     this.maxReferenceEntries = 15,
     this.minCandidateScore = 0.30,
+    this.sessionGlossary,
   });
 
   /// 对 ASR 原始文本执行纠错。
@@ -121,9 +124,16 @@ class CorrectionService {
             'referenceChars=${referenceStr.length}',
       );
 
-      // 3. 构建完整 prompt 消息
+      // 3. 构建完整 prompt 消息（追加 SessionGlossary 强锚定）
+      var finalReference = referenceStr;
+      if (sessionGlossary != null && sessionGlossary!.hasStrongEntries) {
+        final glossaryRef = sessionGlossary!.buildReferenceAppend();
+        if (glossaryRef.isNotEmpty) {
+          finalReference = '$referenceStr|$glossaryRef';
+        }
+      }
       final userMessage = _buildUserMessage(
-        reference: referenceStr,
+        reference: finalReference,
         input: rawSttText,
         contextStr: context.getContextString(),
       );
@@ -167,6 +177,11 @@ class CorrectionService {
       // 6. 更新上下文
       context.addSegment(correctedText);
 
+      // 7. 自动提取新的同音字映射到 SessionGlossary
+      if (sessionGlossary != null && correctedText != rawSttText) {
+        sessionGlossary!.extractAndPin(rawSttText, correctedText);
+      }
+
       await LogService.info(
         'CORRECTION',
         'corrected: ${rawSttText.length} → ${correctedText.length} chars, '
@@ -190,6 +205,97 @@ class CorrectionService {
       // 纠错失败不影响主流程，退回原文
       context.addSegment(fallbackText);
       return CorrectionResult(text: fallbackText);
+    }
+  }
+
+  /// 终态回溯：对整段文本（已经过逐句纠错）再做一次全段复核。
+  ///
+  /// 与 [correct] 的区别：
+  /// - 不更新 [CorrectionContext] 上下文窗口（避免重复污染）
+  /// - 可传入自定义上下文（如前一段落文本）
+  /// - 用于段落结束时的二次校验
+  Future<CorrectionResult> correctParagraph(
+    String paragraphText, {
+    String previousParagraph = '',
+  }) async {
+    if (paragraphText.trim().isEmpty) {
+      return CorrectionResult(text: paragraphText);
+    }
+
+    try {
+      final matchHits = matcher.findMatchHits(paragraphText);
+
+      if (matchHits.isEmpty) {
+        await LogService.info(
+          'CORRECTION',
+          'retrospective: no dictionary matches, skipping',
+        );
+        return CorrectionResult(text: paragraphText);
+      }
+
+      final selectedHits =
+          _selectHitsForReference(paragraphText, matchHits);
+      if (selectedHits.isEmpty) {
+        await LogService.info(
+          'CORRECTION',
+          'retrospective: all matches filtered, skipping',
+        );
+        return CorrectionResult(text: paragraphText);
+      }
+
+      final fallbackText =
+          _normalizeMatchedTermsFromHits(paragraphText, selectedHits);
+
+      final referenceStr = _buildReferenceStringFromHits(selectedHits);
+
+      // 使用提供的前段文本作为上下文，若为空则用当前上下文窗口
+      final contextStr = previousParagraph.isNotEmpty
+          ? previousParagraph
+          : context.getContextString();
+
+      final userMessage = _buildUserMessage(
+        reference: referenceStr,
+        input: paragraphText,
+        contextStr: contextStr,
+      );
+
+      final correctionConfig = aiConfig.copyWith(prompt: correctionPrompt);
+      final enhancer = AiEnhanceService(correctionConfig);
+      final result = await enhancer.enhance(userMessage);
+
+      var correctedText = result.text.trim();
+      if (correctedText.isEmpty) {
+        correctedText = fallbackText;
+      }
+
+      correctedText =
+          _normalizeMatchedTermsFromHits(correctedText, selectedHits);
+
+      if (result.totalTokens > 0) {
+        try {
+          await TokenStatsService.instance.addTokens(
+            promptTokens: result.promptTokens,
+            completionTokens: result.completionTokens,
+          );
+        } catch (_) {}
+      }
+
+      await LogService.info(
+        'CORRECTION',
+        'retrospective: ${paragraphText.length} → ${correctedText.length} chars, '
+            'tokens: ${result.totalTokens}',
+      );
+
+      return CorrectionResult(
+        text: correctedText,
+        llmInvoked: true,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+      );
+    } catch (e) {
+      await LogService.error(
+          'CORRECTION', 'retrospective correction failed: $e');
+      return CorrectionResult(text: paragraphText);
     }
   }
 

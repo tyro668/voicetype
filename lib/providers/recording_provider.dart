@@ -17,6 +17,7 @@ import '../services/vad_service.dart';
 import '../services/correction_service.dart';
 import '../services/correction_context.dart';
 import '../services/pinyin_matcher.dart';
+import '../services/session_glossary.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
@@ -55,6 +56,8 @@ class RecordingProvider extends ChangeNotifier {
   // Correction pipeline
   CorrectionService? _correctionService;
   final CorrectionContext _correctionContext = CorrectionContext();
+  final SessionGlossary _sessionGlossary = SessionGlossary();
+  bool _retrospectiveCorrectionEnabled = false;
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
   String _transcribingLabel = 'Transcribing';
@@ -84,12 +87,18 @@ class RecordingProvider extends ChangeNotifier {
       correctionPrompt: correctionPrompt,
       maxReferenceEntries: maxReferenceEntries,
       minCandidateScore: minCandidateScore,
+      sessionGlossary: _sessionGlossary,
     );
   }
 
   /// 禁用纠错服务。
   void disableCorrectionService() {
     _correctionService = null;
+  }
+
+  /// 设置终态回溯纠错开关。
+  set retrospectiveCorrectionEnabled(bool value) {
+    _retrospectiveCorrectionEnabled = value;
   }
 
   RecordingState get state => _state;
@@ -173,6 +182,7 @@ class RecordingProvider extends ChangeNotifier {
     _amplitudeSub?.cancel();
     _amplitudeSub = null;
     _correctionContext.reset();
+    _sessionGlossary.reset();
 
     // 无论当前状态如何，都先 reset recorder，确保干净状态
     await LogService.info('RECORDING', 'resetting recorder');
@@ -555,7 +565,7 @@ class RecordingProvider extends ChangeNotifier {
 
       await _waitForSegmentDrain();
 
-      final rawText = _rawTextBuffer.toString().trim();
+      var rawText = _rawTextBuffer.toString().trim();
       await LogService.info(
         'TRANSCRIBE',
         'segment collection done: ${sw.elapsedMilliseconds}ms, textLength=${rawText.length}',
@@ -570,6 +580,37 @@ class RecordingProvider extends ChangeNotifier {
         _showTranscribeFailedOverlay();
         notifyListeners();
         return;
+      }
+
+      // M2 终态回溯：对全段已纠错文本做一次段落级复核
+      if (_retrospectiveCorrectionEnabled &&
+          _correctionService != null &&
+          rawText.trim().isNotEmpty) {
+        try {
+          await LogService.info(
+            'TRANSCRIBE',
+            'retrospective correction start...',
+          );
+          final retroResult =
+              await _correctionService!.correctParagraph(rawText);
+          if (retroResult.text.trim().isNotEmpty) {
+            rawText = retroResult.text;
+            // 同步更新实时展示文本
+            _transcribedText = rawText;
+            unawaited(OverlayService.updateOverlayText(_transcribedText));
+            notifyListeners();
+          }
+          await LogService.info(
+            'TRANSCRIBE',
+            'retrospective correction done: ${sw.elapsedMilliseconds}ms',
+          );
+        } catch (e) {
+          await LogService.error(
+            'TRANSCRIBE',
+            'retrospective correction failed: $e',
+          );
+          // 终态回溯失败不影响主流程
+        }
       }
 
       _finalizeTranscriptionFromRawText(

@@ -14,6 +14,7 @@ import 'sliding_window_merger.dart';
 import 'token_stats_service.dart';
 import 'correction_service.dart';
 import 'correction_context.dart';
+import 'session_glossary.dart';
 import 'pinyin_matcher.dart';
 import 'vad_service.dart';
 
@@ -103,6 +104,7 @@ class MeetingRecordingService {
   /// 纠错服务
   CorrectionService? _correctionService;
   final CorrectionContext _correctionContext = CorrectionContext();
+  final SessionGlossary _sessionGlossary = SessionGlossary();
 
   /// 开始新的会议录音
   Future<MeetingRecord> startMeeting({
@@ -146,6 +148,7 @@ class MeetingRecordingService {
 
     // 初始化纠错服务
     _correctionContext.reset();
+    _sessionGlossary.reset();
     if (pinyinMatcher != null &&
         aiConfig != null &&
         correctionPrompt != null &&
@@ -157,6 +160,7 @@ class MeetingRecordingService {
         correctionPrompt: correctionPrompt,
         maxReferenceEntries: maxReferenceEntries,
         minCandidateScore: minCandidateScore,
+        sessionGlossary: _sessionGlossary,
       );
     } else {
       _correctionService = null;
@@ -599,6 +603,9 @@ class MeetingRecordingService {
       }
 
       // 2. AI 文字增强（如果启用）
+      // M1: 使用纠错后文本（segment.transcription）作为增强输入，
+      // 而非原始 rawText，确保增强阶段基于最准确的文本。
+      final enhanceInput = segment.transcription ?? rawText;
       if (_aiEnhanceEnabled && _aiConfig != null) {
         segment.status = SegmentStatus.enhancing;
         await db.updateMeetingSegment(segment);
@@ -606,7 +613,7 @@ class MeetingRecordingService {
 
         try {
           final enhancer = AiEnhanceService(_aiConfig!);
-          final result = await enhancer.enhance(rawText);
+          final result = await enhancer.enhance(enhanceInput);
           segment.enhancedText = result.text;
 
           // 记录会议 AI 增强 token 用量

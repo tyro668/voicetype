@@ -6,6 +6,7 @@ import 'package:voicetype/models/dictionary_entry.dart';
 import 'package:voicetype/services/correction_context.dart';
 import 'package:voicetype/services/correction_service.dart';
 import 'package:voicetype/services/pinyin_matcher.dart';
+import 'package:voicetype/services/session_glossary.dart';
 
 void main() {
   group('CorrectionService', () {
@@ -527,6 +528,360 @@ void main() {
         final result = await service.correct(item['input'] as String);
         expect(result.text, item['expected']);
       }
+    });
+  });
+
+  group('CorrectionService.correctParagraph', () {
+    late PinyinMatcher matcher;
+    late CorrectionContext context;
+    late HttpServer server;
+    late String baseUrl;
+
+    setUp(() async {
+      matcher = PinyinMatcher();
+      context = CorrectionContext();
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      baseUrl = 'http://localhost:${server.port}';
+    });
+
+    tearDown(() async {
+      await server.close(force: true);
+    });
+
+    void setupMockServer(String responseText) {
+      server.listen((request) async {
+        final responseJson = json.encode({
+          'choices': [
+            {
+              'message': {'content': responseText},
+            },
+          ],
+          'usage': {'prompt_tokens': 30, 'completion_tokens': 15},
+        });
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(responseJson);
+        await request.response.close();
+      });
+    }
+
+    test('returns original text for empty input', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      final result = await service.correctParagraph('');
+      expect(result.text, '');
+      expect(result.llmInvoked, isFalse);
+    });
+
+    test('skips LLM when no dictionary matches', () async {
+      matcher.buildIndex([]);
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      final result = await service.correctParagraph('今天天气不错');
+      expect(result.text, '今天天气不错');
+      expect(result.llmInvoked, isFalse);
+    });
+
+    test('calls LLM for paragraph correction', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      setupMockServer('段落中提到了Metis平台和其他产品');
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      final result = await service.correctParagraph(
+        '段落中提到了墨提斯平台和其他产品',
+      );
+      expect(result.llmInvoked, isTrue);
+      expect(result.totalTokens, greaterThan(0));
+    });
+
+    test('does not update context window', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      setupMockServer('Metis数据平台是核心');
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      // correctParagraph should NOT update context
+      await service.correctParagraph('墨提斯数据平台是核心');
+      expect(context.hasContext, isFalse);
+      expect(context.segmentCount, 0);
+    });
+
+    test('uses previousParagraph as context when provided', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      String capturedContext = '';
+      server.listen((request) async {
+        final body = await utf8.decoder.bind(request).join();
+        final payload = json.decode(body) as Map<String, dynamic>;
+        final messages = payload['messages'] as List<dynamic>? ?? [];
+        final userMessage = messages.isNotEmpty
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ?? ''
+            : '';
+        for (final line in userMessage.split('\n')) {
+          if (line.startsWith('#C: ')) {
+            capturedContext = line.substring(4).trim();
+            break;
+          }
+        }
+
+        final responseJson = json.encode({
+          'choices': [
+            {
+              'message': {'content': 'Metis结果'},
+            },
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 5},
+        });
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(responseJson);
+        await request.response.close();
+      });
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      await service.correctParagraph(
+        '墨提斯很好用',
+        previousParagraph: '上一段的内容',
+      );
+      expect(capturedContext, '上一段的内容');
+    });
+
+    test('falls back to original text on LLM error', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      server.listen((request) async {
+        request.response
+          ..statusCode = 500
+          ..write('Internal Server Error');
+        await request.response.close();
+      });
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+      );
+
+      final result = await service.correctParagraph('墨提斯数据');
+      expect(result.text, '墨提斯数据');
+      expect(result.llmInvoked, isFalse);
+    });
+  });
+
+  group('CorrectionService with SessionGlossary', () {
+    late PinyinMatcher matcher;
+    late CorrectionContext context;
+    late SessionGlossary glossary;
+    late HttpServer server;
+    late String baseUrl;
+
+    setUp(() async {
+      matcher = PinyinMatcher();
+      context = CorrectionContext();
+      glossary = SessionGlossary();
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      baseUrl = 'http://localhost:${server.port}';
+    });
+
+    tearDown(() async {
+      await server.close(force: true);
+    });
+
+    test('injects strong glossary entries into #R', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      // Pre-populate glossary with a strong entry
+      glossary.override('反软', '帆软');
+
+      String capturedReference = '';
+      server.listen((request) async {
+        final body = await utf8.decoder.bind(request).join();
+        final payload = json.decode(body) as Map<String, dynamic>;
+        final messages = payload['messages'] as List<dynamic>? ?? [];
+        final userMessage = messages.isNotEmpty
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ?? ''
+            : '';
+        for (final line in userMessage.split('\n')) {
+          if (line.startsWith('#R: ')) {
+            capturedReference = line.substring(4).trim();
+            break;
+          }
+        }
+
+        final responseJson = json.encode({
+          'choices': [
+            {
+              'message': {'content': 'Metis和帆软都是好产品'},
+            },
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 5},
+        });
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(responseJson);
+        await request.response.close();
+      });
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+        sessionGlossary: glossary,
+      );
+
+      await service.correct('墨提斯和反软都是好产品');
+      // Glossary strong entry should be injected
+      expect(capturedReference, contains('反软->帆软'));
+      // Dictionary entry should also be present
+      expect(capturedReference, contains('墨提斯'));
+    });
+
+    test('does not inject weak glossary entries into #R', () async {
+      matcher.buildIndex([
+        DictionaryEntry.create(original: '墨提斯', corrected: 'Metis'),
+      ]);
+
+      // Only one pin — weak entry
+      glossary.pin('反软', '帆软');
+
+      String capturedReference = '';
+      server.listen((request) async {
+        final body = await utf8.decoder.bind(request).join();
+        final payload = json.decode(body) as Map<String, dynamic>;
+        final messages = payload['messages'] as List<dynamic>? ?? [];
+        final userMessage = messages.isNotEmpty
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ?? ''
+            : '';
+        for (final line in userMessage.split('\n')) {
+          if (line.startsWith('#R: ')) {
+            capturedReference = line.substring(4).trim();
+            break;
+          }
+        }
+
+        final responseJson = json.encode({
+          'choices': [
+            {
+              'message': {'content': 'Metis是好产品'},
+            },
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 5},
+        });
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(responseJson);
+        await request.response.close();
+      });
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+        sessionGlossary: glossary,
+      );
+
+      await service.correct('墨提斯是好产品');
+      // Should NOT contain 反软->帆软 since it's weak
+      expect(capturedReference, isNot(contains('反软->帆软')));
     });
   });
 }

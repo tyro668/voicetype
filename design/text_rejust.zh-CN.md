@@ -149,8 +149,8 @@ Level 2（终态）: Silence_Detected -> Collect_Paragraph -> LLM_Deep_Review ->
 
 #### 当前实现差距
 
-- 会议链路 `_processSegment` 中增强仍基于 `rawText` 而非纠错后文本（`lib/services/meeting_recording_service.dart`），需修正为以纠错结果作为增强输入。
-- 静默检测触发终态回溯的调度逻辑尚未实现。
+- ✅ 会议链路 `_processSegment` 中增强已改为以纠错后文本为输入（M1 已完成）。
+- ✅ 终态回溯调度逻辑已实现，通过设置开关控制（M2 已完成）。
 
 ---
 
@@ -159,7 +159,7 @@ Level 2（终态）: Silence_Detected -> Collect_Paragraph -> LLM_Deep_Review ->
 为保证一致性逻辑不拖慢 UI 响应：
 
 - **CorrectionContext**（已有）：管理 `List<String>` 历史窗口，每次 `startRecording` 重置。
-- **SessionGlossary**（待建）：管理 `Map<String, TermPin>` 会话术语，跟随录音会话生命周期。
+- **SessionGlossary**（已实现）：管理 `Map<String, TermPin>` 会话术语，跟随录音会话生命周期，已集成到 CorrectionService、RecordingProvider 和 MeetingRecordingService。
 - **Pipeline 统一**：普通录音链路（`RecordingProvider`）与会议链路（`MeetingRecordingService`）共用同一 CorrectionService 实例与配置参数，避免行为分叉。
 - **增强输入源统一**：所有链路的增强阶段应以纠错后文本为输入，不再使用 `rawText`。
 
@@ -174,9 +174,9 @@ Level 2（终态）: Silence_Detected -> Collect_Paragraph -> LLM_Deep_Review ->
 | 本地召回 + Top-K | 已实现 | `lib/services/pinyin_matcher.dart`、`lib/services/correction_service.dart` |
 | 参数贯通（录音/会议/测试页） | 已实现 | `lib/providers/settings_provider.dart` |
 | 场景化增强模板 | 已实现 | `assets/prompts/template_*.md` |
-| SessionGlossary 术语锚定 | 未实现 | — |
-| 终态回溯改写 | 未实现 | — |
-| 增强输入源统一（纠错后文本） | 部分实现 | `lib/services/meeting_recording_service.dart` 会议链路待修正 |
+| SessionGlossary 术语锚定 | 已实现 | `lib/services/session_glossary.dart`、`lib/services/correction_service.dart` |
+| 终态回溯改写 | 已实现 | `lib/services/correction_service.dart`（`correctParagraph`）、`lib/providers/recording_provider.dart` |
+| 增强输入源统一（纠错后文本） | 已实现 | `lib/services/meeting_recording_service.dart` |
 
 ---
 
@@ -222,7 +222,7 @@ Level 2（终态）: Silence_Detected -> Collect_Paragraph -> LLM_Deep_Review ->
 
 | 阶段 | 内容 | 前置条件 |
 |------|------|----------|
-| M1 | 增强输入源统一：会议链路增强改用纠错后文本 | 无 |
-| M2 | 终态回溯 MVP：静默/手动触发 -> 全段复核 -> UI 替换 | M1 |
-| M3 | SessionGlossary Phase 2：动态锚定 + 误锚定回退 | M1 |
-| M4 | 性能调优：P95 延迟达标，token 成本可控 | M2 + M3 |
+| M1 | ✅ 增强输入源统一：会议链路增强改用纠错后文本 | 无 |
+| M2 | ✅ 终态回溯 MVP：手动触发 -> 全段复核 -> UI 替换 | M1 |
+| M3 | ✅ SessionGlossary：动态锚定 + 弱/强锚定机制 + 误锚定回退 | M1 |
+| M4 | 待实施 性能调优：P95 延迟达标，token 成本可控 | M2 + M3 |

@@ -55,6 +55,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _sceneModeKey = 'scene_mode';
   static const _dictionaryEntriesKey = 'dictionary_entries';
   static const _correctionEnabledKey = 'correction_enabled';
+  static const _retrospectiveCorrectionEnabledKey = 'retrospective_correction_enabled';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -116,6 +117,7 @@ class SettingsProvider extends ChangeNotifier {
 
   // Correction settings
   bool _correctionEnabled = true;
+  bool _retrospectiveCorrectionEnabled = false;
   String _correctionPrompt = '';
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
@@ -184,6 +186,7 @@ class SettingsProvider extends ChangeNotifier {
 
   // Correction getters
   bool get correctionEnabled => _correctionEnabled;
+  bool get retrospectiveCorrectionEnabled => _retrospectiveCorrectionEnabled;
   String get correctionPrompt => _correctionPrompt;
   PinyinMatcher get pinyinMatcher => _pinyinMatcher;
   int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
@@ -483,6 +486,11 @@ class SettingsProvider extends ChangeNotifier {
     final correctionEnabledStr = await db.getSetting(_correctionEnabledKey);
     if (correctionEnabledStr != null) {
       _correctionEnabled = correctionEnabledStr == 'true';
+    }
+
+    final retroStr = await db.getSetting(_retrospectiveCorrectionEnabledKey);
+    if (retroStr != null) {
+      _retrospectiveCorrectionEnabled = retroStr == 'true';
     }
 
     // 加载纠错 prompt
@@ -1322,6 +1330,15 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setCorrectionEnabled(bool enabled) async {
     _correctionEnabled = enabled;
     await _saveSetting(_correctionEnabledKey, enabled.toString());
+    notifyListeners();
+  }
+
+  Future<void> setRetrospectiveCorrectionEnabled(bool enabled) async {
+    _retrospectiveCorrectionEnabled = enabled;
+    await _saveSetting(
+      _retrospectiveCorrectionEnabledKey,
+      enabled.toString(),
+    );
     notifyListeners();
   }
 
