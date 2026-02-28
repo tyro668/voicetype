@@ -13,6 +13,7 @@ import '../services/log_service.dart';
 import '../services/overlay_service.dart';
 import 'pages/dictionary_page.dart';
 import 'pages/history_page.dart';
+import 'pages/meeting_list_page.dart';
 import 'pages/meeting_recording_page.dart';
 import 'pages/meeting_dashboard_page.dart';
 import 'pages/dashboard_page.dart';
@@ -542,84 +543,98 @@ class _MainScreenState extends State<MainScreen> {
     final navItems = _getNavItems(l10n);
     final settings = context.watch<SettingsProvider>();
     return Container(
-      width: 188,
+      width: 200,
       decoration: BoxDecoration(
-        color: _cs.surfaceContainer,
-        border: Border(
-          right: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.6)),
-        ),
+        color: _cs.surface,
+        border: Border(right: BorderSide(color: _cs.outlineVariant)),
       ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+              padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 28,
+                    height: 28,
                     decoration: BoxDecoration(
-                      color: _cs.surface,
-                      borderRadius: BorderRadius.circular(10),
+                      color: _cs.surfaceContainerHighest.withValues(
+                        alpha: 0.45,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _cs.outlineVariant.withValues(alpha: 0.7),
+                      ),
                     ),
                     child: Icon(
                       Icons.mic_rounded,
-                      size: 20,
-                      color: _cs.primary,
+                      color: _cs.onSurfaceVariant,
+                      size: 14,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       l10n.appTitle,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
-                        height: 1,
+                        letterSpacing: 0.0,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: _cs.outlineVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
             ...List.generate(navItems.length, (i) {
               final item = navItems[i];
               final selected = _selectedNav == i;
               return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 child: Material(
-                  color: selected
-                      ? _cs.primaryContainer.withValues(alpha: 0.62)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  color: selected ? _cs.secondaryContainer : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                     onTap: () => setState(() => _selectedNav = i),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 11,
+                        horizontal: 12,
+                        vertical: 10,
                       ),
                       child: Row(
                         children: [
+                          Icon(
+                            item.icon,
+                            size: 18,
+                            color: selected
+                                ? _cs.onSurface
+                                : _cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 10),
                           Text(
                             item.label,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: selected
                                   ? FontWeight.w600
-                                  : FontWeight.w500,
+                                  : FontWeight.w400,
                               color: selected
-                                  ? _cs.primary
-                                  : _cs.onSurfaceVariant.withValues(alpha: 0.9),
+                                  ? _cs.onSurface
+                                  : _cs.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -631,7 +646,7 @@ class _MainScreenState extends State<MainScreen> {
             }),
             const Spacer(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Divider(
                 height: 1,
                 thickness: 1,
@@ -640,31 +655,31 @@ class _MainScreenState extends State<MainScreen> {
             ),
             // 底部设置按钮
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
               child: Material(
                 color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   onTap: _openSettings,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 11,
+                      horizontal: 12,
+                      vertical: 10,
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.settings_outlined,
-                          size: 16,
+                          size: 18,
                           color: _cs.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Text(
                           l10n.settings,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w400,
                             color: _cs.onSurfaceVariant,
                           ),
                         ),

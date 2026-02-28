@@ -199,9 +199,9 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       color: isPreviewing
           ? _cs.primaryContainer.withValues(alpha: 0.35)
           : Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         hoverColor: _cs.surfaceContainerHighest.withValues(alpha: 0.5),
         onTap: () {
           setState(() {
@@ -213,7 +213,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: isPreviewing
               ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _cs.primary.withValues(alpha: 0.3)),
                 )
               : null,
@@ -530,7 +530,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: SelectableText(
@@ -578,7 +578,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
@@ -609,8 +609,8 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: _cs.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _cs.outlineVariant),
           ),
           child: _testOutputController.text.isEmpty
               ? Text(
@@ -701,8 +701,8 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,15 +752,15 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
       fillColor: _cs.surfaceContainerLow,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: _cs.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: _cs.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: _cs.primary, width: 1.5),
       ),
     );

@@ -26,9 +26,8 @@ class _HistoryPageState extends State<HistoryPage> {
     final history = recording.history;
     final l10n = AppLocalizations.of(context)!;
 
-    return Container(
-      color: _cs.surfaceContainerLow,
-      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 36),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -37,33 +36,28 @@ class _HistoryPageState extends State<HistoryPage> {
             children: [
               Icon(
                 Icons.description_outlined,
-                size: 22,
-                color: _cs.onSurfaceVariant.withValues(alpha: 0.7),
+                size: 24,
+                color: _cs.onSurfaceVariant,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 l10n.history,
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                   color: _cs.onSurface,
-                  letterSpacing: 0.3,
                 ),
               ),
               const Spacer(),
               if (history.isNotEmpty)
                 IconButton(
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: _cs.outline.withValues(alpha: 0.55),
-                    size: 22,
-                  ),
+                  icon: Icon(Icons.delete_outline, color: _cs.outline),
                   tooltip: l10n.clearAll,
                   onPressed: () => _confirmClearAll(context, recording, l10n),
                 ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           // 列表
           Expanded(
             child: history.isEmpty
@@ -80,23 +74,16 @@ class _HistoryPageState extends State<HistoryPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.history_rounded,
-            size: 52,
-            color: _cs.outline.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 14),
+          Icon(Icons.history, size: 48, color: _cs.outline),
+          const SizedBox(height: 12),
           Text(
             l10n.noHistory,
             style: TextStyle(fontSize: 15, color: _cs.onSurfaceVariant),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             l10n.historyHint,
-            style: TextStyle(
-              fontSize: 13,
-              color: _cs.outline.withValues(alpha: 0.7),
-            ),
+            style: TextStyle(fontSize: 13, color: _cs.outline),
           ),
         ],
       ),
@@ -117,21 +104,12 @@ class _HistoryPageState extends State<HistoryPage> {
         final dateStr = DateFormat('M月d日 HH:mm').format(item.createdAt);
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: _cs.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _cs.outlineVariant.withValues(alpha: 0.28),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _cs.shadow.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _cs.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,29 +119,26 @@ class _HistoryPageState extends State<HistoryPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 3,
+                      horizontal: 8,
+                      vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEDE7F6),
-                      borderRadius: BorderRadius.circular(999),
+                      color: _cs.secondaryContainer,
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '#$number',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF5C3BBF),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _cs.onSurface,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Text(
                     dateStr,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _cs.onSurfaceVariant.withValues(alpha: 0.7),
-                    ),
+                    style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
                   ),
                   const Spacer(),
                   // 复制按钮
@@ -196,9 +171,9 @@ class _HistoryPageState extends State<HistoryPage> {
               SelectableText(
                 item.text,
                 style: TextStyle(
-                  fontSize: 14.5,
-                  color: _cs.onSurface.withValues(alpha: 0.88),
-                  height: 1.65,
+                  fontSize: 15,
+                  color: _cs.onSurface,
+                  height: 1.6,
                 ),
                 contextMenuBuilder: (ctx, editableTextState) {
                   final selectedText = editableTextState
@@ -240,7 +215,7 @@ class _HistoryPageState extends State<HistoryPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           onTap: () {
             setState(() {
               if (isExpanded) {
@@ -251,24 +226,19 @@ class _HistoryPageState extends State<HistoryPage> {
             });
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
                   size: 16,
-                  color: _cs.outline.withValues(alpha: 0.65),
+                  color: _cs.outline,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   l10n.originalSttText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _cs.outline.withValues(alpha: 0.65),
-                  ),
+                  style: TextStyle(fontSize: 12, color: _cs.outline),
                 ),
               ],
             ),
@@ -278,17 +248,17 @@ class _HistoryPageState extends State<HistoryPage> {
           const SizedBox(height: 4),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _cs.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(12),
+              color: _cs.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: SelectableText(
               item.rawText ?? '',
               style: TextStyle(
                 fontSize: 13,
-                color: _cs.onSurfaceVariant.withValues(alpha: 0.8),
-                height: 1.55,
+                color: _cs.onSurfaceVariant,
+                height: 1.5,
               ),
             ),
           ),
@@ -367,15 +337,11 @@ class _ActionIcon extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(7),
-          child: Icon(
-            icon,
-            size: 18,
-            color: color ?? cs.outline.withValues(alpha: 0.55),
-          ),
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 18, color: color ?? cs.outline),
         ),
       ),
     );
