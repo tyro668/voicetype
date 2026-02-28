@@ -1,5 +1,6 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <algorithm>
 #include <windows.h>
 
 #include "flutter_window.h"
@@ -30,8 +31,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0);
   int screen_w = work_area.right - work_area.left;
   int screen_h = work_area.bottom - work_area.top;
-  int w = min(screen_w * 4 / 5, 1200);
-  int h = min(screen_h * 4 / 5, 800);
+  int w = std::min(screen_w * 4 / 5, 1200);
+  int h = std::min(screen_h * 4 / 5, 800);
   Win32Window::Size size(w, h);
   int x = work_area.left + (screen_w - w) / 2;
   int y = work_area.top + (screen_h - h) / 2;
