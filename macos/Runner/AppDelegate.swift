@@ -26,6 +26,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   var lastActiveApp: NSRunningApplication?
   var previousFnPressedEventTap: Bool = false
   var previousFnPressedNSEvent: Bool = false
+  var fnTapEligibleEventTap: Bool = false
+  var fnTapEligibleNSEvent: Bool = false
   var lastFnDownTime: CFAbsoluteTime = 0
   private lazy var logFileURL: URL = {
     let libraryDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
@@ -290,10 +292,17 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     }
   }
 
-  func emitGlobalKeyEvent(keyCode: UInt32, type: String, isRepeat: Bool, source: String) {
+  func emitGlobalKeyEvent(
+    keyCode: UInt32,
+    type: String,
+    isRepeat: Bool,
+    source: String,
+    hasModifiersOverride: Bool? = nil
+  ) {
     // 获取当前修饰键状态（Cmd/Ctrl/Alt/Shift）
     let flags = NSEvent.modifierFlags
-    let hasModifiers = !flags.intersection([.command, .control, .option, .shift]).isEmpty
+    let hasModifiersFromFlags = !flags.intersection([.command, .control, .option, .shift]).isEmpty
+    let hasModifiers = hasModifiersOverride ?? hasModifiersFromFlags
 
     let payload: [String: Any] = [
       "keyCode": Int(keyCode),
@@ -356,12 +365,28 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       }
       self.captureActiveApplication()
 
+      if event.type == .keyDown,
+         UInt32(event.keyCode) != kVK_FunctionKey,
+         self.previousFnPressedNSEvent {
+        self.fnTapEligibleNSEvent = false
+      }
+
       if let (emitKeyCode, eventType) = self.matchNSEvent(event) {
+        var hasModifiersOverride: Bool? = nil
+        if emitKeyCode == kVK_FunctionKey {
+          if eventType == "down" {
+            hasModifiersOverride = false
+          } else if eventType == "up" {
+            hasModifiersOverride = !self.fnTapEligibleNSEvent
+            self.fnTapEligibleNSEvent = false
+          }
+        }
         self.emitGlobalKeyEvent(
           keyCode: emitKeyCode,
           type: eventType,
           isRepeat: event.type == .flagsChanged ? false : event.isARepeat,
-          source: "nsevent-global"
+          source: "nsevent-global",
+          hasModifiersOverride: hasModifiersOverride
         )
       }
     }
@@ -373,12 +398,28 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       }
       self.captureActiveApplication()
 
+      if event.type == .keyDown,
+         UInt32(event.keyCode) != kVK_FunctionKey,
+         self.previousFnPressedNSEvent {
+        self.fnTapEligibleNSEvent = false
+      }
+
       if let (emitKeyCode, eventType) = self.matchNSEvent(event) {
+        var hasModifiersOverride: Bool? = nil
+        if emitKeyCode == kVK_FunctionKey {
+          if eventType == "down" {
+            hasModifiersOverride = false
+          } else if eventType == "up" {
+            hasModifiersOverride = !self.fnTapEligibleNSEvent
+            self.fnTapEligibleNSEvent = false
+          }
+        }
         self.emitGlobalKeyEvent(
           keyCode: emitKeyCode,
           type: eventType,
           isRepeat: event.type == .flagsChanged ? false : event.isARepeat,
-          source: "nsevent-local"
+          source: "nsevent-local",
+          hasModifiersOverride: hasModifiersOverride
         )
       }
       return event
@@ -455,6 +496,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     registeredHotKeyCode = keyCode
     previousFnPressedEventTap = false
     previousFnPressedNSEvent = false
+    fnTapEligibleEventTap = false
+    fnTapEligibleNSEvent = false
 
     // Fn 键不走 Carbon：直接使用 EventTap + NSEvent 兜底
     if keyCode == kVK_FunctionKey {
@@ -515,12 +558,16 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     }
     previousFnPressedEventTap = false
     previousFnPressedNSEvent = false
+    fnTapEligibleEventTap = false
+    fnTapEligibleNSEvent = false
   }
 
   @discardableResult
   func registerMeetingHotkey(keyCode: UInt32, modifiers: UInt32) -> Bool {
     registeredMeetingKeyCode = keyCode
     meetingHotKeyEnabled = true
+    fnTapEligibleEventTap = false
+    fnTapEligibleNSEvent = false
 
     // Fn 键不走 Carbon
     if keyCode == kVK_FunctionKey {
@@ -561,6 +608,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
 
   func unregisterMeetingHotkey() {
     meetingHotKeyEnabled = false
+    fnTapEligibleEventTap = false
+    fnTapEligibleNSEvent = false
     if let meetingHotKeyRef = meetingHotKeyRef {
       UnregisterEventHotKey(meetingHotKeyRef)
       self.meetingHotKeyRef = nil
@@ -614,7 +663,10 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           }
         }
         previousFnPressedNSEvent = fnPressed
-        if fnPressed { lastFnDownTime = now }
+        if fnPressed {
+          fnTapEligibleNSEvent = true
+          lastFnDownTime = now
+        }
         let emitKey = voiceIsFn ? registeredHotKeyCode : registeredMeetingKeyCode
         return (emitKey, fnPressed ? "down" : "up")
       }
@@ -698,6 +750,12 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
       let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
 
+      if type == .keyDown,
+         UInt32(keyCode) != kVK_FunctionKey,
+         delegate.previousFnPressedEventTap {
+        delegate.fnTapEligibleEventTap = false
+      }
+
       // Determine which registered hotkey matches
       let matchesVoice = !voiceUsesCarbon && UInt32(keyCode) == delegate.registeredHotKeyCode
       let matchesMeeting = !meetingUsesCarbon && delegate.meetingHotKeyEnabled && UInt32(keyCode) == delegate.registeredMeetingKeyCode
@@ -741,6 +799,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
           }
           delegate.previousFnPressedEventTap = fnPressed
           if fnPressed {
+            delegate.fnTapEligibleEventTap = true
             delegate.lastFnDownTime = now
           }
           // Emit for the hotkey that is set to Fn (prefer voice if both are Fn)
@@ -757,11 +816,22 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
         return Unmanaged.passUnretained(event)
       }
 
+      var hasModifiersOverride: Bool? = nil
+      if emitKeyCode == kVK_FunctionKey {
+        if eventType == "down" {
+          hasModifiersOverride = false
+        } else if eventType == "up" {
+          hasModifiersOverride = !delegate.fnTapEligibleEventTap
+          delegate.fnTapEligibleEventTap = false
+        }
+      }
+
       delegate.emitGlobalKeyEvent(
         keyCode: emitKeyCode,
         type: eventType,
         isRepeat: type == .flagsChanged ? false : isRepeat,
-        source: "event-tap"
+        source: "event-tap",
+        hasModifiersOverride: hasModifiersOverride
       )
 
       return Unmanaged.passUnretained(event)
@@ -812,6 +882,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
         self.log("[hotkey] EventTap disabled (count=\(disableCount)), re-enabling")
         // EventTap 被禁用期间可能丢失了 Fn 释放事件，重置状态
         self.previousFnPressedEventTap = false
+        self.fnTapEligibleEventTap = false
         // 检测权限是否已授予：如果已授予则重建 EventTap 以获得稳定连接
         if AXIsProcessTrusted() || CGPreflightListenEventAccess() {
           let isFn = self.registeredHotKeyCode == kVK_FunctionKey

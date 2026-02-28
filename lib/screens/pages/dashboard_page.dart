@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../models/correction_change_log.dart';
 import '../../models/dashboard_stats.dart';
+import '../../services/correction_change_log_service.dart';
 import '../../services/dashboard_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -15,6 +17,8 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   DashboardStats _stats = DashboardStats.empty;
+  List<CorrectionChangeLog> _correctionLogs = const [];
+  bool _correctionLogsExpanded = false;
   bool _loading = true;
   TrendGranularity _granularity = TrendGranularity.day;
   int _periodTab = 0;
@@ -27,12 +31,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadStats({bool showLoading = true}) async {
     if (showLoading) setState(() => _loading = true);
-    final stats = await DashboardService.instance.computeStats(
-      granularity: _granularity,
-    );
+    final results = await Future.wait([
+      DashboardService.instance.computeStats(granularity: _granularity),
+      CorrectionChangeLogService.instance.getRecent(limit: 20),
+    ]);
+    final stats = results[0] as DashboardStats;
+    final correctionLogs = results[1] as List<CorrectionChangeLog>;
     if (mounted) {
       setState(() {
         _stats = stats;
+        _correctionLogs = correctionLogs;
         if (showLoading) _loading = false;
       });
     }
@@ -82,6 +90,8 @@ class _DashboardPageState extends State<DashboardPage> {
             _l10n.noDataYet,
             style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
+          const SizedBox(height: 16),
+          _buildCorrectionChangeLogsSection(),
         ],
       ),
     );
@@ -102,6 +112,12 @@ class _DashboardPageState extends State<DashboardPage> {
           _buildTokenSection(),
           const SizedBox(height: 16),
           _buildCorrectionEfficiencySection(),
+          const SizedBox(height: 16),
+          _buildCorrectionChangeLogsSection(),
+          const SizedBox(height: 16),
+          _buildRetrospectiveSection(),
+          const SizedBox(height: 16),
+          _buildGlossarySection(),
           const SizedBox(height: 16),
           _buildTrendSection(),
           const SizedBox(height: 16),
@@ -833,7 +849,8 @@ class _DashboardPageState extends State<DashboardPage> {
     final hasEnhance = _stats.enhanceTotalTokens > 0;
     final hasMeeting = _stats.meetingEnhanceTotalTokens > 0;
     final hasCorrection = _stats.correctionTotalTokens > 0;
-    if (!hasEnhance && !hasMeeting && !hasCorrection) {
+    final hasRetro = _stats.retroTotalTokens > 0;
+    if (!hasEnhance && !hasMeeting && !hasCorrection && !hasRetro) {
       return const SizedBox.shrink();
     }
 
@@ -841,6 +858,7 @@ class _DashboardPageState extends State<DashboardPage> {
       hasEnhance,
       hasMeeting,
       hasCorrection,
+      hasRetro,
     ].where((v) => v).length;
     final showAll = categoryCount >= 2;
 
@@ -919,6 +937,14 @@ class _DashboardPageState extends State<DashboardPage> {
               output: _stats.correctionCompletionTokens,
               total: _stats.correctionTotalTokens,
             ),
+          if (hasCorrection && hasRetro) const SizedBox(height: 16),
+          if (hasRetro)
+            _buildTokenBlock(
+              title: _l10n.retroTokenUsage,
+              input: _stats.retroPromptTokens,
+              output: _stats.retroCompletionTokens,
+              total: _stats.retroTotalTokens,
+            ),
         ],
       ),
     );
@@ -985,6 +1011,264 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCorrectionChangeLogsSection() {
+    return _Card(
+      cs: _cs,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _l10n.correctionChangesTitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _correctionLogsExpanded = !_correctionLogsExpanded;
+                  });
+                },
+                icon: Icon(
+                  _correctionLogsExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: 18,
+                ),
+                label: Text(
+                  _correctionLogsExpanded
+                      ? _l10n.correctionChangesCollapse
+                      : _l10n.correctionChangesExpand,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!_correctionLogsExpanded)
+            Text(
+              _l10n.correctionChangesCollapsedHint,
+              style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+            ),
+          if (_correctionLogsExpanded) ...[
+            const SizedBox(height: 12),
+            if (_correctionLogs.isEmpty)
+              Text(
+                _l10n.correctionChangesEmpty,
+                style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
+              )
+            else
+              ..._correctionLogs.asMap().entries.map((entry) {
+                final index = entry.key;
+                final log = entry.value;
+                final pairText = log.terms
+                    .map(
+                      (e) =>
+                          '${e.observed.isEmpty ? e.original : e.observed}→${e.corrected}',
+                    )
+                    .join('、');
+                final sourceLabel = log.source == 'retrospective'
+                    ? _l10n.correctionSourceRetrospective
+                    : _l10n.correctionSourceRealtime;
+
+                return Container(
+                  margin: EdgeInsets.only(
+                    bottom: index == _correctionLogs.length - 1 ? 0 : 12,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _cs.outlineVariant.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            DateFormat('MM-dd HH:mm:ss').format(log.createdAt),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _cs.onSurfaceVariant,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(99),
+                              color: _cs.primary.withValues(alpha: 0.12),
+                            ),
+                            child: Text(
+                              sourceLabel,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _cs.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (pairText.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_l10n.correctionChangedTerms}: $pairText',
+                          style: TextStyle(fontSize: 12, color: _cs.onSurface),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        _l10n.correctionBeforeText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        log.inputText,
+                        style: TextStyle(fontSize: 12, color: _cs.onSurface),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _l10n.correctionAfterText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        log.outputText,
+                        style: TextStyle(fontSize: 12, color: _cs.onSurface),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─────────────── Retrospective Section ───────────────
+
+  Widget _buildRetrospectiveSection() {
+    if (_stats.retroCalls <= 0) return const SizedBox.shrink();
+
+    return _Card(
+      cs: _cs,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _l10n.retroSectionTitle,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              _buildEfficiencyItem(
+                _l10n.retroTotalCalls,
+                _formatNumber(_stats.retroCalls),
+              ),
+              _buildEfficiencyItem(
+                _l10n.retroLlmCalls,
+                _formatNumber(_stats.retroLlmCalls),
+              ),
+              _buildEfficiencyItem(
+                _l10n.retroTextChangedCount,
+                _formatNumber(_stats.retroTextChanged),
+              ),
+              _buildEfficiencyItem(
+                _l10n.retroTextChangedRate,
+                _formatPercent(
+                  _stats.retroCalls > 0
+                      ? _stats.retroTextChanged / _stats.retroCalls
+                      : 0,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────── Glossary Section ───────────────
+
+  Widget _buildGlossarySection() {
+    final total =
+        _stats.glossaryPins +
+        _stats.glossaryStrongPromotions +
+        _stats.glossaryOverrides +
+        _stats.glossaryInjections;
+    if (total <= 0) return const SizedBox.shrink();
+
+    return _Card(
+      cs: _cs,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _l10n.glossarySectionTitle,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              _buildEfficiencyItem(
+                _l10n.glossaryPins,
+                _formatNumber(_stats.glossaryPins),
+              ),
+              _buildEfficiencyItem(
+                _l10n.glossaryStrongPromotions,
+                _formatNumber(_stats.glossaryStrongPromotions),
+              ),
+              _buildEfficiencyItem(
+                _l10n.glossaryOverrides,
+                _formatNumber(_stats.glossaryOverrides),
+              ),
+              _buildEfficiencyItem(
+                _l10n.glossaryInjections,
+                _formatNumber(_stats.glossaryInjections),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

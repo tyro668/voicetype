@@ -1448,11 +1448,137 @@ abstract class AppLocalizations {
   /// **'Candidate Selection Rate'**
   String get correctionSelectedRate;
 
+  /// No description provided for @correctionChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction Details (Latest 20)'**
+  String get correctionChangesTitle;
+
+  /// No description provided for @correctionChangesExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get correctionChangesExpand;
+
+  /// No description provided for @correctionChangesCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get correctionChangesCollapse;
+
+  /// No description provided for @correctionChangesCollapsedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapsed by default. Click Expand to view correction details.'**
+  String get correctionChangesCollapsedHint;
+
+  /// No description provided for @correctionChangesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No correction details yet. Start a recording and trigger correction to see entries here.'**
+  String get correctionChangesEmpty;
+
+  /// No description provided for @correctionChangedTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed Terms'**
+  String get correctionChangedTerms;
+
+  /// No description provided for @correctionBeforeText.
+  ///
+  /// In en, this message translates to:
+  /// **'Before'**
+  String get correctionBeforeText;
+
+  /// No description provided for @correctionAfterText.
+  ///
+  /// In en, this message translates to:
+  /// **'After'**
+  String get correctionAfterText;
+
+  /// No description provided for @correctionSourceRealtime.
+  ///
+  /// In en, this message translates to:
+  /// **'Realtime'**
+  String get correctionSourceRealtime;
+
+  /// No description provided for @correctionSourceRetrospective.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrospective'**
+  String get correctionSourceRetrospective;
+
   /// No description provided for @allTokenUsage.
   ///
   /// In en, this message translates to:
   /// **'All Tokens Summary'**
   String get allTokenUsage;
+
+  /// No description provided for @retroTokenUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrospective Tokens'**
+  String get retroTokenUsage;
+
+  /// No description provided for @retroSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrospective Correction'**
+  String get retroSectionTitle;
+
+  /// No description provided for @retroTotalCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Retro Calls'**
+  String get retroTotalCalls;
+
+  /// No description provided for @retroLlmCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'LLM Calls'**
+  String get retroLlmCalls;
+
+  /// No description provided for @retroTextChangedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Changed'**
+  String get retroTextChangedCount;
+
+  /// No description provided for @retroTextChangedRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Rate'**
+  String get retroTextChangedRate;
+
+  /// No description provided for @glossarySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminology Anchoring'**
+  String get glossarySectionTitle;
+
+  /// No description provided for @glossaryPins.
+  ///
+  /// In en, this message translates to:
+  /// **'New Pins'**
+  String get glossaryPins;
+
+  /// No description provided for @glossaryStrongPromotions.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong Promotions'**
+  String get glossaryStrongPromotions;
+
+  /// No description provided for @glossaryOverrides.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual Overrides'**
+  String get glossaryOverrides;
+
+  /// No description provided for @glossaryInjections.
+  ///
+  /// In en, this message translates to:
+  /// **'#R Injections'**
+  String get glossaryInjections;
 
   /// No description provided for @showInDock.
   ///
@@ -1910,6 +2036,18 @@ abstract class AppLocalizations {
   /// **'Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty'**
   String get correctionDescription;
 
+  /// No description provided for @retrospectiveCorrectionEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrospective Review'**
+  String get retrospectiveCorrectionEnabled;
+
+  /// No description provided for @retrospectiveCorrectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Run one more paragraph-level correction when recording stops for better term consistency'**
+  String get retrospectiveCorrectionDescription;
+
   /// No description provided for @pinyinPreview.
   ///
   /// In en, this message translates to:
@@ -2270,6 +2408,30 @@ abstract class AppLocalizations {
   /// **'Merged Notes'**
   String get meetingMergedNoteView;
 
+  /// No description provided for @meetingLiveSummaryView.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Summary'**
+  String get meetingLiveSummaryView;
+
+  /// No description provided for @meetingLiveSummaryWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for enough content to generate summary...'**
+  String get meetingLiveSummaryWaiting;
+
+  /// No description provided for @meetingFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalizing'**
+  String get meetingFinalizing;
+
+  /// No description provided for @meetingSummaryUpdating.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating summary...'**
+  String get meetingSummaryUpdating;
+
   /// No description provided for @meetingStreamingMerge.
   ///
   /// In en, this message translates to:
@@ -2305,6 +2467,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Regenerate'**
   String get meetingRegenerateSummary;
+
+  /// No description provided for @meetingUnifyRebuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Unify Rebuild'**
+  String get meetingUnifyRebuild;
+
+  /// No description provided for @meetingUnifyRebuildTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unify Historical Meetings'**
+  String get meetingUnifyRebuildTitle;
+
+  /// No description provided for @meetingUnifyRebuildConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting minutes and summaries will be rebuilt using the same rule as segment view (prefer enhanced text). Continue?'**
+  String get meetingUnifyRebuildConfirm;
+
+  /// No description provided for @meetingUnifyRebuildRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Unifying historical meetings...'**
+  String get meetingUnifyRebuildRunning;
+
+  /// No description provided for @meetingUnifyRebuildDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Unified rebuild complete: {count}'**
+  String meetingUnifyRebuildDone(int count);
+
+  /// No description provided for @meetingStatsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {totalCount} · Completed {completedCount}'**
+  String meetingStatsSummary(int totalCount, int completedCount);
+
+  /// No description provided for @meetingRecoverRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair Recording'**
+  String get meetingRecoverRecording;
+
+  /// No description provided for @meetingRecoverRecordingSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Repaired {count} stuck recording session(s)'**
+  String meetingRecoverRecordingSuccess(int count);
+
+  /// No description provided for @meetingRecoverRecordingNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No stuck recording sessions found'**
+  String get meetingRecoverRecordingNone;
+
+  /// No description provided for @meetingSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search title/summary/content'**
+  String get meetingSearchHint;
+
+  /// No description provided for @meetingManageGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Groups'**
+  String get meetingManageGroups;
+
+  /// No description provided for @meetingMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More Actions'**
+  String get meetingMoreActions;
+
+  /// No description provided for @meetingMoveToGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Group'**
+  String get meetingMoveToGroup;
+
+  /// No description provided for @meetingMoveToGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Group'**
+  String get meetingMoveToGroupTitle;
+
+  /// No description provided for @meetingCreateGroupAndMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Group and Move'**
+  String get meetingCreateGroupAndMove;
+
+  /// No description provided for @meetingGroupManageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Management'**
+  String get meetingGroupManageTitle;
+
+  /// No description provided for @meetingGroupManageEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom groups yet. Click the button below to create one.'**
+  String get meetingGroupManageEmptyHint;
+
+  /// No description provided for @meetingGroupClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get meetingGroupClose;
+
+  /// No description provided for @meetingGroupCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Group'**
+  String get meetingGroupCreate;
+
+  /// No description provided for @meetingGroupCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Group'**
+  String get meetingGroupCreateTitle;
+
+  /// No description provided for @meetingGroupNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter group name'**
+  String get meetingGroupNameHint;
+
+  /// No description provided for @meetingGroupRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Group'**
+  String get meetingGroupRenameTitle;
+
+  /// No description provided for @meetingGroupRenameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter new group name'**
+  String get meetingGroupRenameHint;
+
+  /// No description provided for @meetingAllGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get meetingAllGroups;
+
+  /// No description provided for @meetingUngrouped.
+  ///
+  /// In en, this message translates to:
+  /// **'Ungrouped'**
+  String get meetingUngrouped;
+
+  /// No description provided for @meetingStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to start meeting: {error}'**
+  String meetingStartFailed(String error);
+
+  /// No description provided for @meetingStopFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to stop meeting: {error}'**
+  String meetingStopFailed(String error);
+
+  /// No description provided for @meetingMovedToFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting has entered {status}'**
+  String meetingMovedToFinalizing(String status);
+
+  /// No description provided for @meetingStoppingPleaseWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping meeting, please wait…'**
+  String get meetingStoppingPleaseWait;
+
+  /// No description provided for @meetingStopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping meeting…'**
+  String get meetingStopping;
 
   /// No description provided for @addToDictionary.
   ///

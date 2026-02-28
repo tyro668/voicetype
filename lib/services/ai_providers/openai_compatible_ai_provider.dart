@@ -176,28 +176,40 @@ class OpenAiCompatibleAiProvider extends AiProvider {
         throw AiEnhanceException('AI增强失败 (${response.statusCode})');
       }
 
-      // Parse SSE stream
-      await for (final chunk in response.transform(utf8.decoder)) {
-        final lines = chunk.split('\n');
-        for (final line in lines) {
-          final trimmed = line.trim();
-          if (trimmed.isEmpty || trimmed == 'data: [DONE]') continue;
-          if (!trimmed.startsWith('data: ')) continue;
+      // Parse SSE stream line-by-line to avoid losing events when network
+      // chunks split in the middle of a JSON payload.
+      await for (final rawLine
+          in response.transform(utf8.decoder).transform(const LineSplitter())) {
+        final line = rawLine.trim();
+        if (line.isEmpty) continue;
+        if (!line.startsWith('data:')) continue;
 
-          final jsonStr = trimmed.substring(6);
-          try {
-            final jsonData = json.decode(jsonStr) as Map<String, dynamic>;
-            final choices = jsonData['choices'] as List<dynamic>?;
-            if (choices != null && choices.isNotEmpty) {
-              final delta = choices.first['delta'] as Map<String, dynamic>?;
-              final content = delta?['content'] as String?;
-              if (content != null && content.isNotEmpty) {
-                yield content;
+        final jsonStr = line.substring(5).trim();
+        if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+
+        try {
+          final jsonData = json.decode(jsonStr) as Map<String, dynamic>;
+          final choices = jsonData['choices'] as List<dynamic>?;
+          if (choices == null || choices.isEmpty) continue;
+
+          final delta = choices.first['delta'] as Map<String, dynamic>?;
+          if (delta == null) continue;
+
+          final content = delta['content'];
+          if (content is String && content.isNotEmpty) {
+            yield content;
+          } else if (content is List) {
+            for (final part in content) {
+              if (part is Map<String, dynamic>) {
+                final text = part['text'];
+                if (text is String && text.isNotEmpty) {
+                  yield text;
+                }
               }
             }
-          } catch (_) {
-            // Skip malformed SSE data lines
           }
+        } catch (_) {
+          // Skip malformed SSE data lines.
         }
       }
 

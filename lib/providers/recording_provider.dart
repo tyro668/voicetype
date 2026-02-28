@@ -18,11 +18,13 @@ import '../services/correction_service.dart';
 import '../services/correction_context.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/session_glossary.dart';
+import '../services/correction_stats_service.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
 class RecordingProvider extends ChangeNotifier {
   static const Duration _segmentDuration = Duration(seconds: 10);
+  static const String _overlayOwner = 'dictation';
 
   final AudioRecorderService _recorder = AudioRecorderService();
   final HistoryDb _historyDb = HistoryDb.instance;
@@ -101,6 +103,22 @@ class RecordingProvider extends ChangeNotifier {
     _retrospectiveCorrectionEnabled = value;
   }
 
+  /// 手动覆盖会话术语映射（由词典页编辑触发）。
+  void applySessionGlossaryOverride(String original, String corrected) {
+    _sessionGlossary.override(original, corrected);
+  }
+
+  Future<void> _flushGlossaryStats() async {
+    try {
+      await CorrectionStatsService.instance.flushGlossaryStats(
+        pins: _sessionGlossary.pinsCount,
+        strongPromotions: _sessionGlossary.strongPromotionsCount,
+        overrides: _sessionGlossary.overridesCount,
+        injections: _sessionGlossary.injectionsCount,
+      );
+    } catch (_) {}
+  }
+
   RecordingState get state => _state;
   bool get busy => _busy;
   String get transcribedText => _transcribedText;
@@ -144,14 +162,14 @@ class RecordingProvider extends ChangeNotifier {
         onTimeout: () {
           LogService.error('RECORDING', 'startRecording timed out after 15s');
           _state = RecordingState.idle;
-          unawaited(OverlayService.hideOverlay());
+          unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
           notifyListeners();
         },
       );
     } catch (e) {
       _error = '录音启动失败: $e';
       _state = RecordingState.idle;
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       notifyListeners();
     } finally {
       _busy = false;
@@ -182,6 +200,7 @@ class RecordingProvider extends ChangeNotifier {
     _amplitudeSub?.cancel();
     _amplitudeSub = null;
     _correctionContext.reset();
+    unawaited(_flushGlossaryStats());
     _sessionGlossary.reset();
 
     // 无论当前状态如何，都先 reset recorder，确保干净状态
@@ -211,6 +230,7 @@ class RecordingProvider extends ChangeNotifier {
         duration: '00:00',
         level: 0.0,
         stateLabel: _startingLabel,
+        owner: _overlayOwner,
       ),
     );
 
@@ -238,6 +258,7 @@ class RecordingProvider extends ChangeNotifier {
         duration: '00:00',
         level: 0.0,
         stateLabel: _recordingLabel,
+        owner: _overlayOwner,
       ),
     );
 
@@ -247,6 +268,7 @@ class RecordingProvider extends ChangeNotifier {
         duration: _durationStr,
         level: level,
         stateLabel: _recordingLabel,
+        owner: _overlayOwner,
       );
     });
 
@@ -383,7 +405,9 @@ class RecordingProvider extends ChangeNotifier {
     _rawTextBuffer.write(normalized);
     _realtimeTextBuffer.write(normalized);
     _transcribedText = _realtimeTextBuffer.toString();
-    unawaited(OverlayService.updateOverlayText(_transcribedText));
+    unawaited(
+      OverlayService.updateOverlayText(_transcribedText, owner: _overlayOwner),
+    );
     notifyListeners();
   }
 
@@ -452,7 +476,7 @@ class RecordingProvider extends ChangeNotifier {
       if (duration.inSeconds < minRecordingSeconds) {
         _sessionStopping = true;
         _state = RecordingState.idle;
-        unawaited(OverlayService.hideOverlay());
+        unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
         _stopCompleter = Completer<void>();
         _recorder.stop().then((_) => _recorder.reset()).whenComplete(() {
           if (!_stopCompleter!.isCompleted) _stopCompleter!.complete();
@@ -465,6 +489,7 @@ class RecordingProvider extends ChangeNotifier {
         OverlayService.showOverlay(
           state: 'transcribing',
           stateLabel: _transcribingLabel,
+          owner: _overlayOwner,
         ),
       );
       _state = RecordingState.idle;
@@ -483,7 +508,7 @@ class RecordingProvider extends ChangeNotifier {
     } catch (e) {
       _error = '停止录音失败: $e';
       _state = RecordingState.idle;
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
       if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
@@ -591,13 +616,19 @@ class RecordingProvider extends ChangeNotifier {
             'TRANSCRIBE',
             'retrospective correction start...',
           );
-          final retroResult =
-              await _correctionService!.correctParagraph(rawText);
+          final retroResult = await _correctionService!.correctParagraph(
+            rawText,
+          );
           if (retroResult.text.trim().isNotEmpty) {
             rawText = retroResult.text;
             // 同步更新实时展示文本
             _transcribedText = rawText;
-            unawaited(OverlayService.updateOverlayText(_transcribedText));
+            unawaited(
+              OverlayService.updateOverlayText(
+                _transcribedText,
+                owner: _overlayOwner,
+              ),
+            );
             notifyListeners();
           }
           await LogService.info(
@@ -631,7 +662,7 @@ class RecordingProvider extends ChangeNotifier {
         _stopCompleter!.complete();
       }
       await _recorder.reset();
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       notifyListeners();
     }
   }
@@ -675,6 +706,7 @@ class RecordingProvider extends ChangeNotifier {
             OverlayService.showOverlay(
               state: 'enhancing',
               stateLabel: _enhancingLabel,
+              owner: _overlayOwner,
             ),
           );
           final enhancer = AiEnhanceService(aiEnhanceConfig);
@@ -685,7 +717,12 @@ class RecordingProvider extends ChangeNotifier {
             try {
               await for (final chunk in enhancer.enhanceStream(rawText)) {
                 buffer.write(chunk);
-                unawaited(OverlayService.updateOverlayText(buffer.toString()));
+                unawaited(
+                  OverlayService.updateOverlayText(
+                    buffer.toString(),
+                    owner: _overlayOwner,
+                  ),
+                );
               }
               finalText = buffer.toString().trim();
               if (finalText.isEmpty) finalText = rawText;
@@ -760,7 +797,7 @@ class RecordingProvider extends ChangeNotifier {
         } catch (e) {
           await LogService.error('TRANSCRIBE', 'insertText failed: $e');
         }
-        unawaited(OverlayService.hideOverlay());
+        unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
         await LogService.info(
           'TRANSCRIBE',
           'complete success: total ${sw.elapsedMilliseconds}ms',
@@ -791,9 +828,10 @@ class RecordingProvider extends ChangeNotifier {
     OverlayService.showOverlay(
       state: 'transcribe_failed',
       stateLabel: _transcribeFailedLabel,
+      owner: _overlayOwner,
     ).catchError((_) {});
     Future.delayed(const Duration(seconds: 3), () {
-      OverlayService.hideOverlay().catchError((_) {});
+      OverlayService.hideOverlay(owner: _overlayOwner).catchError((_) {});
     });
   }
 

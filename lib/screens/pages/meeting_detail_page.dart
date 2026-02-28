@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../database/app_database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
 import '../../providers/meeting_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
+import '../../widgets/meeting_markdown_editor.dart';
+import '../../widgets/meeting_markdown_view.dart';
 
 class MeetingDetailPage extends StatefulWidget {
   final String meetingId;
@@ -25,6 +30,9 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
   bool _loading = true;
   bool _editingTitle = false;
 
+  /// 跟踪上一次观察到的 isFinalizingMeeting 状态
+  bool _wasFinalizing = false;
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _detailController = TextEditingController();
   final TextEditingController _summaryController = TextEditingController();
@@ -32,6 +40,8 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
 
   bool _summaryCollapsed = true;
   bool _regeneratingSummary = false;
+  bool _editingSummary = false;
+  bool _savingSummary = false;
   bool _editingDetail = false;
   bool _savingDetail = false;
   bool _detailCollapsed = false;
@@ -59,20 +69,78 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
         .where((m) => m.id == widget.meetingId)
         .firstOrNull;
 
+    var detailText = (meeting?.fullTranscription ?? '').trim();
+    var summaryText = (meeting?.summary ?? '').trim();
+
+    if (meeting != null && detailText.isEmpty) {
+      final segments = await AppDatabase.instance.getMeetingSegments(
+        meeting.id,
+      );
+      segments.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
+      final fallback = segments
+          .map((s) => (s.enhancedText ?? s.transcription ?? '').trim())
+          .where((t) => t.isNotEmpty)
+          .join('\n');
+      if (fallback.isNotEmpty) {
+        detailText = fallback;
+      }
+    }
+
+    if (meeting != null && summaryText.isEmpty) {
+      final isCurrentFinalizing =
+          provider.finalizingMeetingId == widget.meetingId ||
+          meeting.status == MeetingStatus.finalizing;
+      if (isCurrentFinalizing &&
+          provider.incrementalSummary.trim().isNotEmpty) {
+        summaryText = provider.incrementalSummary.trim();
+      }
+    }
+
     if (!mounted) return;
 
     setState(() {
       _meeting = meeting;
       _loading = false;
       _titleController.text = meeting?.title ?? '';
-      _detailController.text = meeting?.fullTranscription ?? '';
-      _summaryController.text = meeting?.summary ?? '';
+      _detailController.text = detailText;
+      _summaryController.text = summaryText;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final provider = context.watch<MeetingProvider>();
+
+    // 检测后台精细化完成：之前在 finalizing 且当前不再 finalizing
+    final isFinalizingThis =
+        (provider.isFinalizingMeeting &&
+            provider.finalizingMeetingId == widget.meetingId) ||
+        (_meeting?.status == MeetingStatus.finalizing);
+
+    if (isFinalizingThis &&
+        !_editingDetail &&
+        _detailController.text.trim().isEmpty) {
+      final liveDetail = provider.mergedNoteContent.trim();
+      if (liveDetail.isNotEmpty) {
+        _detailController.text = liveDetail;
+      }
+    }
+
+    if (isFinalizingThis &&
+        !_editingSummary &&
+        _summaryController.text.trim().isEmpty) {
+      final liveSummary = provider.incrementalSummary.trim();
+      if (liveSummary.isNotEmpty) {
+        _summaryController.text = liveSummary;
+      }
+    }
+
+    if (_wasFinalizing && !isFinalizingThis) {
+      // 后台精细化完成，重新加载数据
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+    }
+    _wasFinalizing = isFinalizingThis;
 
     if (_loading) {
       return Scaffold(
@@ -95,7 +163,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       backgroundColor: _cs.surfaceContainerLow,
       body: Column(
         children: [
-          _buildHeader(meeting, dateStr, l10n),
+          _buildHeader(meeting, dateStr, l10n, isFinalizingThis),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -115,7 +183,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                         body: _buildTextEditor(
                           controller: _summaryController,
                           emptyHint: l10n.meetingNoSummary,
-                          readOnly: true,
+                          readOnly: !_editingSummary,
                           enableDictionaryMenu: true,
                           scrollController: _summaryScrollController,
                         ),
@@ -211,9 +279,66 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
   }
 
   Widget _buildSummaryActions(AppLocalizations l10n) {
+    if (_editingSummary) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 28,
+            child: TextButton.icon(
+              onPressed: _savingSummary ? null : _cancelSummaryEdit,
+              icon: Icon(Icons.close, size: 14, color: _cs.onSurfaceVariant),
+              style: TextButton.styleFrom(
+                foregroundColor: _cs.onSurfaceVariant,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              label: Text(l10n.cancel, style: const TextStyle(fontSize: 12)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          _buildSaveButton(
+            saving: _savingSummary,
+            onPressed: _saveSummary,
+            l10n: l10n,
+          ),
+          const SizedBox(width: 2),
+          _buildSummaryCollapseButton(),
+        ],
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        SizedBox(
+          height: 28,
+          child: TextButton.icon(
+            onPressed: _startSummaryEdit,
+            icon: Icon(
+              Icons.edit_outlined,
+              size: 14,
+              color: _cs.onSurfaceVariant,
+            ),
+            label: Text(l10n.edit, style: const TextStyle(fontSize: 12)),
+            style: TextButton.styleFrom(
+              foregroundColor: _cs.onSurfaceVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 2),
         _buildRegenerateSummaryButton(l10n),
         const SizedBox(width: 2),
         _buildSummaryCollapseButton(),
@@ -285,6 +410,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     MeetingRecord meeting,
     String dateStr,
     AppLocalizations l10n,
+    bool isFinalizingThis,
   ) {
     final charCount = _detailController.text.length;
 
@@ -312,6 +438,39 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
           _buildBadge(Icons.timer_outlined, meeting.formattedDuration),
           const SizedBox(width: 6),
           _buildBadge(Icons.text_fields, '$charCount'),
+          // 后台精细化进度徽章
+          if (isFinalizingThis) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    l10n.meetingFinalizing,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(width: 4),
           // 操作菜单
           PopupMenuButton<String>(
@@ -515,41 +674,28 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     bool enableDictionaryMenu = true,
     ScrollController? scrollController,
   }) {
-    return TextField(
+    if (readOnly) {
+      final markdownText = controller.text.trim();
+      return SingleChildScrollView(
+        controller: scrollController,
+        padding: const EdgeInsets.all(14),
+        child: MeetingMarkdownView(
+          markdown: markdownText,
+          emptyHint: emptyHint,
+          selectable: true,
+          density: MeetingMarkdownDensity.compact,
+          onAddToDictionary: enableDictionaryMenu ? _addToDictionary : null,
+        ),
+      );
+    }
+
+    return MeetingMarkdownEditor(
       controller: controller,
+      emptyHint: emptyHint,
+      enableDictionaryMenu: enableDictionaryMenu,
+      onAddToDictionary: _addToDictionary,
       scrollController: scrollController,
-      maxLines: null,
-      expands: true,
-      readOnly: readOnly,
-      textAlignVertical: TextAlignVertical.top,
-      style: TextStyle(fontSize: 13, color: _cs.onSurface, height: 1.8),
-      decoration: InputDecoration(
-        hintText: emptyHint,
-        hintStyle: TextStyle(color: _cs.outline),
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.all(14),
-      ),
-      contextMenuBuilder: enableDictionaryMenu
-          ? (context, editableTextState) {
-              final l10n = AppLocalizations.of(context)!;
-              final selectedText = _getSelectedText(controller);
-              final builtinItems = editableTextState.contextMenuButtonItems;
-              return AdaptiveTextSelectionToolbar.buttonItems(
-                anchors: editableTextState.contextMenuAnchors,
-                buttonItems: [
-                  ...builtinItems,
-                  if (selectedText.isNotEmpty)
-                    ContextMenuButtonItem(
-                      label: l10n.addToDictionary,
-                      onPressed: () {
-                        ContextMenuController.removeAny();
-                        _addToDictionary(selectedText);
-                      },
-                    ),
-                ],
-              );
-            }
-          : null,
+      density: MeetingMarkdownDensity.compact,
     );
   }
 
@@ -693,6 +839,37 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     });
   }
 
+  void _startSummaryEdit() {
+    setState(() {
+      _summaryController.text = _meeting?.summary ?? '';
+      _editingSummary = true;
+    });
+  }
+
+  void _cancelSummaryEdit() {
+    setState(() {
+      _summaryController.text = _meeting?.summary ?? '';
+      _editingSummary = false;
+    });
+  }
+
+  Future<void> _saveSummary() async {
+    setState(() => _savingSummary = true);
+    try {
+      final stored = _summaryController.text;
+      await context.read<MeetingProvider>().updateMeetingSummary(
+        widget.meetingId,
+        stored,
+      );
+      if (!mounted) return;
+      _meeting?.summary = stored;
+      _showSavedSnackBar();
+      setState(() => _editingSummary = false);
+    } finally {
+      if (mounted) setState(() => _savingSummary = false);
+    }
+  }
+
   void _toggleSummaryCollapsed() {
     setState(() => _summaryCollapsed = !_summaryCollapsed);
   }
@@ -768,29 +945,42 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
 
     final confirmed = await _confirmRegenerateSummary(l10n);
     if (!confirmed) return;
+    if (!mounted) return;
 
     setState(() => _regeneratingSummary = true);
     final oldSummary = _summaryController.text.trim();
+    _summaryController.text = '';
+    final buffer = StringBuffer();
     try {
       final settings = context.read<SettingsProvider>();
-      final regenerated = await context
-          .read<MeetingProvider>()
-          .regenerateSummaryByContent(
+      final meetingProvider = context.read<MeetingProvider>();
+
+      var hasChunk = false;
+      await for (final chunk
+          in meetingProvider.regenerateSummaryStreamByContent(
             widget.meetingId,
             content: content,
             aiConfig: settings.effectiveAiEnhanceConfig,
             dictionarySuffix: settings.dictionaryWordsForPrompt,
-          );
+          )) {
+        hasChunk = true;
+        if (chunk.isEmpty) continue;
+        buffer.write(chunk);
+        if (!mounted) return;
+        setState(() {
+          _summaryController.text = buffer.toString();
+        });
+      }
+
       if (!mounted) return;
-      if (!regenerated) {
+      final newSummary = buffer.toString().trim();
+      if (!hasChunk || newSummary.isEmpty) {
         _showSnackBarMessage(l10n.meetingError);
         return;
       }
 
-      await _loadData();
-      if (!mounted) return;
-
-      final newSummary = _summaryController.text.trim();
+      _meeting?.summary = newSummary;
+      _summaryController.text = newSummary;
       if (newSummary.isEmpty && oldSummary.isEmpty) {
         _showSnackBarMessage(l10n.meetingNoSummary);
       } else {
@@ -823,16 +1013,6 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       ),
     );
     return result ?? false;
-  }
-
-  String _getSelectedText(TextEditingController controller) {
-    final selection = controller.selection;
-    if (!selection.isValid || selection.isCollapsed) return '';
-    final text = controller.text;
-    final start = selection.start.clamp(0, text.length);
-    final end = selection.end.clamp(0, text.length);
-    if (start >= end) return '';
-    return text.substring(start, end).trim();
   }
 
   Future<void> _addToDictionary(String selectedWord) async {

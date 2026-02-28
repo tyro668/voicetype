@@ -9,6 +9,7 @@ class AudioRecorderService {
   AudioRecorder _recorder = AudioRecorder();
   String? _currentPath;
   DateTime? _recordingStartedAt;
+  String? _currentShortId;
   final _amplitudeController = StreamController<double>.broadcast();
 
   Stream<double> get amplitudeStream => _amplitudeController.stream;
@@ -46,6 +47,7 @@ class AudioRecorderService {
         '${now.minute.toString().padLeft(2, '0')}'
         '${now.second.toString().padLeft(2, '0')}';
     final shortId = const Uuid().v4().substring(0, 6);
+    _currentShortId = shortId;
     _currentPath = path.join(recordingsDir.path, '${ts}-$shortId.wav');
 
     final file = File(_currentPath!);
@@ -72,22 +74,26 @@ class AudioRecorderService {
     });
   }
 
-  /// 停止后将文件重命名为「日期时间-6位uuid-录音秒数.wav」
+  /// 停止后将文件重命名为「xx年xx月xx日xx时xx分xx秒-6位uuid-录音时长xx秒.wav」
   Future<String?> _renameWithDuration(String? rawPath) async {
     if (rawPath == null) return null;
     final file = File(rawPath);
     if (!await file.exists()) return rawPath;
 
-    final durationSecs = _recordingStartedAt != null
-        ? DateTime.now().difference(_recordingStartedAt!).inSeconds
+    final startedAt = _recordingStartedAt;
+    final durationSecs = startedAt != null
+        ? DateTime.now().difference(startedAt).inSeconds
         : 0;
-    _recordingStartedAt = null;
+    final shortId = _currentShortId ?? _extractShortId(rawPath);
 
-    // 原文件名: 20260227143000-a1b2c3.wav → 20260227143000-a1b2c3-25.wav
+    _recordingStartedAt = null;
+    _currentShortId = null;
+
     final dir = path.dirname(rawPath);
-    final basename = path.basenameWithoutExtension(rawPath);
     final ext = path.extension(rawPath);
-    final newName = '$basename-${durationSecs}s$ext';
+    final dateText = _formatDateTimeForName(startedAt ?? DateTime.now());
+    final durationText = _formatDurationForName(durationSecs);
+    final newName = '$dateText-$shortId-$durationText$ext';
     final newPath = path.join(dir, newName);
 
     try {
@@ -98,6 +104,35 @@ class AudioRecorderService {
       // 重命名失败则保留原路径
       return rawPath;
     }
+  }
+
+  String _formatDateTimeForName(DateTime dt) {
+    final mm = dt.month.toString().padLeft(2, '0');
+    final dd = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mi = dt.minute.toString().padLeft(2, '0');
+    final ss = dt.second.toString().padLeft(2, '0');
+    return '${dt.year}年${mm}月${dd}日${hh}时${mi}分${ss}秒';
+  }
+
+  String _formatDurationForName(int seconds) {
+    if (seconds <= 0) return '0秒';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) return '${h}时${m}分${s}秒';
+    if (m > 0) return '${m}分${s}秒';
+    return '${s}秒';
+  }
+
+  String _extractShortId(String rawPath) {
+    final base = path.basenameWithoutExtension(rawPath);
+    final parts = base.split('-');
+    if (parts.length >= 2) {
+      final candidate = parts[1].trim();
+      if (candidate.length == 6) return candidate;
+    }
+    return const Uuid().v4().substring(0, 6);
   }
 
   Future<String?> stop() async {

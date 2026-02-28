@@ -1,17 +1,18 @@
 /// 会议记录状态枚举
 enum MeetingStatus {
-  recording,  // 录制中
-  paused,     // 已暂停
-  completed,  // 已完成
+  recording, // 录制中
+  paused, // 已暂停
+  finalizing, // 会议整理中（后台处理中）
+  completed, // 已完成
 }
 
 /// 会议分段状态枚举
 enum SegmentStatus {
-  pending,       // 等待处理
-  transcribing,  // 语音转文字中
-  enhancing,     // AI 文字整理中
-  done,          // 已完成
-  error,         // 处理失败
+  pending, // 等待处理
+  transcribing, // 语音转文字中
+  enhancing, // AI 文字整理中
+  done, // 已完成
+  error, // 处理失败
 }
 
 /// 会议记录主模型
@@ -23,6 +24,7 @@ class MeetingRecord {
   MeetingStatus status;
   String? summary;
   Duration totalDuration;
+
   /// 会议结束后合并的完整文稿
   String? fullTranscription;
 

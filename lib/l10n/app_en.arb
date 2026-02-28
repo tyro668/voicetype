@@ -284,7 +284,30 @@
   "correctionLlmCalls": "LLM Calls",
   "correctionLlmRate": "LLM Call Rate",
   "correctionSelectedRate": "Candidate Selection Rate",
+  "correctionChangesTitle": "Correction Details (Latest 20)",
+  "correctionChangesExpand": "Expand",
+  "correctionChangesCollapse": "Collapse",
+  "correctionChangesCollapsedHint": "Collapsed by default. Click Expand to view correction details.",
+  "correctionChangesEmpty": "No correction details yet. Start a recording and trigger correction to see entries here.",
+  "correctionChangedTerms": "Changed Terms",
+  "correctionBeforeText": "Before",
+  "correctionAfterText": "After",
+  "correctionSourceRealtime": "Realtime",
+  "correctionSourceRetrospective": "Retrospective",
   "allTokenUsage": "All Tokens Summary",
+
+  "retroTokenUsage": "Retrospective Tokens",
+  "retroSectionTitle": "Retrospective Correction",
+  "retroTotalCalls": "Retro Calls",
+  "retroLlmCalls": "LLM Calls",
+  "retroTextChangedCount": "Text Changed",
+  "retroTextChangedRate": "Change Rate",
+
+  "glossarySectionTitle": "Terminology Anchoring",
+  "glossaryPins": "New Pins",
+  "glossaryStrongPromotions": "Strong Promotions",
+  "glossaryOverrides": "Manual Overrides",
+  "glossaryInjections": "#R Injections",
 
   "showInDock": "Show in Dock",
   "showInDockDescription": "Show the application icon in the macOS Dock.",
@@ -400,6 +423,8 @@
 
   "correctionEnabled": "Smart Correction",
   "correctionDescription": "Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty",
+  "retrospectiveCorrectionEnabled": "Retrospective Review",
+  "retrospectiveCorrectionDescription": "Run one more paragraph-level correction when recording stops for better term consistency",
   "pinyinPreview": "Pinyin",
   "pinyinOverride": "Pinyin Pattern (optional)",
   "pinyinOverrideHint": "E.g. fan ruan; supports pinyin-only matching, space-separated syllables",
@@ -461,12 +486,91 @@
   "meetingReturnToRecording": "Return to recording",
   "meetingSegmentView": "Segments",
   "meetingMergedNoteView": "Merged Notes",
+  "meetingLiveSummaryView": "Live Summary",
+  "meetingLiveSummaryWaiting": "Waiting for enough content to generate summary...",
+  "meetingFinalizing": "Finalizing",
+  "meetingSummaryUpdating": "Updating summary...",
   "meetingStreamingMerge": "Merging...",
   "meetingDetailTab": "Meeting Details",
   "meetingSummaryTab": "Meeting Summary",
   "meetingGeneratingSummary": "Generating meeting summary...",
   "meetingNoSummary": "No meeting summary yet",
   "meetingRegenerateSummary": "Regenerate",
+  "meetingUnifyRebuild": "Unify Rebuild",
+  "meetingUnifyRebuildTitle": "Unify Historical Meetings",
+  "meetingUnifyRebuildConfirm": "Meeting minutes and summaries will be rebuilt using the same rule as segment view (prefer enhanced text). Continue?",
+  "meetingUnifyRebuildRunning": "Unifying historical meetings...",
+  "meetingUnifyRebuildDone": "Unified rebuild complete: {count}",
+  "@meetingUnifyRebuildDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingStatsSummary": "Total {totalCount} · Completed {completedCount}",
+  "@meetingStatsSummary": {
+    "placeholders": {
+      "totalCount": {
+        "type": "int"
+      },
+      "completedCount": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingRecoverRecording": "Repair Recording",
+  "meetingRecoverRecordingSuccess": "Repaired {count} stuck recording session(s)",
+  "@meetingRecoverRecordingSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingRecoverRecordingNone": "No stuck recording sessions found",
+  "meetingSearchHint": "Search title/summary/content",
+  "meetingManageGroups": "Manage Groups",
+  "meetingMoreActions": "More Actions",
+  "meetingMoveToGroup": "Move Group",
+  "meetingMoveToGroupTitle": "Move to Group",
+  "meetingCreateGroupAndMove": "Create Group and Move",
+  "meetingGroupManageTitle": "Group Management",
+  "meetingGroupManageEmptyHint": "No custom groups yet. Click the button below to create one.",
+  "meetingGroupClose": "Close",
+  "meetingGroupCreate": "Create Group",
+  "meetingGroupCreateTitle": "Create Group",
+  "meetingGroupNameHint": "Enter group name",
+  "meetingGroupRenameTitle": "Rename Group",
+  "meetingGroupRenameHint": "Enter new group name",
+  "meetingAllGroups": "All",
+  "meetingUngrouped": "Ungrouped",
+  "meetingStartFailed": "Failed to start meeting: {error}",
+  "@meetingStartFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "meetingStopFailed": "Failed to stop meeting: {error}",
+  "@meetingStopFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "meetingMovedToFinalizing": "Meeting has entered {status}",
+  "@meetingMovedToFinalizing": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "meetingStoppingPleaseWait": "Stopping meeting, please wait…",
+  "meetingStopping": "Stopping meeting…",
   "addToDictionary": "Add to Dictionary",
   "addedToDictionary": "Added to dictionary",
   "originalSttText": "Original speech-to-text",

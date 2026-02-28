@@ -55,7 +55,8 @@ class SettingsProvider extends ChangeNotifier {
   static const _sceneModeKey = 'scene_mode';
   static const _dictionaryEntriesKey = 'dictionary_entries';
   static const _correctionEnabledKey = 'correction_enabled';
-  static const _retrospectiveCorrectionEnabledKey = 'retrospective_correction_enabled';
+  static const _retrospectiveCorrectionEnabledKey =
+      'retrospective_correction_enabled';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -1335,10 +1336,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setRetrospectiveCorrectionEnabled(bool enabled) async {
     _retrospectiveCorrectionEnabled = enabled;
-    await _saveSetting(
-      _retrospectiveCorrectionEnabledKey,
-      enabled.toString(),
-    );
+    await _saveSetting(_retrospectiveCorrectionEnabledKey, enabled.toString());
     notifyListeners();
   }
 

@@ -11,13 +11,23 @@
 class SessionGlossary {
   final Map<String, TermPin> _entries = {};
 
+  // ── 会话级统计计数器（重置时清零） ──
+  int _pinsCount = 0;
+  int _strongPromotionsCount = 0;
+  int _overridesCount = 0;
+  int _injectionsCount = 0;
+
+  int get pinsCount => _pinsCount;
+  int get strongPromotionsCount => _strongPromotionsCount;
+  int get overridesCount => _overridesCount;
+  int get injectionsCount => _injectionsCount;
+
   /// 所有锚定条目（含弱锚定）
   Map<String, TermPin> get entries => Map.unmodifiable(_entries);
 
   /// 仅返回强锚定条目（hitCount >= 2），用于注入 #R
-  Map<String, TermPin> get strongEntries => Map.fromEntries(
-        _entries.entries.where((e) => e.value.hitCount >= 2),
-      );
+  Map<String, TermPin> get strongEntries =>
+      Map.fromEntries(_entries.entries.where((e) => e.value.hitCount >= 2));
 
   /// 当前条目数量
   int get length => _entries.length;
@@ -39,8 +49,14 @@ class SessionGlossary {
     if (key == corrected.trim().toLowerCase()) return;
 
     if (_entries.containsKey(key)) {
+      final oldHit = _entries[key]!.hitCount;
       _entries[key] = _entries[key]!.copyWithHit();
+      // 弱锚定 → 强锚定
+      if (oldHit == 1) {
+        _strongPromotionsCount++;
+      }
     } else {
+      _pinsCount++;
       _entries[key] = TermPin(
         original: original.trim(),
         corrected: corrected.trim(),
@@ -54,6 +70,7 @@ class SessionGlossary {
   void override(String original, String corrected) {
     final key = original.trim().toLowerCase();
     if (key.isEmpty) return;
+    _overridesCount++;
     if (corrected.trim().isEmpty) {
       _entries.remove(key);
       return;
@@ -73,6 +90,7 @@ class SessionGlossary {
   String buildReferenceAppend() {
     final strong = strongEntries;
     if (strong.isEmpty) return '';
+    _injectionsCount++;
     return strong.values.map((e) => '${e.original}->${e.corrected}').join('|');
   }
 
@@ -92,10 +110,9 @@ class SessionGlossary {
     final correctedWords = _extractChineseWords(correctedText);
 
     // 对比同位置词组
-    final minLen =
-        inputWords.length < correctedWords.length
-            ? inputWords.length
-            : correctedWords.length;
+    final minLen = inputWords.length < correctedWords.length
+        ? inputWords.length
+        : correctedWords.length;
 
     for (var i = 0; i < minLen; i++) {
       if (inputWords[i] != correctedWords[i] &&
@@ -115,6 +132,10 @@ class SessionGlossary {
   /// 重置（新录音会话开始时调用）。
   void reset() {
     _entries.clear();
+    _pinsCount = 0;
+    _strongPromotionsCount = 0;
+    _overridesCount = 0;
+    _injectionsCount = 0;
   }
 }
 
@@ -141,11 +162,11 @@ class TermPin {
 
   /// 创建命中计数 +1 的副本
   TermPin copyWithHit() => TermPin(
-        original: original,
-        corrected: corrected,
-        hitCount: hitCount + 1,
-        firstSeenSegment: firstSeenSegment,
-      );
+    original: original,
+    corrected: corrected,
+    hitCount: hitCount + 1,
+    firstSeenSegment: firstSeenSegment,
+  );
 
   @override
   String toString() =>

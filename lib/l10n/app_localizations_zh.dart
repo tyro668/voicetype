@@ -701,7 +701,70 @@ class AppLocalizationsZh extends AppLocalizations {
   String get correctionSelectedRate => '候选入选率';
 
   @override
+  String get correctionChangesTitle => '纠错明细（最近 20 条）';
+
+  @override
+  String get correctionChangesExpand => '展开查看';
+
+  @override
+  String get correctionChangesCollapse => '收起明细';
+
+  @override
+  String get correctionChangesCollapsedHint => '默认折叠，点击“展开查看”可查看纠错明细。';
+
+  @override
+  String get correctionChangesEmpty => '暂无纠错明细，开始一次录音并触发纠错后会显示在这里。';
+
+  @override
+  String get correctionChangedTerms => '纠正词条';
+
+  @override
+  String get correctionBeforeText => '纠错前';
+
+  @override
+  String get correctionAfterText => '纠错后';
+
+  @override
+  String get correctionSourceRealtime => '实时';
+
+  @override
+  String get correctionSourceRetrospective => '终态回溯';
+
+  @override
   String get allTokenUsage => '全部 Token 汇总';
+
+  @override
+  String get retroTokenUsage => '终态回溯 Token 用量';
+
+  @override
+  String get retroSectionTitle => '终态回溯统计';
+
+  @override
+  String get retroTotalCalls => '回溯次数';
+
+  @override
+  String get retroLlmCalls => 'LLM 调用次数';
+
+  @override
+  String get retroTextChangedCount => '文本变更次数';
+
+  @override
+  String get retroTextChangedRate => '文本变更率';
+
+  @override
+  String get glossarySectionTitle => '术语锚定统计';
+
+  @override
+  String get glossaryPins => '新增锚定';
+
+  @override
+  String get glossaryStrongPromotions => '强锚定升级';
+
+  @override
+  String get glossaryOverrides => '手动覆盖';
+
+  @override
+  String get glossaryInjections => '注入 #R 次数';
 
   @override
   String get showInDock => '在 Dock 中显示';
@@ -944,6 +1007,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get correctionDescription => '基于拼音匹配自动纠正同音字，仅在词典非空时生效';
 
   @override
+  String get retrospectiveCorrectionEnabled => '终态回溯复核';
+
+  @override
+  String get retrospectiveCorrectionDescription => '停止录音后对整段文本再纠错一次，提升术语一致性';
+
+  @override
   String get pinyinPreview => '拼音';
 
   @override
@@ -1124,6 +1193,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingMergedNoteView => '合并纪要';
 
   @override
+  String get meetingLiveSummaryView => '实时摘要';
+
+  @override
+  String get meetingLiveSummaryWaiting => '等待录音内容积累后生成摘要...';
+
+  @override
+  String get meetingFinalizing => '后台优化中';
+
+  @override
+  String get meetingSummaryUpdating => '摘要更新中...';
+
+  @override
   String get meetingStreamingMerge => '合并中...';
 
   @override
@@ -1140,6 +1221,109 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get meetingRegenerateSummary => '重新生成';
+
+  @override
+  String get meetingUnifyRebuild => '统一重算';
+
+  @override
+  String get meetingUnifyRebuildTitle => '统一重算历史会议';
+
+  @override
+  String get meetingUnifyRebuildConfirm =>
+      '将按分段视图相同规则（优先增强文本）重算会议纪要与会议总结。是否继续？';
+
+  @override
+  String get meetingUnifyRebuildRunning => '正在统一重算，请稍候...';
+
+  @override
+  String meetingUnifyRebuildDone(int count) {
+    return '已完成统一重算：$count 条';
+  }
+
+  @override
+  String meetingStatsSummary(int totalCount, int completedCount) {
+    return '共 $totalCount 条 · 已完成 $completedCount 条';
+  }
+
+  @override
+  String get meetingRecoverRecording => '修复录音';
+
+  @override
+  String meetingRecoverRecordingSuccess(int count) {
+    return '已修复 $count 条卡住录音会话';
+  }
+
+  @override
+  String get meetingRecoverRecordingNone => '未发现卡住录音会话';
+
+  @override
+  String get meetingSearchHint => '搜索会议标题/摘要/内容';
+
+  @override
+  String get meetingManageGroups => '管理分组';
+
+  @override
+  String get meetingMoreActions => '更多操作';
+
+  @override
+  String get meetingMoveToGroup => '移动分组';
+
+  @override
+  String get meetingMoveToGroupTitle => '移动到分组';
+
+  @override
+  String get meetingCreateGroupAndMove => '新建分组并移动';
+
+  @override
+  String get meetingGroupManageTitle => '分组管理';
+
+  @override
+  String get meetingGroupManageEmptyHint => '还没有自定义分组，点击下方按钮创建。';
+
+  @override
+  String get meetingGroupClose => '关闭';
+
+  @override
+  String get meetingGroupCreate => '新建分组';
+
+  @override
+  String get meetingGroupCreateTitle => '新建分组';
+
+  @override
+  String get meetingGroupNameHint => '输入分组名';
+
+  @override
+  String get meetingGroupRenameTitle => '重命名分组';
+
+  @override
+  String get meetingGroupRenameHint => '输入新的分组名';
+
+  @override
+  String get meetingAllGroups => '全部';
+
+  @override
+  String get meetingUngrouped => '未分组';
+
+  @override
+  String meetingStartFailed(String error) {
+    return '会议启动失败: $error';
+  }
+
+  @override
+  String meetingStopFailed(String error) {
+    return '停止会议失败：$error';
+  }
+
+  @override
+  String meetingMovedToFinalizing(String status) {
+    return '会议已进入$status';
+  }
+
+  @override
+  String get meetingStoppingPleaseWait => '正在停止会议，请稍候…';
+
+  @override
+  String get meetingStopping => '正在停止会议…';
 
   @override
   String get addToDictionary => '加入提示词词典';

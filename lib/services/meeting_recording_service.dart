@@ -17,10 +17,13 @@ import 'correction_context.dart';
 import 'session_glossary.dart';
 import 'pinyin_matcher.dart';
 import 'vad_service.dart';
+import 'correction_stats_service.dart';
+import 'incremental_summary_service.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
 class MeetingRecordingService {
   static const _uuid = Uuid();
+  static const Duration _segmentStartTimeout = Duration(seconds: 8);
 
   final AudioRecorderService _recorder = AudioRecorderService();
 
@@ -55,6 +58,7 @@ class MeetingRecordingService {
   bool _isPaused = false;
   bool _segmentSwitching = false;
   bool _stopping = false;
+  Future<MeetingRecord>? _stopMeetingFuture;
 
   /// 计时器
   Timer? _segmentTimer;
@@ -86,6 +90,22 @@ class MeetingRecordingService {
   bool get isPaused => _isPaused;
   Duration get recordingDuration => _recordingDuration;
 
+  /// 会话内手动覆盖术语映射（来自词典编辑）。
+  void applySessionGlossaryOverride(String original, String corrected) {
+    _sessionGlossary.override(original, corrected);
+  }
+
+  Future<void> _flushGlossaryStats() async {
+    try {
+      await CorrectionStatsService.instance.flushGlossaryStats(
+        pins: _sessionGlossary.pinsCount,
+        strongPromotions: _sessionGlossary.strongPromotionsCount,
+        overrides: _sessionGlossary.overridesCount,
+        injections: _sessionGlossary.injectionsCount,
+      );
+    } catch (_) {}
+  }
+
   /// 待处理分段队列
   final List<_PendingSegment> _processingQueue = [];
   bool _processingWorkerRunning = false;
@@ -100,6 +120,30 @@ class MeetingRecordingService {
 
   /// 暴露合并器实例，供 MeetingProvider 监听其事件流
   SlidingWindowMerger? get merger => _merger;
+
+  /// 增量摘要服务
+  IncrementalSummaryService? _incrementalSummary;
+
+  /// 暴露增量摘要实例
+  IncrementalSummaryService? get incrementalSummary => _incrementalSummary;
+
+  /// 当前合并文稿（来自 Merger 缓存）
+  String get currentFullText => _merger?.currentFullText ?? '';
+
+  /// 当前增量摘要
+  String get currentSummary => _incrementalSummary?.currentSummary ?? '';
+
+  /// 已覆盖到的最大分段索引
+  int get lastCoveredSegmentIndex => _merger?.lastCoveredSegmentIndex ?? -1;
+
+  /// 是否已自动生成过标题
+  bool _earlyTitleGenerated = false;
+  bool get earlyTitleGenerated => _earlyTitleGenerated;
+
+  /// 提前生成的标题事件流
+  final StreamController<String> _onTitleGenerated =
+      StreamController<String>.broadcast();
+  Stream<String> get onTitleGenerated => _onTitleGenerated.stream;
 
   /// 纠错服务
   CorrectionService? _correctionService;
@@ -148,6 +192,7 @@ class MeetingRecordingService {
 
     // 初始化纠错服务
     _correctionContext.reset();
+    unawaited(_flushGlossaryStats());
     _sessionGlossary.reset();
     if (pinyinMatcher != null &&
         aiConfig != null &&
@@ -174,6 +219,15 @@ class MeetingRecordingService {
         aiConfig: _aiConfig!,
       );
     }
+
+    // 创建增量摘要服务
+    _incrementalSummary?.dispose();
+    if (_aiConfig != null && aiEnhanceEnabled) {
+      _incrementalSummary = IncrementalSummaryService(aiConfig: _aiConfig!);
+    } else {
+      _incrementalSummary = null;
+    }
+    _earlyTitleGenerated = false;
 
     final now = DateTime.now();
     final meeting = MeetingRecord(
@@ -305,6 +359,7 @@ class MeetingRecordingService {
       _startSmartSegmentControl();
     } catch (e) {
       await LogService.error('MEETING', 'smart segment rotation failed: $e');
+      await _recoverSegmentRotation(trigger: 'silence');
     } finally {
       _segmentSwitching = false;
     }
@@ -326,6 +381,7 @@ class MeetingRecordingService {
       _startSmartSegmentControl();
     } catch (e) {
       await LogService.error('MEETING', 'hard cut rotation failed: $e');
+      await _recoverSegmentRotation(trigger: 'hard-cut');
     } finally {
       _segmentSwitching = false;
     }
@@ -375,6 +431,23 @@ class MeetingRecordingService {
 
   /// 结束会议录音
   Future<MeetingRecord> stopMeeting() async {
+    final inFlight = _stopMeetingFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final future = _stopMeetingInternal();
+    _stopMeetingFuture = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_stopMeetingFuture, future)) {
+        _stopMeetingFuture = null;
+      }
+    }
+  }
+
+  Future<MeetingRecord> _stopMeetingInternal() async {
     if (!_isRecording || _currentMeeting == null) {
       throw MeetingRecordingException('没有正在录制的会议');
     }
@@ -386,30 +459,45 @@ class MeetingRecordingService {
     _durationTimer?.cancel();
     _durationTimer = null;
 
+    // 若分段轮转正在进行，先短暂等待，避免并发 stop 录音器造成异常。
+    await _waitUntil(
+      () => !_segmentSwitching,
+      timeout: const Duration(seconds: 2),
+    );
+
     // 停止当前录音段
     if (!_isPaused) {
-      await _finalizeCurrentSegment();
+      try {
+        await _finalizeCurrentSegment();
+      } catch (e) {
+        await LogService.error(
+          'MEETING',
+          'finalize current segment during stop failed: $e',
+        );
+        // 兜底确保底层录音器已停止，避免后续一直卡在录音状态。
+        await _recorder.stopWithTimeout(const Duration(seconds: 2));
+      }
     }
 
     // 等待所有分段处理完成
     _onStatusChanged.add('processing');
-    await _waitForProcessingComplete();
+    await _waitForProcessingComplete(timeout: const Duration(seconds: 15));
 
     // 等待当前合并任务完成
     if (_merger != null) {
-      await _waitForMergerComplete();
+      await _waitForMergerComplete(timeout: const Duration(seconds: 10));
     }
 
-    // 更新会议状态
+    // 更新会议状态：进入后台整理中
     final meeting = _currentMeeting!;
-    meeting.status = MeetingStatus.completed;
+    meeting.status = MeetingStatus.finalizing;
     meeting.updatedAt = DateTime.now();
     meeting.totalDuration = _recordingDuration;
     await AppDatabase.instance.updateMeeting(meeting);
 
     _isRecording = false;
     _isPaused = false;
-    _onStatusChanged.add('completed');
+    _onStatusChanged.add('finalizing');
 
     await LogService.info(
       'MEETING',
@@ -457,7 +545,7 @@ class MeetingRecordingService {
     }
 
     try {
-      await _recorder.start();
+      await _recorder.startWithTimeout(_segmentStartTimeout);
       await LogService.info(
         'MEETING',
         'segment ${_segmentIndex + 1} recording started',
@@ -466,9 +554,13 @@ class MeetingRecordingService {
       // 重试一次
       try {
         await _recorder.reset();
-        await _recorder.start();
+        await _recorder.startWithTimeout(_segmentStartTimeout);
+        await LogService.info(
+          'MEETING',
+          'segment ${_segmentIndex + 1} recording started after reset retry',
+        );
       } catch (e2) {
-        throw MeetingRecordingException('录音启动失败: $e2');
+        throw MeetingRecordingException('录音启动失败（可能被系统音频设备占用或无权限）: $e2');
       }
     }
   }
@@ -484,8 +576,43 @@ class MeetingRecordingService {
       await _startSegmentRecording();
     } catch (e) {
       await LogService.error('MEETING', 'segment rotation failed: $e');
+      await _recoverSegmentRotation(trigger: 'timer');
     } finally {
       _segmentSwitching = false;
+    }
+  }
+
+  /// 当轮转异常时尝试自愈，避免后续分段中断导致内容丢失。
+  Future<void> _recoverSegmentRotation({required String trigger}) async {
+    if (!_isRecording || _isPaused || _stopping) return;
+
+    try {
+      final stillRecording = await _recorder.isRecording();
+      if (!stillRecording) {
+        await LogService.info(
+          'MEETING',
+          'rotation recovery($trigger): recorder not recording, restarting...',
+        );
+        await _startSegmentRecording();
+      }
+
+      if (_useSmartSegment) {
+        _stopSmartSegmentControl();
+        _startSmartSegmentControl();
+      } else {
+        _segmentTimer?.cancel();
+        _segmentTimer = Timer.periodic(
+          Duration(seconds: segmentDurationSeconds),
+          (_) => _handleSegmentTick(),
+        );
+      }
+
+      await LogService.info('MEETING', 'rotation recovery($trigger) succeeded');
+    } catch (e) {
+      await LogService.error(
+        'MEETING',
+        'rotation recovery($trigger) failed: $e',
+      );
     }
   }
 
@@ -659,8 +786,16 @@ class MeetingRecordingService {
   }
 
   /// 等待所有分段处理完成
-  Future<void> _waitForProcessingComplete() async {
+  Future<void> _waitForProcessingComplete({Duration? timeout}) async {
+    final start = DateTime.now();
     while (_processingWorkerRunning || _processingQueue.isNotEmpty) {
+      if (timeout != null && DateTime.now().difference(start) >= timeout) {
+        await LogService.error(
+          'MEETING',
+          'wait processing timeout, continue stopping in background',
+        );
+        return;
+      }
       await Future.delayed(const Duration(milliseconds: 500));
     }
   }
@@ -691,6 +826,8 @@ class MeetingRecordingService {
         .getMeetingSegments(_currentMeeting!.id)
         .then((segments) {
           _merger?.onSegmentCompleted(segments);
+
+          // 触发增量摘要：监听 merger.onMergeCompleted 由 _setupMergerIncrementalSummary 处理
         })
         .catchError((e) {
           LogService.error(
@@ -698,15 +835,183 @@ class MeetingRecordingService {
             'failed to fetch segments for merger: $e',
           );
         });
+
+    // P2: 提前生成标题 — 当第 5 段完成后触发
+    if (!_earlyTitleGenerated && _segmentIndex >= 5) {
+      _earlyTitleGenerated = true;
+      _tryGenerateEarlyTitle();
+    }
+  }
+
+  /// 监听合并器的 onMergeCompleted，转发给增量摘要服务
+  StreamSubscription<MergedNote>? _incrementalSummarySub;
+
+  void setupIncrementalSummaryListener() {
+    _incrementalSummarySub?.cancel();
+    if (_merger == null || _incrementalSummary == null) return;
+
+    _incrementalSummarySub = _merger!.onMergeCompleted.listen((note) {
+      final fullText = _merger!.currentFullText;
+      _incrementalSummary!.onMergeCompleted(note, fullText);
+    });
+  }
+
+  /// P2: 提前生成标题
+  Future<void> _tryGenerateEarlyTitle() async {
+    if (_currentMeeting == null || _aiConfig == null || !_aiEnhanceEnabled) {
+      return;
+    }
+
+    // 使用 merger 已合并的文本
+    final text = _merger?.currentFullText ?? '';
+    if (text.trim().isEmpty) return;
+
+    try {
+      const titlePrompt =
+          '你是一个会议标题生成助手。根据用户提供的会议内容，生成一个简洁的会议标题。\n\n'
+          '## 规则\n'
+          '- 标题应概括会议的核心主题，不超过20个字\n'
+          '- 只输出标题本身，不要添加引号、书名号、前后缀或任何解释\n'
+          '- 使用与内容相同的语言';
+
+      final titleConfig = _aiConfig!.copyWith(prompt: titlePrompt);
+      final enhancer = AiEnhanceService(titleConfig);
+
+      final snippet = text.length > 1500 ? text.substring(0, 1500) : text;
+      final result = await enhancer.enhance(
+        snippet,
+        timeout: const Duration(seconds: 15),
+      );
+
+      final title = result.text
+          .trim()
+          .replaceAll(RegExp(r'^["""「」『』《》【】]+'), '')
+          .replaceAll(RegExp(r'["""「」『』《》【】]+$'), '')
+          .trim();
+
+      if (result.promptTokens > 0 || result.completionTokens > 0) {
+        await TokenStatsService.instance.addMeetingTokens(
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+        );
+      }
+
+      if (title.isNotEmpty) {
+        final finalTitle = title.length > 50 ? title.substring(0, 50) : title;
+        _onTitleGenerated.add(finalTitle);
+        await LogService.info('MEETING', 'early title generated: $finalTitle');
+      }
+    } catch (e) {
+      await LogService.error('MEETING', 'early title generation failed: $e');
+    }
   }
 
   /// 等待合并器当前任务完成
-  Future<void> _waitForMergerComplete() async {
+  Future<void> _waitForMergerComplete({Duration? timeout}) async {
     if (_merger == null) return;
+    final start = DateTime.now();
     // 轮询等待合并器完成当前任务
     while (_merger!.isMerging) {
+      if (timeout != null && DateTime.now().difference(start) >= timeout) {
+        await LogService.error(
+          'MEETING',
+          'wait merger timeout, continue stopping in background',
+        );
+        return;
+      }
       await Future.delayed(const Duration(milliseconds: 300));
     }
+  }
+
+  Future<void> _waitUntil(
+    bool Function() condition, {
+    required Duration timeout,
+    Duration poll = const Duration(milliseconds: 80),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (!condition()) {
+      if (DateTime.now().isAfter(deadline)) return;
+      await Future.delayed(poll);
+    }
+  }
+
+  /// 自愈卡死的录音会话：当内存状态与底层录音器状态不一致时，
+  /// 强制清理会话并将会议状态从 recording/paused 纠正为 completed。
+  ///
+  /// 返回被修复的会议 ID；若无需修复返回 null。
+  Future<String?> recoverStuckRecordingIfNeeded() async {
+    final hasSessionState =
+        _isRecording || _isPaused || _currentMeeting != null;
+    if (!hasSessionState) return null;
+
+    bool recorderActuallyRecording = false;
+    try {
+      recorderActuallyRecording = await _recorder.isRecording();
+    } catch (_) {
+      recorderActuallyRecording = false;
+    }
+
+    final isConsistentActive =
+        _isRecording &&
+        !_isPaused &&
+        _currentMeeting != null &&
+        recorderActuallyRecording;
+    if (isConsistentActive) {
+      return null;
+    }
+
+    return forceRecoverRecordingSession();
+  }
+
+  /// 强制修复录音会话：无条件尝试停止底层录音器并清理当前会话状态。
+  ///
+  /// 返回被修复的会议 ID；若当前没有会话返回 null。
+  Future<String?> forceRecoverRecordingSession() async {
+    final hasSessionState =
+        _isRecording || _isPaused || _currentMeeting != null;
+    if (!hasSessionState) return null;
+
+    final meeting = _currentMeeting;
+    final recoveredMeetingId = meeting?.id;
+
+    _segmentTimer?.cancel();
+    _segmentTimer = null;
+    _stopSmartSegmentControl();
+    _durationTimer?.cancel();
+    _durationTimer = null;
+    _stopping = false;
+    _segmentSwitching = false;
+    _processingQueue.clear();
+
+    // 底层录音器兜底停止（忽略异常）
+    await _recorder.stopWithTimeout(const Duration(seconds: 1));
+
+    if (meeting != null) {
+      if (meeting.status == MeetingStatus.recording ||
+          meeting.status == MeetingStatus.paused) {
+        meeting.status = MeetingStatus.completed;
+        meeting.updatedAt = DateTime.now();
+        if (meeting.totalDuration == Duration.zero &&
+            _recordingDuration > Duration.zero) {
+          meeting.totalDuration = _recordingDuration;
+        }
+        await AppDatabase.instance.updateMeeting(meeting);
+      }
+    }
+
+    _isRecording = false;
+    _isPaused = false;
+    _pauseStartTime = null;
+    _currentMeeting = null;
+    _stopMeetingFuture = null;
+    _onStatusChanged.add('recovered');
+
+    await LogService.error(
+      'MEETING',
+      'recovered stuck recording session: meetingId=${recoveredMeetingId ?? 'unknown'}',
+    );
+
+    return recoveredMeetingId;
   }
 
   void dispose() {
@@ -715,12 +1020,17 @@ class MeetingRecordingService {
     _vadService?.dispose();
     _vadService = null;
     _durationTimer?.cancel();
+    _incrementalSummarySub?.cancel();
+    _incrementalSummarySub = null;
+    _incrementalSummary?.dispose();
+    _incrementalSummary = null;
     _merger?.dispose();
     _merger = null;
     _onSegmentReady.close();
     _onSegmentUpdated.close();
     _onStatusChanged.close();
     _onDurationChanged.close();
+    _onTitleGenerated.close();
     _recorder.dispose();
   }
 }

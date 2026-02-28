@@ -81,6 +81,19 @@ class DashboardStats {
   final int correctionSelected;
   final int correctionReferenceChars;
 
+  // ── 终态回溯 ──
+  final int retroCalls;
+  final int retroLlmCalls;
+  final int retroPromptTokens;
+  final int retroCompletionTokens;
+  final int retroTextChanged;
+
+  // ── SessionGlossary 术语锚定 ──
+  final int glossaryPins;
+  final int glossaryStrongPromotions;
+  final int glossaryOverrides;
+  final int glossaryInjections;
+
   const DashboardStats({
     required this.totalCount,
     required this.totalDurationMs,
@@ -116,6 +129,15 @@ class DashboardStats {
     this.correctionMatches = 0,
     this.correctionSelected = 0,
     this.correctionReferenceChars = 0,
+    this.retroCalls = 0,
+    this.retroLlmCalls = 0,
+    this.retroPromptTokens = 0,
+    this.retroCompletionTokens = 0,
+    this.retroTextChanged = 0,
+    this.glossaryPins = 0,
+    this.glossaryStrongPromotions = 0,
+    this.glossaryOverrides = 0,
+    this.glossaryInjections = 0,
   });
 
   /// 空状态。
@@ -152,6 +174,15 @@ class DashboardStats {
     correctionMatches: 0,
     correctionSelected: 0,
     correctionReferenceChars: 0,
+    retroCalls: 0,
+    retroLlmCalls: 0,
+    retroPromptTokens: 0,
+    retroCompletionTokens: 0,
+    retroTextChanged: 0,
+    glossaryPins: 0,
+    glossaryStrongPromotions: 0,
+    glossaryOverrides: 0,
+    glossaryInjections: 0,
   );
 
   bool get isEmpty => totalCount == 0;
@@ -164,6 +195,8 @@ class DashboardStats {
   int get correctionTotalTokens =>
       correctionPromptTokens + correctionCompletionTokens;
 
+  int get retroTotalTokens => retroPromptTokens + retroCompletionTokens;
+
   double get correctionLlmInvokeRate =>
       correctionCalls > 0 ? correctionLlmCalls / correctionCalls : 0;
 
@@ -172,10 +205,14 @@ class DashboardStats {
 
   /// 所有来源的总 token 数
   int get allPromptTokens =>
-      enhancePromptTokens + meetingEnhancePromptTokens + correctionPromptTokens;
+      enhancePromptTokens +
+      meetingEnhancePromptTokens +
+      correctionPromptTokens +
+      retroPromptTokens;
   int get allCompletionTokens =>
       enhanceCompletionTokens +
       meetingEnhanceCompletionTokens +
-      correctionCompletionTokens;
+      correctionCompletionTokens +
+      retroCompletionTokens;
   int get allTotalTokens => allPromptTokens + allCompletionTokens;
 }

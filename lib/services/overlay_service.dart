@@ -9,9 +9,11 @@ class OverlayService {
   static bool get _isMacOS => Platform.isMacOS;
   static bool get _isWindows => Platform.isWindows;
   static bool get _supportsNativeOverlay => _isMacOS || _isWindows;
+  static String? _activeOwner;
 
   /// 全局快捷键回调
-  static Function(int keyCode, String type, bool isRepeat, bool hasModifiers)? onGlobalKeyEvent;
+  static Function(int keyCode, String type, bool isRepeat, bool hasModifiers)?
+  onGlobalKeyEvent;
 
   static void init() {
     LogService.info('OVERLAY', 'init: setting method call handler');
@@ -24,7 +26,10 @@ class OverlayService {
         final isRepeat = args['isRepeat'] as bool;
         final hasModifiers = args['hasModifiers'] as bool? ?? false;
         final hasCallback = onGlobalKeyEvent != null;
-        LogService.info('OVERLAY', 'onGlobalKeyEvent keyCode=$keyCode type=$type hasModifiers=$hasModifiers hasCallback=$hasCallback');
+        LogService.info(
+          'OVERLAY',
+          'onGlobalKeyEvent keyCode=$keyCode type=$type hasModifiers=$hasModifiers hasCallback=$hasCallback',
+        );
         try {
           onGlobalKeyEvent?.call(keyCode, type, isRepeat, hasModifiers);
         } catch (e) {
@@ -39,8 +44,18 @@ class OverlayService {
     String duration = '00:00',
     double? level,
     String? stateLabel,
+    String? owner,
   }) async {
     if (!_supportsNativeOverlay) return;
+    if (owner != null) {
+      if (_activeOwner != owner) {
+        LogService.info(
+          'OVERLAY',
+          'owner switched: ${_activeOwner ?? 'none'} -> $owner',
+        );
+      }
+      _activeOwner = owner;
+    }
     final args = <String, Object>{'state': state, 'duration': duration};
     if (level != null) {
       args['level'] = level;
@@ -51,8 +66,12 @@ class OverlayService {
     await _channel.invokeMethod('showOverlay', args);
   }
 
-  static Future<void> hideOverlay() async {
+  static Future<void> hideOverlay({String? owner}) async {
     if (!_supportsNativeOverlay) return;
+    if (owner != null && _activeOwner != owner) {
+      return;
+    }
+    _activeOwner = null;
     await _channel.invokeMethod('hideOverlay');
   }
 
@@ -61,8 +80,12 @@ class OverlayService {
     String duration = '00:00',
     double? level,
     String? stateLabel,
+    String? owner,
   }) async {
     if (!_supportsNativeOverlay) return;
+    if (owner != null && _activeOwner != owner) {
+      return;
+    }
     final args = <String, Object>{'state': state, 'duration': duration};
     if (level != null) {
       args['level'] = level;
@@ -84,8 +107,11 @@ class OverlayService {
   }
 
   /// Update the overlay with real-time streaming text.
-  static Future<void> updateOverlayText(String text) async {
+  static Future<void> updateOverlayText(String text, {String? owner}) async {
     if (!_supportsNativeOverlay) return;
+    if (owner != null && _activeOwner != owner) {
+      return;
+    }
     try {
       await _channel.invokeMethod('updateOverlayText', {'text': text});
     } catch (_) {
@@ -171,10 +197,10 @@ class OverlayService {
   }) async {
     if (!_supportsNativeOverlay) return false;
     try {
-      final result = await _channel.invokeMethod<bool>('registerMeetingHotkey', {
-        'keyCode': keyCode,
-        'modifiers': modifiers,
-      });
+      final result = await _channel.invokeMethod<bool>(
+        'registerMeetingHotkey',
+        {'keyCode': keyCode, 'modifiers': modifiers},
+      );
       return result ?? false;
     } catch (e) {
       return false;
@@ -202,10 +228,9 @@ class OverlayService {
   static Future<bool> setLaunchAtLogin(bool enabled) async {
     if (!_supportsNativeOverlay) return false;
     try {
-      final result = await _channel.invokeMethod<bool>(
-        'setLaunchAtLogin',
-        {'enabled': enabled},
-      );
+      final result = await _channel.invokeMethod<bool>('setLaunchAtLogin', {
+        'enabled': enabled,
+      });
       return result ?? false;
     } catch (e) {
       return false;
@@ -233,10 +258,9 @@ class OverlayService {
   static Future<bool> setShowInDock(bool show) async {
     if (!_isMacOS) return false;
     try {
-      final result = await _channel.invokeMethod<bool>(
-        'setShowInDock',
-        {'show': show},
-      );
+      final result = await _channel.invokeMethod<bool>('setShowInDock', {
+        'show': show,
+      });
       return result ?? false;
     } catch (e) {
       return false;

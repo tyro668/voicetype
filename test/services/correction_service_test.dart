@@ -630,9 +630,7 @@ void main() {
         correctionPrompt: '纠错 prompt',
       );
 
-      final result = await service.correctParagraph(
-        '段落中提到了墨提斯平台和其他产品',
-      );
+      final result = await service.correctParagraph('段落中提到了墨提斯平台和其他产品');
       expect(result.llmInvoked, isTrue);
       expect(result.totalTokens, greaterThan(0));
     });
@@ -674,7 +672,8 @@ void main() {
         final payload = json.decode(body) as Map<String, dynamic>;
         final messages = payload['messages'] as List<dynamic>? ?? [];
         final userMessage = messages.isNotEmpty
-            ? (messages.last as Map<String, dynamic>)['content'] as String? ?? ''
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ??
+                  ''
             : '';
         for (final line in userMessage.split('\n')) {
           if (line.startsWith('#C: ')) {
@@ -711,10 +710,7 @@ void main() {
         correctionPrompt: '纠错 prompt',
       );
 
-      await service.correctParagraph(
-        '墨提斯很好用',
-        previousParagraph: '上一段的内容',
-      );
+      await service.correctParagraph('墨提斯很好用', previousParagraph: '上一段的内容');
       expect(capturedContext, '上一段的内容');
     });
 
@@ -782,7 +778,8 @@ void main() {
         final payload = json.decode(body) as Map<String, dynamic>;
         final messages = payload['messages'] as List<dynamic>? ?? [];
         final userMessage = messages.isNotEmpty
-            ? (messages.last as Map<String, dynamic>)['content'] as String? ?? ''
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ??
+                  ''
             : '';
         for (final line in userMessage.split('\n')) {
           if (line.startsWith('#R: ')) {
@@ -841,7 +838,8 @@ void main() {
         final payload = json.decode(body) as Map<String, dynamic>;
         final messages = payload['messages'] as List<dynamic>? ?? [];
         final userMessage = messages.isNotEmpty
-            ? (messages.last as Map<String, dynamic>)['content'] as String? ?? ''
+            ? (messages.last as Map<String, dynamic>)['content'] as String? ??
+                  ''
             : '';
         for (final line in userMessage.split('\n')) {
           if (line.startsWith('#R: ')) {

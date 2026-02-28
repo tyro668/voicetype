@@ -162,6 +162,15 @@ class DashboardService {
       correctionMatches: correctionStats.matches,
       correctionSelected: correctionStats.selected,
       correctionReferenceChars: correctionStats.referenceChars,
+      retroCalls: correctionStats.retroCalls,
+      retroLlmCalls: correctionStats.retroLlmCalls,
+      retroPromptTokens: correctionStats.retroPromptTokens,
+      retroCompletionTokens: correctionStats.retroCompletionTokens,
+      retroTextChanged: correctionStats.retroTextChanged,
+      glossaryPins: correctionStats.glossaryPins,
+      glossaryStrongPromotions: correctionStats.glossaryStrongPromotions,
+      glossaryOverrides: correctionStats.glossaryOverrides,
+      glossaryInjections: correctionStats.glossaryInjections,
     );
   }
 

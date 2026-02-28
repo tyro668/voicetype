@@ -279,7 +279,30 @@
   "correctionLlmCalls": "LLM 调用次数",
   "correctionLlmRate": "LLM 调用率",
   "correctionSelectedRate": "候选入选率",
+  "correctionChangesTitle": "纠错明细（最近 20 条）",
+  "correctionChangesExpand": "展开查看",
+  "correctionChangesCollapse": "收起明细",
+  "correctionChangesCollapsedHint": "默认折叠，点击“展开查看”可查看纠错明细。",
+  "correctionChangesEmpty": "暂无纠错明细，开始一次录音并触发纠错后会显示在这里。",
+  "correctionChangedTerms": "纠正词条",
+  "correctionBeforeText": "纠错前",
+  "correctionAfterText": "纠错后",
+  "correctionSourceRealtime": "实时",
+  "correctionSourceRetrospective": "终态回溯",
   "allTokenUsage": "全部 Token 汇总",
+
+  "retroTokenUsage": "终态回溯 Token 用量",
+  "retroSectionTitle": "终态回溯统计",
+  "retroTotalCalls": "回溯次数",
+  "retroLlmCalls": "LLM 调用次数",
+  "retroTextChangedCount": "文本变更次数",
+  "retroTextChangedRate": "文本变更率",
+
+  "glossarySectionTitle": "术语锚定统计",
+  "glossaryPins": "新增锚定",
+  "glossaryStrongPromotions": "强锚定升级",
+  "glossaryOverrides": "手动覆盖",
+  "glossaryInjections": "注入 #R 次数",
 
   "showInDock": "在 Dock 中显示",
   "showInDockDescription": "控制应用程序图标是否显示在 Dock 上。",
@@ -395,6 +418,8 @@
 
   "correctionEnabled": "智能纠错",
   "correctionDescription": "基于拼音匹配自动纠正同音字，仅在词典非空时生效",
+  "retrospectiveCorrectionEnabled": "终态回溯复核",
+  "retrospectiveCorrectionDescription": "停止录音后对整段文本再纠错一次，提升术语一致性",
   "pinyinPreview": "拼音",
   "pinyinOverride": "拼音规则（选填）",
   "pinyinOverrideHint": "如 fan ruan，支持仅拼音匹配；空格分隔多音节",
@@ -456,12 +481,91 @@
   "meetingReturnToRecording": "返回录音",
   "meetingSegmentView": "分段视图",
   "meetingMergedNoteView": "合并纪要",
+  "meetingLiveSummaryView": "实时摘要",
+  "meetingLiveSummaryWaiting": "等待录音内容积累后生成摘要...",
+  "meetingFinalizing": "后台优化中",
+  "meetingSummaryUpdating": "摘要更新中...",
   "meetingStreamingMerge": "合并中...",
   "meetingDetailTab": "会议详情",
   "meetingSummaryTab": "会议总结",
   "meetingGeneratingSummary": "正在生成会议总结...",
   "meetingNoSummary": "暂无会议总结",
   "meetingRegenerateSummary": "重新生成",
+  "meetingUnifyRebuild": "统一重算",
+  "meetingUnifyRebuildTitle": "统一重算历史会议",
+  "meetingUnifyRebuildConfirm": "将按分段视图相同规则（优先增强文本）重算会议纪要与会议总结。是否继续？",
+  "meetingUnifyRebuildRunning": "正在统一重算，请稍候...",
+  "meetingUnifyRebuildDone": "已完成统一重算：{count} 条",
+  "@meetingUnifyRebuildDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingStatsSummary": "共 {totalCount} 条 · 已完成 {completedCount} 条",
+  "@meetingStatsSummary": {
+    "placeholders": {
+      "totalCount": {
+        "type": "int"
+      },
+      "completedCount": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingRecoverRecording": "修复录音",
+  "meetingRecoverRecordingSuccess": "已修复 {count} 条卡住录音会话",
+  "@meetingRecoverRecordingSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingRecoverRecordingNone": "未发现卡住录音会话",
+  "meetingSearchHint": "搜索会议标题/摘要/内容",
+  "meetingManageGroups": "管理分组",
+  "meetingMoreActions": "更多操作",
+  "meetingMoveToGroup": "移动分组",
+  "meetingMoveToGroupTitle": "移动到分组",
+  "meetingCreateGroupAndMove": "新建分组并移动",
+  "meetingGroupManageTitle": "分组管理",
+  "meetingGroupManageEmptyHint": "还没有自定义分组，点击下方按钮创建。",
+  "meetingGroupClose": "关闭",
+  "meetingGroupCreate": "新建分组",
+  "meetingGroupCreateTitle": "新建分组",
+  "meetingGroupNameHint": "输入分组名",
+  "meetingGroupRenameTitle": "重命名分组",
+  "meetingGroupRenameHint": "输入新的分组名",
+  "meetingAllGroups": "全部",
+  "meetingUngrouped": "未分组",
+  "meetingStartFailed": "会议启动失败: {error}",
+  "@meetingStartFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "meetingStopFailed": "停止会议失败：{error}",
+  "@meetingStopFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "meetingMovedToFinalizing": "会议已进入{status}",
+  "@meetingMovedToFinalizing": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "meetingStoppingPleaseWait": "正在停止会议，请稍候…",
+  "meetingStopping": "正在停止会议…",
   "addToDictionary": "加入提示词词典",
   "addedToDictionary": "已加入词典",
   "originalSttText": "原始语音识别文本",

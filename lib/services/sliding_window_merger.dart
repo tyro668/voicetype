@@ -29,6 +29,23 @@ class SlidingWindowMerger {
   /// 是否暂停
   bool _paused = false;
 
+  /// 已完成的合并纪要缓存（按窗口范围存储）
+  final List<MergedNote> _mergedNotes = [];
+
+  /// 最近一次收到的、可用于构建完整文稿的有效分段（按 segmentIndex 升序）
+  List<MeetingSegment> _latestValidSegments = const [];
+
+  /// 当前最优合并文稿（去重拼接所有缓存的 MergedNote）
+  String get currentFullText => _buildFullText();
+
+  /// 已覆盖到的最大分段索引（-1 表示尚无合并结果）
+  int get lastCoveredSegmentIndex {
+    if (_mergedNotes.isEmpty) return -1;
+    return _mergedNotes
+        .map((n) => n.endSegmentIndex)
+        .reduce((a, b) => a > b ? a : b);
+  }
+
   /// 合并结果事件流（完整结果）
   final StreamController<MergedNote> _mergeCompletedController =
       StreamController<MergedNote>.broadcast();
@@ -43,10 +60,11 @@ class SlidingWindowMerger {
   /// 流式 chunk 事件流
   Stream<MergeStreamEvent> get onStreamChunk => _streamChunkController.stream;
 
-  SlidingWindowMerger({
-    required this.windowSize,
-    required this.aiConfig,
-  });
+  SlidingWindowMerger({required this.windowSize, required this.aiConfig});
+
+  String _segmentDisplayText(MeetingSegment segment) {
+    return (segment.enhancedText ?? segment.transcription ?? '').trim();
+  }
 
   /// 当新分段完成转写时调用，触发窗口选取和合并。
   /// [allSegments] 为当前会议的所有分段列表。
@@ -56,6 +74,16 @@ class SlidingWindowMerger {
   Future<void> onSegmentCompleted(List<MeetingSegment> allSegments) async {
     // 暂停状态下不触发新合并任务
     if (_paused) return;
+
+    _latestValidSegments =
+        allSegments
+            .where(
+              (s) =>
+                  s.status == SegmentStatus.done &&
+                  _segmentDisplayText(s).isNotEmpty,
+            )
+            .toList()
+          ..sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
 
     final windowSegments = selectWindow(allSegments);
     if (windowSegments.isEmpty) return;
@@ -81,12 +109,13 @@ class SlidingWindowMerger {
   /// 向前选取 [windowSize] 个有效分段（转写文本非空），
   /// 跳过空文本分段并从更早分段补充，按 segmentIndex 升序排列。
   List<MeetingSegment> selectWindow(List<MeetingSegment> segments) {
-    // Filter to segments that completed STT with non-empty transcription
+    // Filter to segments that completed STT with non-empty display text
     final validSegments = segments
-        .where((s) =>
-            s.status == SegmentStatus.done &&
-            s.transcription != null &&
-            s.transcription!.trim().isNotEmpty)
+        .where(
+          (s) =>
+              s.status == SegmentStatus.done &&
+              _segmentDisplayText(s).isNotEmpty,
+        )
         .toList();
 
     if (validSegments.isEmpty) {
@@ -116,9 +145,9 @@ class SlidingWindowMerger {
     final startIdx = windowSegments.first.segmentIndex;
     final endIdx = windowSegments.last.segmentIndex;
 
-    // 1. 拼接窗口内所有分段的转写文本
+    // 1. 拼接窗口内所有分段文本（优先 enhancedText）
     final concatenatedText = windowSegments
-        .map((s) => s.transcription ?? '')
+        .map(_segmentDisplayText)
         .where((t) => t.trim().isNotEmpty)
         .join('\n');
 
@@ -132,7 +161,9 @@ class SlidingWindowMerger {
     // 2. 加载 meeting_merge_prompt 并构建 AiEnhanceConfig
     String mergePrompt;
     try {
-      mergePrompt = await rootBundle.loadString('assets/prompts/meeting_merge_prompt.md');
+      mergePrompt = await rootBundle.loadString(
+        'assets/prompts/meeting_merge_prompt.md',
+      );
     } catch (e) {
       await LogService.error('MERGER', 'failed to load merge prompt: $e');
       mergePrompt = aiConfig.prompt;
@@ -142,8 +173,8 @@ class SlidingWindowMerger {
     final enhancer = AiEnhanceService(mergeConfig);
 
     // 3. 判断云端 vs 本地模型
-    final isLocal = mergeConfig.baseUrl.trim().isEmpty &&
-        mergeConfig.apiKey.trim().isEmpty;
+    final isLocal =
+        mergeConfig.baseUrl.trim().isEmpty && mergeConfig.apiKey.trim().isEmpty;
 
     if (isLocal) {
       // 本地模型：批量模式，完成后一次性推送
@@ -152,11 +183,16 @@ class SlidingWindowMerger {
 
         // 检查 taskId，若已被取消则丢弃结果
         if (taskId != _currentTaskId) {
-          await LogService.info('MERGER', 'task $taskId cancelled, discarding local result');
+          await LogService.info(
+            'MERGER',
+            'task $taskId cancelled, discarding local result',
+          );
           return;
         }
 
-        final content = result.text.trim().isNotEmpty ? result.text.trim() : concatenatedText;
+        final content = result.text.trim().isNotEmpty
+            ? result.text.trim()
+            : concatenatedText;
 
         _emitStreamChunk(content, startIdx, endIdx, isComplete: true);
         _emitMergedNote(startIdx, endIdx, content);
@@ -164,7 +200,10 @@ class SlidingWindowMerger {
         await LogService.info('MERGER', 'local merge complete taskId=$taskId');
       } catch (e) {
         // 本地模型调用失败：降级为原始文本拼接
-        await LogService.error('MERGER', 'local enhance failed, degrading to raw text: $e');
+        await LogService.error(
+          'MERGER',
+          'local enhance failed, degrading to raw text: $e',
+        );
 
         if (taskId != _currentTaskId) return;
 
@@ -179,7 +218,10 @@ class SlidingWindowMerger {
         await for (final chunk in enhancer.enhanceStream(concatenatedText)) {
           // 每个 chunk 前检查 taskId
           if (taskId != _currentTaskId) {
-            await LogService.info('MERGER', 'task $taskId cancelled during streaming');
+            await LogService.info(
+              'MERGER',
+              'task $taskId cancelled during streaming',
+            );
             return;
           }
 
@@ -189,7 +231,10 @@ class SlidingWindowMerger {
 
         // 流式完成后检查 taskId
         if (taskId != _currentTaskId) {
-          await LogService.info('MERGER', 'task $taskId cancelled after streaming');
+          await LogService.info(
+            'MERGER',
+            'task $taskId cancelled after streaming',
+          );
           return;
         }
 
@@ -201,10 +246,16 @@ class SlidingWindowMerger {
         _emitStreamChunk('', startIdx, endIdx, isComplete: true);
         _emitMergedNote(startIdx, endIdx, fullContent);
 
-        await LogService.info('MERGER', 'streaming merge complete taskId=$taskId');
+        await LogService.info(
+          'MERGER',
+          'streaming merge complete taskId=$taskId',
+        );
       } catch (e) {
         // SSE 流式请求失败：回退到批量模式重试一次
-        await LogService.error('MERGER', 'streaming enhance failed, falling back to batch mode: $e');
+        await LogService.error(
+          'MERGER',
+          'streaming enhance failed, falling back to batch mode: $e',
+        );
 
         if (taskId != _currentTaskId) return;
 
@@ -212,7 +263,10 @@ class SlidingWindowMerger {
           final batchResult = await enhancer.enhance(concatenatedText);
 
           if (taskId != _currentTaskId) {
-            await LogService.info('MERGER', 'task $taskId cancelled, discarding batch fallback result');
+            await LogService.info(
+              'MERGER',
+              'task $taskId cancelled, discarding batch fallback result',
+            );
             return;
           }
 
@@ -223,14 +277,25 @@ class SlidingWindowMerger {
           _emitStreamChunk(content, startIdx, endIdx, isComplete: true);
           _emitMergedNote(startIdx, endIdx, content);
 
-          await LogService.info('MERGER', 'batch fallback merge complete taskId=$taskId');
+          await LogService.info(
+            'MERGER',
+            'batch fallback merge complete taskId=$taskId',
+          );
         } catch (batchError) {
           // 批量模式也失败：降级为原始文本拼接
-          await LogService.error('MERGER', 'batch fallback also failed, degrading to raw text: $batchError');
+          await LogService.error(
+            'MERGER',
+            'batch fallback also failed, degrading to raw text: $batchError',
+          );
 
           if (taskId != _currentTaskId) return;
 
-          _emitStreamChunk(concatenatedText, startIdx, endIdx, isComplete: true);
+          _emitStreamChunk(
+            concatenatedText,
+            startIdx,
+            endIdx,
+            isComplete: true,
+          );
           _emitMergedNote(startIdx, endIdx, concatenatedText);
         }
       }
@@ -238,18 +303,25 @@ class SlidingWindowMerger {
   }
 
   /// 向 onStreamChunk 推送一个流式事件
-  void _emitStreamChunk(String chunk, int startIdx, int endIdx, {required bool isComplete}) {
+  void _emitStreamChunk(
+    String chunk,
+    int startIdx,
+    int endIdx, {
+    required bool isComplete,
+  }) {
     if (!_streamChunkController.isClosed) {
-      _streamChunkController.add(MergeStreamEvent(
-        chunk: chunk,
-        startSegmentIndex: startIdx,
-        endSegmentIndex: endIdx,
-        isComplete: isComplete,
-      ));
+      _streamChunkController.add(
+        MergeStreamEvent(
+          chunk: chunk,
+          startSegmentIndex: startIdx,
+          endSegmentIndex: endIdx,
+          isComplete: isComplete,
+        ),
+      );
     }
   }
 
-  /// 创建 MergedNote 并推送到 onMergeCompleted
+  /// 创建 MergedNote 并推送到 onMergeCompleted，同时缓存
   void _emitMergedNote(int startIdx, int endIdx, String content) {
     final mergedNote = MergedNote(
       startSegmentIndex: startIdx,
@@ -258,9 +330,35 @@ class SlidingWindowMerger {
       createdAt: DateTime.now(),
     );
 
+    // 缓存到 _mergedNotes
+    _mergedNotes.add(mergedNote);
+
     if (!_mergeCompletedController.isClosed) {
       _mergeCompletedController.add(mergedNote);
     }
+  }
+
+  /// 对缓存的 MergedNote 做贪心去重拼接，构建当前最优合并文稿。
+  /// 选取覆盖范围互不重叠（或递增覆盖）的 note 集合，按 segmentIndex 升序排列。
+  String _buildFullText() {
+    // 以全部已完成分段为主构建完整文稿，避免仅保留最后一个窗口内容。
+    if (_latestValidSegments.isNotEmpty) {
+      final text = _latestValidSegments
+          .map(_segmentDisplayText)
+          .where((t) => t.isNotEmpty)
+          .join('\n');
+      if (text.trim().isNotEmpty) return text.trim();
+    }
+
+    // 兜底：若尚未拿到有效分段，再退回到合并缓存。
+    if (_mergedNotes.isEmpty) return '';
+    final sorted = List<MergedNote>.from(_mergedNotes)
+      ..sort((a, b) => a.endSegmentIndex.compareTo(b.endSegmentIndex));
+    for (var i = sorted.length - 1; i >= 0; i--) {
+      final content = sorted[i].content.trim();
+      if (content.isNotEmpty) return content;
+    }
+    return '';
   }
 
   /// 暂停合并触发

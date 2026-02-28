@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../database/app_database.dart';
@@ -13,9 +14,11 @@ import '../services/overlay_service.dart';
 import '../services/log_service.dart';
 import '../services/token_stats_service.dart';
 import '../services/pinyin_matcher.dart';
+import '../services/incremental_summary_service.dart';
 
 /// 会议记录状态管理
 class MeetingProvider extends ChangeNotifier {
+  static const String _overlayOwner = 'meeting';
   final MeetingRecordingService _recordingService = MeetingRecordingService();
 
   /// 所有会议记录列表
@@ -76,8 +79,156 @@ class MeetingProvider extends ChangeNotifier {
   StreamSubscription<MergedNote>? _mergeCompletedSub;
   StreamSubscription<MergeStreamEvent>? _streamChunkSub;
 
+  /// 增量摘要事件流订阅
+  StreamSubscription<String>? _incrementalSummarySub;
+  StreamSubscription<String>? _incrementalSummaryChunkSub;
+  StreamSubscription<void>? _incrementalSummaryUpdateStartedSub;
+
+  /// 提前生成标题事件流订阅
+  StreamSubscription<String>? _earlyTitleSub;
+
+  /// 增量摘要内容（录制过程中实时更新）
+  String _incrementalSummary = '';
+  String get incrementalSummary => _incrementalSummary;
+
+  /// provider 自主跟踪的摘要流式状态（解决 isUpdating 与 notifyListeners 时序错配问题）
+  bool _isStreamingSummary = false;
+
+  /// 增量摘要是否正在更新中
+  bool get isUpdatingIncrementalSummary =>
+      _isStreamingSummary ||
+      (_recordingService.incrementalSummary?.isUpdating ?? false);
+
+  /// 后台收尾是否正在执行
+  bool _isFinalizingMeeting = false;
+  bool get isFinalizingMeeting => _isFinalizingMeeting;
+
+  /// 是否正在执行“停止会议”请求（用于 UI 交互锁定）
+  bool _isStoppingMeeting = false;
+  bool get isStoppingMeeting => _isStoppingMeeting;
+
+  /// 正在收尾的会议 ID
+  String? _finalizingMeetingId;
+  String? get finalizingMeetingId => _finalizingMeetingId;
+
   /// 音频波形流
   Stream<double> get amplitudeStream => _recordingService.amplitudeStream;
+
+  static const String _meetingGroupsSettingKey = 'meeting_groups_v1';
+  static const String defaultMeetingGroup = '未分组';
+  final Map<String, String> _meetingGroupMap = {};
+  bool _meetingGroupsLoaded = false;
+
+  List<String> get allMeetingGroups {
+    final groups =
+        _meetingGroupMap.values
+            .map(_normalizeGroupName)
+            .where((g) => g.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.compareTo(b));
+    if (!groups.contains(defaultMeetingGroup)) {
+      groups.insert(0, defaultMeetingGroup);
+    }
+    return groups;
+  }
+
+  String getMeetingGroup(String meetingId) {
+    return _normalizeGroupName(_meetingGroupMap[meetingId]);
+  }
+
+  String _normalizeGroupName(String? group) {
+    final trimmed = (group ?? '').trim();
+    return trimmed.isEmpty ? defaultMeetingGroup : trimmed;
+  }
+
+  Future<void> _ensureMeetingGroupsLoaded() async {
+    if (_meetingGroupsLoaded) return;
+    final raw = await AppDatabase.instance.getSetting(_meetingGroupsSettingKey);
+    if (raw == null || raw.trim().isEmpty) {
+      _meetingGroupsLoaded = true;
+      return;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        _meetingGroupMap
+          ..clear()
+          ..addAll(
+            decoded.map(
+              (k, v) => MapEntry(k.toString(), _normalizeGroupName('$v')),
+            ),
+          );
+      }
+    } catch (_) {
+      _meetingGroupMap.clear();
+    }
+    _meetingGroupsLoaded = true;
+  }
+
+  Future<void> _saveMeetingGroups() async {
+    await AppDatabase.instance.setSetting(
+      _meetingGroupsSettingKey,
+      jsonEncode(_meetingGroupMap),
+    );
+  }
+
+  Future<void> moveMeetingToGroup(String meetingId, String group) async {
+    await _ensureMeetingGroupsLoaded();
+    _meetingGroupMap[meetingId] = _normalizeGroupName(group);
+    await _saveMeetingGroups();
+    notifyListeners();
+  }
+
+  Future<void> ensureMeetingGroupExists(String group) async {
+    await _ensureMeetingGroupsLoaded();
+    final normalized = _normalizeGroupName(group);
+    if (_meetingGroupMap.values.any(
+      (g) => _normalizeGroupName(g) == normalized,
+    )) {
+      return;
+    }
+    _meetingGroupMap['__group__$normalized'] = normalized;
+    await _saveMeetingGroups();
+    notifyListeners();
+  }
+
+  Future<void> renameMeetingGroup(String oldName, String newName) async {
+    await _ensureMeetingGroupsLoaded();
+    final oldGroup = _normalizeGroupName(oldName);
+    final targetGroup = _normalizeGroupName(newName);
+    if (oldGroup == targetGroup) return;
+
+    final ids = _meetingGroupMap.entries
+        .where((e) => _normalizeGroupName(e.value) == oldGroup)
+        .map((e) => e.key)
+        .toList();
+    for (final id in ids) {
+      _meetingGroupMap[id] = targetGroup;
+    }
+    await _saveMeetingGroups();
+    notifyListeners();
+  }
+
+  Future<void> deleteMeetingGroup(
+    String group, {
+    String fallbackGroup = defaultMeetingGroup,
+  }) async {
+    await _ensureMeetingGroupsLoaded();
+    final source = _normalizeGroupName(group);
+    final fallback = _normalizeGroupName(fallbackGroup);
+    for (final entry in _meetingGroupMap.entries.toList()) {
+      if (_normalizeGroupName(entry.value) == source) {
+        if (entry.key.startsWith('__group__')) {
+          _meetingGroupMap.remove(entry.key);
+        } else {
+          _meetingGroupMap[entry.key] = fallback;
+        }
+      }
+    }
+    await _saveMeetingGroups();
+    notifyListeners();
+  }
 
   /// 设置 Overlay 状态标签（国际化）
   void setOverlayStateLabels({
@@ -136,6 +287,10 @@ class MeetingProvider extends ChangeNotifier {
     // 先取消旧的订阅
     _mergeCompletedSub?.cancel();
     _streamChunkSub?.cancel();
+    _incrementalSummarySub?.cancel();
+    _incrementalSummaryChunkSub?.cancel();
+    _incrementalSummaryUpdateStartedSub?.cancel();
+    _earlyTitleSub?.cancel();
 
     final merger = _recordingService.merger;
     if (merger == null) return;
@@ -152,10 +307,54 @@ class MeetingProvider extends ChangeNotifier {
     });
 
     _mergeCompletedSub = merger.onMergeCompleted.listen((note) {
-      _mergedNote = note.content;
+      _mergedNote = _recordingService.currentFullText;
+      if (_mergedNote.trim().isEmpty) {
+        _mergedNote = note.content;
+      }
       _streamingText = '';
       _isStreamingMerge = false;
       notifyListeners();
+    });
+
+    // 设置增量摘要 listener
+    _recordingService.setupIncrementalSummaryListener();
+
+    // 监听增量摘要更新
+    final incrSummary = _recordingService.incrementalSummary;
+    if (incrSummary != null) {
+      _incrementalSummaryUpdateStartedSub = incrSummary.onSummaryUpdateStarted
+          .listen((_) {
+            _isStreamingSummary = true;
+            _incrementalSummary = '';
+            notifyListeners();
+          });
+
+      _incrementalSummaryChunkSub = incrSummary.onSummaryChunk.listen((chunk) {
+        if (chunk.isEmpty) return;
+        _incrementalSummary += chunk;
+        notifyListeners();
+      });
+
+      _incrementalSummarySub = incrSummary.onSummaryUpdated.listen((summary) {
+        _incrementalSummary = summary;
+        _isStreamingSummary = false;
+        notifyListeners();
+      });
+    }
+
+    // 监听提前生成的标题
+    _earlyTitleSub = _recordingService.onTitleGenerated.listen((title) {
+      if (title.isNotEmpty && _recordingService.currentMeeting != null) {
+        final meeting = _recordingService.currentMeeting!;
+        if (_isDefaultTitle(meeting.title)) {
+          meeting.title = title;
+          // 持久化标题
+          AppDatabase.instance.updateMeeting(meeting).catchError((e) {
+            LogService.error('MEETING_PROVIDER', 'save early title failed: $e');
+          });
+          notifyListeners();
+        }
+      }
     });
   }
 
@@ -165,16 +364,32 @@ class MeetingProvider extends ChangeNotifier {
     _mergeCompletedSub = null;
     _streamChunkSub?.cancel();
     _streamChunkSub = null;
+    _incrementalSummarySub?.cancel();
+    _incrementalSummarySub = null;
+    _incrementalSummaryChunkSub?.cancel();
+    _incrementalSummaryChunkSub = null;
+    _incrementalSummaryUpdateStartedSub?.cancel();
+    _incrementalSummaryUpdateStartedSub = null;
+    _isStreamingSummary = false;
+    _earlyTitleSub?.cancel();
+    _earlyTitleSub = null;
   }
 
   /// 加载所有会议记录
   Future<void> _loadMeetings() async {
     try {
+      await _recordingService.recoverStuckRecordingIfNeeded();
+      await _ensureMeetingGroupsLoaded();
       _meetings = await AppDatabase.instance.getAllMeetings();
       // 修复因崩溃/异常导致的残留 recording/paused 状态
+      // finalizing 表示后台整理中，不应在这里强制改为 completed
       final activeId = _recordingService.currentMeeting?.id;
       for (final m in _meetings) {
-        if (m.status != MeetingStatus.completed && m.id != activeId) {
+        final isStaleActiveStatus =
+            (m.status == MeetingStatus.recording ||
+                m.status == MeetingStatus.paused) &&
+            m.id != activeId;
+        if (isStaleActiveStatus) {
           m.status = MeetingStatus.completed;
           await AppDatabase.instance.updateMeeting(m);
         }
@@ -188,6 +403,118 @@ class MeetingProvider extends ChangeNotifier {
   /// 刷新会议列表
   Future<void> refreshMeetings() async {
     await _loadMeetings();
+  }
+
+  /// 手动修复卡住的录音会话。
+  /// 返回修复条数（包含会话态与数据库状态修复）。
+  Future<int> manualRecoverStuckRecording() async {
+    var fixedCount = 0;
+
+    final recoveredId = await _recordingService.forceRecoverRecordingSession();
+    if (recoveredId != null) {
+      fixedCount++;
+    }
+
+    final allMeetings = await AppDatabase.instance.getAllMeetings();
+    for (final meeting in allMeetings) {
+      if (meeting.status == MeetingStatus.recording ||
+          meeting.status == MeetingStatus.paused) {
+        meeting.status = MeetingStatus.completed;
+        meeting.updatedAt = DateTime.now();
+        await AppDatabase.instance.updateMeeting(meeting);
+        fixedCount++;
+      }
+    }
+
+    await _loadMeetings();
+    return fixedCount;
+  }
+
+  /// 统一重算历史会议内容：
+  /// - 按分段优先 enhancedText 合并为会议纪要
+  /// - 基于统一后的纪要重新生成总结
+  /// - 默认标题时尝试重新生成标题
+  ///
+  /// 返回成功更新的会议数量。
+  Future<int> rebuildHistoricalMeetingsFromSegments({
+    required AiEnhanceConfig aiConfig,
+    String dictionarySuffix = '',
+  }) async {
+    final meetings = await AppDatabase.instance.getAllMeetings();
+    var updatedCount = 0;
+
+    final oldEnabled = _aiEnhanceEnabled;
+    final oldConfig = _aiConfig;
+    final oldDictSuffix = _dictionarySuffix;
+
+    _aiEnhanceEnabled = true;
+    _aiConfig = aiConfig;
+    _dictionarySuffix = dictionarySuffix;
+
+    try {
+      for (final meeting in meetings) {
+        if (meeting.status == MeetingStatus.recording ||
+            meeting.status == MeetingStatus.paused) {
+          continue;
+        }
+
+        final segments = await AppDatabase.instance.getMeetingSegments(
+          meeting.id,
+        );
+        segments.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
+
+        final mergedText = segments
+            .map((s) => (s.enhancedText ?? s.transcription ?? '').trim())
+            .where((text) => text.isNotEmpty)
+            .join('\n')
+            .trim();
+
+        if (mergedText.isEmpty) {
+          continue;
+        }
+
+        try {
+          final polished = await _polishMergedText(mergedText);
+          final finalText = polished.trim().isNotEmpty
+              ? polished.trim()
+              : mergedText;
+          final summary = await _generateSummary(finalText);
+
+          meeting.fullTranscription = finalText;
+          if (summary.isNotEmpty) {
+            meeting.summary = summary;
+          }
+
+          if (_isDefaultTitle(meeting.title)) {
+            final autoTitle = await _generateTitle(finalText);
+            if (autoTitle.isNotEmpty) {
+              meeting.title = autoTitle;
+            }
+          }
+
+          meeting.updatedAt = DateTime.now();
+          await AppDatabase.instance.updateMeeting(meeting);
+          updatedCount++;
+        } catch (e) {
+          await LogService.error(
+            'MEETING',
+            'rebuild historical meeting failed id=${meeting.id}: $e',
+          );
+        }
+      }
+    } finally {
+      _aiEnhanceEnabled = oldEnabled;
+      _aiConfig = oldConfig;
+      _dictionarySuffix = oldDictSuffix;
+    }
+
+    await _loadMeetings();
+    return updatedCount;
+  }
+
+  /// 手动覆盖会话术语映射（由词典页编辑触发）。
+  void applySessionGlossaryOverride(String original, String corrected) {
+    _recordingService.applySessionGlossaryOverride(original, corrected);
   }
 
   /// 开始新会议
@@ -214,6 +541,9 @@ class MeetingProvider extends ChangeNotifier {
     _mergedNote = '';
     _streamingText = '';
     _isStreamingMerge = false;
+    _incrementalSummary = '';
+    _isFinalizingMeeting = false;
+    _finalizingMeetingId = null;
 
     try {
       // 显示 overlay — starting 状态
@@ -223,6 +553,7 @@ class MeetingProvider extends ChangeNotifier {
           duration: '00:00',
           level: 0.0,
           stateLabel: _startingLabel,
+          owner: _overlayOwner,
         ),
       );
 
@@ -249,6 +580,7 @@ class MeetingProvider extends ChangeNotifier {
           duration: '00:00',
           level: 0.0,
           stateLabel: _recordingLabel,
+          owner: _overlayOwner,
         ),
       );
 
@@ -260,6 +592,7 @@ class MeetingProvider extends ChangeNotifier {
           duration: _durationStr,
           level: level,
           stateLabel: _recordingLabel,
+          owner: _overlayOwner,
         );
       });
 
@@ -267,7 +600,7 @@ class MeetingProvider extends ChangeNotifier {
       notifyListeners();
       return meeting;
     } catch (e) {
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -281,7 +614,7 @@ class MeetingProvider extends ChangeNotifier {
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
       // 暂停时隐藏 overlay
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -299,6 +632,7 @@ class MeetingProvider extends ChangeNotifier {
           duration: _durationStr,
           level: 0.0,
           stateLabel: _recordingLabel,
+          owner: _overlayOwner,
         ),
       );
       // 重新监听振幅
@@ -309,6 +643,7 @@ class MeetingProvider extends ChangeNotifier {
           duration: _durationStr,
           level: level,
           stateLabel: _recordingLabel,
+          owner: _overlayOwner,
         );
       });
     } catch (e) {
@@ -318,19 +653,263 @@ class MeetingProvider extends ChangeNotifier {
   }
 
   /// 结束录音
+  /// 快速结束会议：复用 Merger 已合并的全文和增量摘要，立即返回。
+  /// 后台异步执行尾部 polish、最终摘要和标题确认。
+  Future<MeetingRecord> stopMeetingFast() async {
+    _isStoppingMeeting = true;
+    notifyListeners();
+    try {
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+
+      // 点击结束后立即隐藏录音标识 overlay，不展示处理进度
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
+      await LogService.info(
+        'MEETING_PROVIDER',
+        'stop requested, progress moved to meeting page ($_processingLabel)',
+      );
+
+      // 先快照增量摘要服务
+      final incrService = _recordingService.incrementalSummary;
+
+      // 快照 Merger 已合并的全文
+      final cachedFullText = _recordingService.currentFullText.trim();
+      final cachedMergedNote = _mergedNote.trim();
+      final cachedLastCoveredIndex = _recordingService.lastCoveredSegmentIndex;
+      final cachedSummary = incrService?.currentSummary ?? '';
+
+      _cancelMergerListeners();
+
+      final meeting = await _recordingService.stopMeeting();
+
+      // 从已落库分段构建即时文稿兜底，避免停止后会议内容为空。
+      final persistedSegments = await AppDatabase.instance.getMeetingSegments(
+        meeting.id,
+      );
+      persistedSegments.sort(
+        (a, b) => a.segmentIndex.compareTo(b.segmentIndex),
+      );
+      final immediateBuffer = StringBuffer();
+      for (final seg in persistedSegments) {
+        final text = (seg.enhancedText ?? seg.transcription ?? '').trim();
+        if (text.isNotEmpty) {
+          immediateBuffer.writeln(text);
+        }
+      }
+      final immediateText = immediateBuffer.toString().trim();
+
+      // 使用 Merger 已合并的全文作为即时文稿
+      if (cachedFullText.isNotEmpty) {
+        meeting.fullTranscription = cachedFullText;
+      } else if (cachedMergedNote.isNotEmpty) {
+        meeting.fullTranscription = cachedMergedNote;
+      } else if (immediateText.isNotEmpty) {
+        meeting.fullTranscription = immediateText;
+      }
+
+      // 使用增量摘要作为即时总结
+      if (cachedSummary.isNotEmpty) {
+        meeting.summary = cachedSummary;
+      }
+
+      // 点击结束后立即标记为“会议整理中”
+      meeting.status = MeetingStatus.finalizing;
+      meeting.updatedAt = DateTime.now();
+
+      await AppDatabase.instance.updateMeeting(meeting);
+
+      // 隐藏 overlay，让用户立即进入详情
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
+      await _loadMeetings();
+
+      // 启动后台精细化
+      _finalizeMeetingInBackground(
+        meeting.id,
+        incrService,
+        cachedFullText,
+        cachedLastCoveredIndex,
+      );
+
+      return meeting;
+    } catch (e) {
+      final recoveredId = await _recordingService
+          .recoverStuckRecordingIfNeeded();
+      if (recoveredId != null) {
+        await _loadMeetings();
+        final recoveredMeeting = await AppDatabase.instance.getMeetingById(
+          recoveredId,
+        );
+        if (recoveredMeeting != null) {
+          return recoveredMeeting;
+        }
+      }
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isStoppingMeeting = false;
+      notifyListeners();
+    }
+  }
+
+  /// 后台精细化：尾部 polish、最终摘要更新、标题确认（并行执行）
+  Future<void> _finalizeMeetingInBackground(
+    String meetingId,
+    IncrementalSummaryService? incrService,
+    String cachedFullText,
+    int cachedLastCoveredIndex,
+  ) async {
+    _isFinalizingMeeting = true;
+    _finalizingMeetingId = meetingId;
+    notifyListeners();
+
+    try {
+      final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+      if (meeting == null) return;
+
+      // 获取所有分段并等待其处理落库，避免 stop 后立即读取导致内容为空。
+      final segments = await _collectSegmentsForFinalization(meetingId);
+
+      final buffer = StringBuffer();
+      for (final seg in segments) {
+        final text = (seg.enhancedText ?? seg.transcription ?? '').trim();
+        if (text.isNotEmpty) {
+          buffer.writeln(text);
+        }
+      }
+      final fullRawText = buffer.toString().trim();
+      final hasCachedMerged = cachedFullText.isNotEmpty;
+      final tailText = segments
+          .where((s) => s.segmentIndex > cachedLastCoveredIndex)
+          .map((s) => (s.enhancedText ?? s.transcription ?? '').trim())
+          .where((text) => text.isNotEmpty)
+          .join('\n');
+
+      final summaryInput = hasCachedMerged
+          ? [
+              cachedFullText,
+              tailText,
+            ].where((s) => s.trim().isNotEmpty).join('\n\n').trim()
+          : fullRawText;
+
+      if (summaryInput.isEmpty) {
+        // 尚无可整理内容时，保持 finalizing，等待后续分段处理完成后再次触发整理。
+        await LogService.error(
+          'MEETING',
+          'finalization deferred: empty summary input for $meetingId',
+        );
+        return;
+      }
+
+      final Future<String> polishFuture;
+      if (hasCachedMerged && tailText.trim().isEmpty) {
+        polishFuture = Future.value(cachedFullText);
+      } else if (hasCachedMerged) {
+        polishFuture = _polishMergedText(tailText).then((polishedTail) {
+          final tail = polishedTail.trim().isNotEmpty ? polishedTail : tailText;
+          if (tail.trim().isEmpty) return cachedFullText;
+          return '$cachedFullText\n\n$tail'.trim();
+        });
+      } else {
+        polishFuture = _polishMergedText(fullRawText);
+      }
+
+      // 并行执行: 尾部增量 polish + 最终摘要 + 标题生成
+      final summaryFuture = incrService != null
+          ? incrService.finalUpdate(summaryInput)
+          : _generateSummary(summaryInput);
+      final titleFuture = _isDefaultTitle(meeting.title)
+          ? _generateTitle(summaryInput)
+          : Future.value('');
+
+      final results = await Future.wait([
+        polishFuture,
+        summaryFuture,
+        titleFuture,
+      ]);
+
+      final polished = results[0];
+      final summary = results[1];
+      final title = results[2];
+
+      if (polished.isNotEmpty) {
+        meeting.fullTranscription = polished;
+      }
+      if (summary.isNotEmpty) {
+        meeting.summary = summary;
+      }
+      if (title.isNotEmpty) {
+        meeting.title = title;
+      }
+
+      // 后台整理完成后切回“已完成”
+      meeting.status = MeetingStatus.completed;
+      meeting.updatedAt = DateTime.now();
+      await AppDatabase.instance.updateMeeting(meeting);
+      await _loadMeetings();
+
+      await LogService.info(
+        'MEETING',
+        'background finalization complete for $meetingId',
+      );
+    } catch (e) {
+      await LogService.error('MEETING', 'background finalization failed: $e');
+    } finally {
+      _isFinalizingMeeting = false;
+      _finalizingMeetingId = null;
+      notifyListeners();
+    }
+  }
+
+  Future<List<MeetingSegment>> _collectSegmentsForFinalization(
+    String meetingId,
+  ) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 45));
+    List<MeetingSegment> latest = [];
+
+    while (true) {
+      latest = await AppDatabase.instance.getMeetingSegments(meetingId);
+      latest.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
+
+      final hasText = latest.any(
+        (segment) => (segment.enhancedText ?? segment.transcription ?? '')
+            .trim()
+            .isNotEmpty,
+      );
+      final hasPending = latest.any(
+        (segment) =>
+            segment.status == SegmentStatus.pending ||
+            segment.status == SegmentStatus.transcribing ||
+            segment.status == SegmentStatus.enhancing,
+      );
+
+      if (!hasPending && latest.isNotEmpty) {
+        return latest;
+      }
+      if (hasText && DateTime.now().isAfter(deadline)) {
+        return latest;
+      }
+      if (DateTime.now().isAfter(deadline)) {
+        return latest;
+      }
+
+      await Future.delayed(const Duration(milliseconds: 800));
+    }
+  }
+
+  /// 旧版同步停止会议（兼容回退）
   Future<MeetingRecord> stopMeeting() async {
     try {
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
       _cancelMergerListeners();
-      // 切换到处理中状态
-      unawaited(
-        OverlayService.showOverlay(
-          state: 'transcribing',
-          duration: _durationStr,
-          level: 0.0,
-          stateLabel: _processingLabel,
-        ),
+
+      // 点击结束后立即隐藏录音标识 overlay，不展示处理进度
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
+      await LogService.info(
+        'MEETING_PROVIDER',
+        'stop requested(sync), progress moved to meeting page ($_processingLabel)',
       );
 
       final meeting = await _recordingService.stopMeeting();
@@ -373,11 +952,11 @@ class MeetingProvider extends ChangeNotifier {
       }
 
       // 处理完成，隐藏 overlay
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       await _loadMeetings();
       return meeting;
     } catch (e) {
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -537,9 +1116,30 @@ class MeetingProvider extends ChangeNotifier {
     final content = (meeting.fullTranscription ?? '').trim();
     if (content.isEmpty) return;
 
+    yield* regenerateSummaryStreamByContent(
+      meetingId,
+      content: content,
+      aiConfig: aiConfig,
+      dictionarySuffix: dictionarySuffix,
+    );
+  }
+
+  /// 基于显式内容流式生成会议总结，逐块返回文本。
+  Stream<String> regenerateSummaryStreamByContent(
+    String meetingId, {
+    required String content,
+    required AiEnhanceConfig aiConfig,
+    String dictionarySuffix = '',
+  }) async* {
+    final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+    if (meeting == null) return;
+
+    final mergedContent = content.trim();
+    if (mergedContent.isEmpty) return;
+
     await LogService.info(
       'MEETING',
-      'streaming summary regeneration, content length=${content.length}',
+      'streaming summary regeneration, content length=${mergedContent.length}',
     );
 
     final summaryPrompt = await rootBundle.loadString(
@@ -553,7 +1153,7 @@ class MeetingProvider extends ChangeNotifier {
 
     final buffer = StringBuffer();
     await for (final chunk in enhancer.enhanceStream(
-      content,
+      mergedContent,
       timeout: const Duration(seconds: 120),
     )) {
       buffer.write(chunk);
@@ -564,6 +1164,7 @@ class MeetingProvider extends ChangeNotifier {
     final fullSummary = buffer.toString().trim();
     if (fullSummary.isNotEmpty) {
       meeting.summary = fullSummary;
+      meeting.fullTranscription = mergedContent;
       meeting.updatedAt = DateTime.now();
       await AppDatabase.instance.updateMeeting(meeting);
       await _loadMeetings();
@@ -634,12 +1235,12 @@ class MeetingProvider extends ChangeNotifier {
       _amplitudeSub = null;
       _cancelMergerListeners();
       await _recordingService.cancelMeeting();
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       _currentSegments = [];
       await _loadMeetings();
       notifyListeners();
     } catch (e) {
-      unawaited(OverlayService.hideOverlay());
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
       _error = e.toString();
       notifyListeners();
     }
@@ -688,6 +1289,31 @@ class MeetingProvider extends ChangeNotifier {
 
   /// 删除会议
   Future<void> deleteMeeting(String meetingId) async {
+    final meeting = await AppDatabase.instance.getMeetingById(meetingId);
+    final isActiveMeeting = _recordingService.currentMeeting?.id == meetingId;
+
+    if (isActiveMeeting ||
+        meeting?.status == MeetingStatus.recording ||
+        meeting?.status == MeetingStatus.paused) {
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+      _cancelMergerListeners();
+      await _recordingService.forceRecoverRecordingSession();
+      unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
+
+      _currentSegments = [];
+      _mergedNote = '';
+      _streamingText = '';
+      _incrementalSummary = '';
+      _isStreamingMerge = false;
+      _isStreamingSummary = false;
+      _isStoppingMeeting = false;
+      _status = 'idle';
+    }
+
+    await _ensureMeetingGroupsLoaded();
+    _meetingGroupMap.remove(meetingId);
+    await _saveMeetingGroups();
     await AppDatabase.instance.deleteMeetingById(meetingId);
     await _loadMeetings();
   }

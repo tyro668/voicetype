@@ -729,7 +729,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get correctionSelectedRate => 'Candidate Selection Rate';
 
   @override
+  String get correctionChangesTitle => 'Correction Details (Latest 20)';
+
+  @override
+  String get correctionChangesExpand => 'Expand';
+
+  @override
+  String get correctionChangesCollapse => 'Collapse';
+
+  @override
+  String get correctionChangesCollapsedHint =>
+      'Collapsed by default. Click Expand to view correction details.';
+
+  @override
+  String get correctionChangesEmpty =>
+      'No correction details yet. Start a recording and trigger correction to see entries here.';
+
+  @override
+  String get correctionChangedTerms => 'Changed Terms';
+
+  @override
+  String get correctionBeforeText => 'Before';
+
+  @override
+  String get correctionAfterText => 'After';
+
+  @override
+  String get correctionSourceRealtime => 'Realtime';
+
+  @override
+  String get correctionSourceRetrospective => 'Retrospective';
+
+  @override
   String get allTokenUsage => 'All Tokens Summary';
+
+  @override
+  String get retroTokenUsage => 'Retrospective Tokens';
+
+  @override
+  String get retroSectionTitle => 'Retrospective Correction';
+
+  @override
+  String get retroTotalCalls => 'Retro Calls';
+
+  @override
+  String get retroLlmCalls => 'LLM Calls';
+
+  @override
+  String get retroTextChangedCount => 'Text Changed';
+
+  @override
+  String get retroTextChangedRate => 'Change Rate';
+
+  @override
+  String get glossarySectionTitle => 'Terminology Anchoring';
+
+  @override
+  String get glossaryPins => 'New Pins';
+
+  @override
+  String get glossaryStrongPromotions => 'Strong Promotions';
+
+  @override
+  String get glossaryOverrides => 'Manual Overrides';
+
+  @override
+  String get glossaryInjections => '#R Injections';
 
   @override
   String get showInDock => 'Show in Dock';
@@ -990,6 +1055,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty';
 
   @override
+  String get retrospectiveCorrectionEnabled => 'Retrospective Review';
+
+  @override
+  String get retrospectiveCorrectionDescription =>
+      'Run one more paragraph-level correction when recording stops for better term consistency';
+
+  @override
   String get pinyinPreview => 'Pinyin';
 
   @override
@@ -1176,6 +1248,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meetingMergedNoteView => 'Merged Notes';
 
   @override
+  String get meetingLiveSummaryView => 'Live Summary';
+
+  @override
+  String get meetingLiveSummaryWaiting =>
+      'Waiting for enough content to generate summary...';
+
+  @override
+  String get meetingFinalizing => 'Finalizing';
+
+  @override
+  String get meetingSummaryUpdating => 'Updating summary...';
+
+  @override
   String get meetingStreamingMerge => 'Merging...';
 
   @override
@@ -1192,6 +1277,110 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meetingRegenerateSummary => 'Regenerate';
+
+  @override
+  String get meetingUnifyRebuild => 'Unify Rebuild';
+
+  @override
+  String get meetingUnifyRebuildTitle => 'Unify Historical Meetings';
+
+  @override
+  String get meetingUnifyRebuildConfirm =>
+      'Meeting minutes and summaries will be rebuilt using the same rule as segment view (prefer enhanced text). Continue?';
+
+  @override
+  String get meetingUnifyRebuildRunning => 'Unifying historical meetings...';
+
+  @override
+  String meetingUnifyRebuildDone(int count) {
+    return 'Unified rebuild complete: $count';
+  }
+
+  @override
+  String meetingStatsSummary(int totalCount, int completedCount) {
+    return 'Total $totalCount · Completed $completedCount';
+  }
+
+  @override
+  String get meetingRecoverRecording => 'Repair Recording';
+
+  @override
+  String meetingRecoverRecordingSuccess(int count) {
+    return 'Repaired $count stuck recording session(s)';
+  }
+
+  @override
+  String get meetingRecoverRecordingNone => 'No stuck recording sessions found';
+
+  @override
+  String get meetingSearchHint => 'Search title/summary/content';
+
+  @override
+  String get meetingManageGroups => 'Manage Groups';
+
+  @override
+  String get meetingMoreActions => 'More Actions';
+
+  @override
+  String get meetingMoveToGroup => 'Move Group';
+
+  @override
+  String get meetingMoveToGroupTitle => 'Move to Group';
+
+  @override
+  String get meetingCreateGroupAndMove => 'Create Group and Move';
+
+  @override
+  String get meetingGroupManageTitle => 'Group Management';
+
+  @override
+  String get meetingGroupManageEmptyHint =>
+      'No custom groups yet. Click the button below to create one.';
+
+  @override
+  String get meetingGroupClose => 'Close';
+
+  @override
+  String get meetingGroupCreate => 'Create Group';
+
+  @override
+  String get meetingGroupCreateTitle => 'Create Group';
+
+  @override
+  String get meetingGroupNameHint => 'Enter group name';
+
+  @override
+  String get meetingGroupRenameTitle => 'Rename Group';
+
+  @override
+  String get meetingGroupRenameHint => 'Enter new group name';
+
+  @override
+  String get meetingAllGroups => 'All';
+
+  @override
+  String get meetingUngrouped => 'Ungrouped';
+
+  @override
+  String meetingStartFailed(String error) {
+    return 'Failed to start meeting: $error';
+  }
+
+  @override
+  String meetingStopFailed(String error) {
+    return 'Failed to stop meeting: $error';
+  }
+
+  @override
+  String meetingMovedToFinalizing(String status) {
+    return 'Meeting has entered $status';
+  }
+
+  @override
+  String get meetingStoppingPleaseWait => 'Stopping meeting, please wait…';
+
+  @override
+  String get meetingStopping => 'Stopping meeting…';
 
   @override
   String get addToDictionary => 'Add to Dictionary';

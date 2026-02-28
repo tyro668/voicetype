@@ -1,6 +1,8 @@
 import '../models/ai_enhance_config.dart';
+import '../models/correction_change_log.dart';
 import '../models/dictionary_entry.dart';
 import 'ai_enhance_service.dart';
+import 'correction_change_log_service.dart';
 import 'correction_context.dart';
 import 'log_service.dart';
 import 'pinyin_matcher.dart';
@@ -188,6 +190,15 @@ class CorrectionService {
             'tokens: ${result.totalTokens}',
       );
 
+      if (correctedText != rawSttText) {
+        await CorrectionChangeLogService.instance.recordChange(
+          source: 'realtime',
+          inputText: rawSttText,
+          outputText: correctedText,
+          terms: _buildTermPairsFromHits(selectedHits),
+        );
+      }
+
       return CorrectionResult(
         text: correctedText,
         llmInvoked: true,
@@ -230,21 +241,24 @@ class CorrectionService {
           'CORRECTION',
           'retrospective: no dictionary matches, skipping',
         );
+        await _recordRetroSafely(llmInvoked: false, textChanged: false);
         return CorrectionResult(text: paragraphText);
       }
 
-      final selectedHits =
-          _selectHitsForReference(paragraphText, matchHits);
+      final selectedHits = _selectHitsForReference(paragraphText, matchHits);
       if (selectedHits.isEmpty) {
         await LogService.info(
           'CORRECTION',
           'retrospective: all matches filtered, skipping',
         );
+        await _recordRetroSafely(llmInvoked: false, textChanged: false);
         return CorrectionResult(text: paragraphText);
       }
 
-      final fallbackText =
-          _normalizeMatchedTermsFromHits(paragraphText, selectedHits);
+      final fallbackText = _normalizeMatchedTermsFromHits(
+        paragraphText,
+        selectedHits,
+      );
 
       final referenceStr = _buildReferenceStringFromHits(selectedHits);
 
@@ -268,8 +282,10 @@ class CorrectionService {
         correctedText = fallbackText;
       }
 
-      correctedText =
-          _normalizeMatchedTermsFromHits(correctedText, selectedHits);
+      correctedText = _normalizeMatchedTermsFromHits(
+        correctedText,
+        selectedHits,
+      );
 
       if (result.totalTokens > 0) {
         try {
@@ -286,6 +302,22 @@ class CorrectionService {
             'tokens: ${result.totalTokens}',
       );
 
+      if (correctedText != paragraphText) {
+        await CorrectionChangeLogService.instance.recordChange(
+          source: 'retrospective',
+          inputText: paragraphText,
+          outputText: correctedText,
+          terms: _buildTermPairsFromHits(selectedHits),
+        );
+      }
+
+      await _recordRetroSafely(
+        llmInvoked: true,
+        textChanged: correctedText != paragraphText,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+      );
+
       return CorrectionResult(
         text: correctedText,
         llmInvoked: true,
@@ -294,7 +326,9 @@ class CorrectionService {
       );
     } catch (e) {
       await LogService.error(
-          'CORRECTION', 'retrospective correction failed: $e');
+        'CORRECTION',
+        'retrospective correction failed: $e',
+      );
       return CorrectionResult(text: paragraphText);
     }
   }
@@ -566,6 +600,27 @@ class CorrectionService {
     return prev[b.length];
   }
 
+  List<CorrectionTermPair> _buildTermPairsFromHits(List<PinyinMatchHit> hits) {
+    final seen = <String>{};
+    final pairs = <CorrectionTermPair>[];
+    for (final hit in hits) {
+      final original = hit.entry.original.trim();
+      final corrected = (hit.entry.corrected ?? '').trim();
+      final observed = hit.observedText.trim();
+      if (original.isEmpty || corrected.isEmpty) continue;
+      final key = '$observed|$original|$corrected';
+      if (!seen.add(key)) continue;
+      pairs.add(
+        CorrectionTermPair(
+          observed: observed,
+          original: original,
+          corrected: corrected,
+        ),
+      );
+    }
+    return pairs;
+  }
+
   Future<void> _recordStatsSafely({
     required int matchesCount,
     required int selectedCount,
@@ -580,6 +635,22 @@ class CorrectionService {
         selectedCount: selectedCount,
         referenceChars: referenceChars,
         llmInvoked: llmInvoked,
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _recordRetroSafely({
+    required bool llmInvoked,
+    required bool textChanged,
+    int promptTokens = 0,
+    int completionTokens = 0,
+  }) async {
+    try {
+      await CorrectionStatsService.instance.recordRetroCall(
+        llmInvoked: llmInvoked,
+        textChanged: textChanged,
         promptTokens: promptTokens,
         completionTokens: completionTokens,
       );

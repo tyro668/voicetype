@@ -7,6 +7,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/dictionary_entry.dart';
+import '../../providers/meeting_provider.dart';
+import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 
@@ -613,27 +615,73 @@ class _DictionaryPageState extends State<DictionaryPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  l10n.correctionEnabled,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.correctionEnabled,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _cs.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            l10n.correctionDescription,
+                            style: TextStyle(fontSize: 11, color: _cs.outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: settings.correctionEnabled,
+                        onChanged: (v) => settings.setCorrectionEnabled(v),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.correctionDescription,
-                  style: TextStyle(fontSize: 11, color: _cs.outline),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.retrospectiveCorrectionEnabled,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: _cs.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            l10n.retrospectiveCorrectionDescription,
+                            style: TextStyle(fontSize: 11, color: _cs.outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: settings.retrospectiveCorrectionEnabled,
+                        onChanged: settings.correctionEnabled
+                            ? (v) =>
+                                  settings.setRetrospectiveCorrectionEnabled(v)
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ),
-          Transform.scale(
-            scale: 0.85,
-            child: Switch(
-              value: settings.correctionEnabled,
-              onChanged: (v) => settings.setCorrectionEnabled(v),
             ),
           ),
         ],
@@ -673,6 +721,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
     final entry = await showDictionaryEntryDialog(context);
     if (entry != null) {
       await settings.addDictionaryEntry(entry);
+      await _applySessionGlossaryOverride(entry);
     }
   }
 
@@ -683,7 +732,19 @@ class _DictionaryPageState extends State<DictionaryPage> {
     final entry = await showDictionaryEntryDialog(context, existing: existing);
     if (entry != null) {
       await settings.updateDictionaryEntry(entry);
+      await _applySessionGlossaryOverride(entry);
     }
+  }
+
+  Future<void> _applySessionGlossaryOverride(DictionaryEntry entry) async {
+    if (entry.type != DictionaryEntryType.correction) return;
+    final corrected = (entry.corrected ?? '').trim();
+    if (corrected.isEmpty) return;
+
+    final recording = Provider.of<RecordingProvider?>(context, listen: false);
+    final meeting = Provider.of<MeetingProvider?>(context, listen: false);
+    recording?.applySessionGlossaryOverride(entry.original, corrected);
+    meeting?.applySessionGlossaryOverride(entry.original, corrected);
   }
 
   Future<void> _handleExportCsv(

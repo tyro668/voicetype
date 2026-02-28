@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -96,6 +97,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _didShowInputMonitoringGuide = false;
   LogicalKeyboardKey? _lastRegisteredHotkey;
   LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
+  bool _fnTapToTalkPressCandidate = false;
 
   /// 主导航项（首页 / 词典 / 历史记录 / 会议记录）
   List<_NavItem> _getNavItems(AppLocalizations l10n) => [
@@ -364,10 +366,28 @@ class _MainScreenState extends State<MainScreen> {
       'hotkey type=$type state=${recording.state} busy=${recording.busy} mode=${settings.activationMode}',
     );
 
+    var effectiveType = type;
+
+    if (settings.activationMode == ActivationMode.tapToTalk &&
+        settings.hotkey == LogicalKeyboardKey.fn) {
+      if (type == 'down') {
+        _fnTapToTalkPressCandidate = !hasModifiers;
+        return;
+      }
+      if (type == 'up') {
+        final shouldTrigger = _fnTapToTalkPressCandidate && !hasModifiers;
+        _fnTapToTalkPressCandidate = false;
+        if (!shouldTrigger) return;
+        effectiveType = 'down';
+      } else {
+        return;
+      }
+    }
+
     if (recording.busy) return;
 
     if (settings.activationMode == ActivationMode.tapToTalk) {
-      if (type == 'down') {
+      if (effectiveType == 'down') {
         if (recording.state == RecordingState.recording) {
           // 防止重复触发 stop
           recording.stopAndTranscribe(
@@ -421,7 +441,7 @@ class _MainScreenState extends State<MainScreen> {
 
     if (meeting.isRecording) {
       // 正在录制 → 结束会议
-      meeting.stopMeeting();
+      unawaited(meeting.stopMeetingFast());
     } else {
       // 未录制 → 开始新会议
       if (!_hasValidSttModel(settings)) {
