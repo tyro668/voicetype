@@ -1208,6 +1208,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingStreamingMerge => '合并中...';
 
   @override
+  String get meetingDashboardToday => '今日会议';
+
+  @override
+  String get meetingDashboardRecents => '最近会议';
+
+  @override
+  String get meetingDashboardLive => '实时会议';
+
+  @override
+  String get meetingDashboardCancel => '取消';
+
+  @override
+  String get meetingDashboardSaveNotes => '保存笔记';
+
+  @override
   String get meetingDetailTab => '会议详情';
 
   @override

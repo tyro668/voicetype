@@ -1,0 +1,1760 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../l10n/app_localizations.dart';
+import '../../models/meeting.dart';
+import '../../models/provider_config.dart';
+import '../../models/ai_enhance_config.dart';
+import '../../providers/meeting_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../widgets/dictionary_entry_dialog.dart';
+import '../../widgets/meeting_markdown_view.dart';
+import 'meeting_detail_page.dart';
+import 'meeting_recording_page.dart';
+
+/// 会议仪表盘页面 - 参照 SYNCPHONY 设计风格
+/// 左侧: 今日会议卡片轮播 + 最近会议列表
+/// 右侧: 实时会议面板 (含波形/转写/控制按钮)
+class MeetingDashboardPage extends StatefulWidget {
+  const MeetingDashboardPage({super.key});
+
+  @override
+  State<MeetingDashboardPage> createState() => _MeetingDashboardPageState();
+}
+
+class _MeetingDashboardPageState extends State<MeetingDashboardPage>
+    with TickerProviderStateMixin {
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _liveTitleController = TextEditingController();
+  final ScrollController _liveScrollController = ScrollController();
+  final PageController _carouselController = PageController();
+  String _searchQuery = '';
+  bool _isStoppingMeeting = false;
+  bool _autoFollowScroll = true;
+  bool _isProgrammaticScrolling = false;
+  int _currentCarouselPage = 0;
+
+  /// 实时会议面板的视图模式
+  _LiveViewMode _liveViewMode = _LiveViewMode.mergedNote;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MeetingProvider>().refreshMeetings();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _liveTitleController.dispose();
+    _liveScrollController.dispose();
+    _carouselController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<MeetingProvider>();
+    final l10n = AppLocalizations.of(context)!;
+
+    return Stack(
+      children: [
+        Row(
+          children: [
+            // ── 左侧面板（今日会议 + 最近会议列表）──
+            Expanded(
+              flex: provider.isRecording ? 5 : 10,
+              child: _buildLeftPanel(provider, l10n),
+            ),
+            // ── 右侧面板（实时会议）──
+            if (provider.isRecording)
+              Expanded(
+                flex: 5,
+                child: _buildLiveMeetingPanel(provider, l10n),
+              ),
+          ],
+        ),
+        // ── FAB 新建会议 ──
+        Positioned(
+          right: 24,
+          bottom: 24,
+          child: _buildFab(provider, l10n),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // 左侧面板
+  // ═══════════════════════════════════════════════
+
+  Widget _buildLeftPanel(MeetingProvider provider, AppLocalizations l10n) {
+    final meetings = provider.meetings;
+    final todayMeetings = _getTodayMeetings(meetings);
+    final recentMeetings = _getRecentMeetings(meetings);
+    final filteredRecent = _filterMeetings(recentMeetings);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainerLow,
+        border: Border(
+          right: BorderSide(
+            color: _cs.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 搜索栏
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: _buildSearchBar(l10n),
+          ),
+          const SizedBox(height: 20),
+          // 今日会议区域
+          if (todayMeetings.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                l10n.meetingDashboardToday,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _cs.onSurfaceVariant,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: _buildTodayCarousel(todayMeetings, provider, l10n),
+            ),
+            // 轮播指示器
+            if (todayMeetings.length > 1) ...[
+              const SizedBox(height: 10),
+              _buildCarouselDots(todayMeetings.length),
+            ],
+            const SizedBox(height: 20),
+          ],
+          // 最近会议标题
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              l10n.meetingDashboardRecents,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _cs.onSurfaceVariant,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 最近会议列表
+          Expanded(
+            child: filteredRecent.isEmpty
+                ? _buildEmptyState(l10n)
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: filteredRecent.length,
+                    itemBuilder: (_, i) =>
+                        _buildRecentCard(filteredRecent[i], provider, l10n),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 搜索栏 ──
+
+  Widget _buildSearchBar(AppLocalizations l10n) {
+    return TextField(
+      controller: _searchController,
+      onChanged: (v) => setState(() => _searchQuery = v.trim()),
+      decoration: InputDecoration(
+        hintText: l10n.meetingSearchHint,
+        prefixIcon: const Icon(Icons.search, size: 20),
+        suffixIcon: _searchQuery.isEmpty
+            ? null
+            : IconButton(
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                },
+                icon: const Icon(Icons.close, size: 18),
+              ),
+        filled: true,
+        fillColor: _cs.surface,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: _cs.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: _cs.primary, width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  // ── 今日会议轮播 ──
+
+  Widget _buildTodayCarousel(
+    List<MeetingRecord> todayMeetings,
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    return PageView.builder(
+      controller: _carouselController,
+      onPageChanged: (i) => setState(() => _currentCarouselPage = i),
+      itemCount: todayMeetings.length,
+      itemBuilder: (_, i) =>
+          _buildTodayCard(todayMeetings[i], provider, l10n),
+    );
+  }
+
+  Widget _buildTodayCard(
+    MeetingRecord meeting,
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final isLive = meeting.status == MeetingStatus.recording ||
+        meeting.status == MeetingStatus.paused;
+    final locale = Localizations.localeOf(context).toString();
+    final timeStr = DateFormat('HH:mm', locale).format(meeting.createdAt);
+    final endTimeStr = meeting.totalDuration.inSeconds > 0
+        ? DateFormat(
+            'HH:mm',
+            locale,
+          ).format(meeting.createdAt.add(meeting.totalDuration))
+        : '--:--';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GestureDetector(
+        onTap: () => _onMeetingTap(meeting, provider),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isLive
+                  ? [
+                      _cs.primaryContainer,
+                      _cs.primaryContainer.withValues(alpha: 0.6),
+                    ]
+                  : [
+                      _cs.surface,
+                      _cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isLive
+                  ? _cs.primary.withValues(alpha: 0.3)
+                  : _cs.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _cs.shadow.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题行 + 更多按钮
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      meeting.title,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: _cs.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isLive)
+                    Icon(
+                      Icons.graphic_eq_rounded,
+                      size: 20,
+                      color: _cs.primary,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // 时间
+              Text(
+                '$timeStr - $endTimeStr',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: _cs.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              // 底部：波形装饰 + LIVE 标签
+              Row(
+                children: [
+                  // 波形装饰
+                  if (isLive) ...[
+                    _MiniWaveform(color: _cs.primary),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'LIVE',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    _buildStatusChip(
+                      _statusLabel(meeting.status, l10n),
+                      _statusColor(meeting.status),
+                    ),
+                    const Spacer(),
+                    Text(
+                      meeting.formattedDuration,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _cs.onSurfaceVariant,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCarouselDots(int count) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (i) {
+        final isActive = i == _currentCarouselPage;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: isActive ? 20 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: isActive
+                ? _cs.primary
+                : _cs.onSurfaceVariant.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+      }),
+    );
+  }
+
+  // ── 最近会议卡片 ──
+
+  Widget _buildRecentCard(
+    MeetingRecord meeting,
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final locale = Localizations.localeOf(context).toString();
+    final dateStr = DateFormat('MMMd, yyyy', locale).format(meeting.createdAt);
+    final durationStr = meeting.formattedDuration;
+    final previewText =
+        (meeting.summary ?? meeting.fullTranscription ?? '').trim();
+    final isEmpty = meeting.status == MeetingStatus.completed &&
+        (meeting.fullTranscription == null ||
+            meeting.fullTranscription!.trim().isEmpty);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: () => _onMeetingTap(meeting, provider),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _cs.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isEmpty
+                  ? _cs.error.withValues(alpha: 0.3)
+                  : _cs.outlineVariant.withValues(alpha: 0.35),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _cs.shadow.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      meeting.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _cs.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  _buildMeetingPopupMenu(meeting, provider, l10n),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // 日期 + 时长
+              Row(
+                children: [
+                  Text(
+                    '$dateStr · $durationStr',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildStatusChip(
+                    _statusLabel(meeting.status, l10n),
+                    _statusColor(meeting.status),
+                  ),
+                ],
+              ),
+              if (previewText.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                // 内容预览
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: SizedBox(
+                    height: 42,
+                    child: ClipRect(
+                      child: OverflowBox(
+                        alignment: Alignment.topLeft,
+                        maxHeight: double.infinity,
+                        child: MeetingMarkdownView(
+                          markdown: previewText,
+                          density: MeetingMarkdownDensity.compact,
+                          selectable: false,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (isEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.meetingEmptyContent,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _cs.error.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeetingPopupMenu(
+    MeetingRecord meeting,
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    return PopupMenuButton<String>(
+      tooltip: l10n.meetingMoreActions,
+      icon: Icon(Icons.more_vert, size: 18, color: _cs.outline),
+      padding: EdgeInsets.zero,
+      splashRadius: 16,
+      itemBuilder: (_) => [
+        PopupMenuItem<String>(
+          value: 'move',
+          child: Row(
+            children: [
+              const Icon(Icons.drive_file_move_outline, size: 18),
+              const SizedBox(width: 8),
+              Text(l10n.meetingMoveToGroup),
+            ],
+          ),
+        ),
+        if (meeting.status == MeetingStatus.completed ||
+            meeting.status == MeetingStatus.recording ||
+            meeting.status == MeetingStatus.paused)
+          PopupMenuItem<String>(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(Icons.delete_outline, size: 18, color: _cs.error),
+                const SizedBox(width: 8),
+                Text(l10n.delete, style: TextStyle(color: _cs.error)),
+              ],
+            ),
+          ),
+      ],
+      onSelected: (value) {
+        if (value == 'move') {
+          _showMoveGroupSheet(provider, meeting, l10n);
+        } else if (value == 'delete') {
+          _confirmDelete(provider, meeting, l10n);
+        }
+      },
+    );
+  }
+
+  // ── 空状态 ──
+
+  Widget _buildEmptyState(AppLocalizations l10n) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_note_outlined, size: 56, color: _cs.outline),
+          const SizedBox(height: 12),
+          Text(
+            l10n.meetingEmpty,
+            style: TextStyle(fontSize: 16, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.meetingEmptyHint,
+            style: TextStyle(fontSize: 13, color: _cs.outline),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // 右侧实时会议面板
+  // ═══════════════════════════════════════════════
+
+  Widget _buildLiveMeetingPanel(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final meeting = provider.currentMeeting;
+    if (meeting == null) return const SizedBox.shrink();
+
+    // 同步标题
+    final providerTitle = meeting.title;
+    if (providerTitle.isNotEmpty &&
+        providerTitle != _liveTitleController.text) {
+      _liveTitleController.text = providerTitle;
+    }
+
+    final duration = provider.recordingDuration;
+    final timeStr = _formatDuration(duration);
+    final isStoppingUi = _isStoppingMeeting || provider.isStoppingMeeting;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        border: Border(
+          left: BorderSide(
+            color: _cs.outlineVariant.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          // ── 实时会议标题头 ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      l10n.meetingDashboardLive,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _cs.onSurfaceVariant,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _PulsingDot(color: Colors.red),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 会议标题 (可编辑)
+                TextField(
+                  controller: _liveTitleController,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: _cs.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: l10n.meetingTitleHint,
+                    hintStyle: TextStyle(
+                      color: _cs.onSurfaceVariant.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.normal,
+                    ),
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onSubmitted: (value) {
+                    if (value.isNotEmpty) {
+                      provider.updateMeetingTitle(meeting.id, value);
+                    }
+                  },
+                ),
+                // 时间
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _cs.onSurfaceVariant,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // ── 音频波形区域 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: SizedBox(
+              height: 100,
+              child: _LiveWaveform(
+                amplitudeStream: provider.amplitudeStream,
+                color: _cs.primary,
+                isPaused: provider.isPaused,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // ── 视图切换标签 ──
+          _buildLiveViewToggle(l10n),
+          const SizedBox(height: 4),
+          // ── 实时转写内容 ──
+          Expanded(
+            child: _buildLiveContent(provider, l10n),
+          ),
+          // ── 控制按钮栏 ──
+          _buildControlBar(provider, l10n, isStoppingUi),
+        ],
+      ),
+    );
+  }
+
+  // ── 实时面板视图切换 ──
+
+  Widget _buildLiveViewToggle(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          _buildViewTab(
+            label: l10n.meetingMergedNoteView,
+            isSelected: _liveViewMode == _LiveViewMode.mergedNote,
+            onTap: () =>
+                setState(() => _liveViewMode = _LiveViewMode.mergedNote),
+          ),
+          const SizedBox(width: 8),
+          _buildViewTab(
+            label: l10n.meetingSegmentView,
+            isSelected: _liveViewMode == _LiveViewMode.segments,
+            onTap: () =>
+                setState(() => _liveViewMode = _LiveViewMode.segments),
+          ),
+          const SizedBox(width: 8),
+          _buildViewTab(
+            label: l10n.meetingLiveSummaryView,
+            isSelected: _liveViewMode == _LiveViewMode.liveSummary,
+            onTap: () =>
+                setState(() => _liveViewMode = _LiveViewMode.liveSummary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewTab({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? _cs.primaryContainer
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? _cs.primary.withValues(alpha: 0.3)
+                : _cs.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color: isSelected
+                ? _cs.onPrimaryContainer
+                : _cs.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 实时内容区域 ──
+
+  Widget _buildLiveContent(MeetingProvider provider, AppLocalizations l10n) {
+    switch (_liveViewMode) {
+      case _LiveViewMode.mergedNote:
+        return _buildLiveMergedNote(provider, l10n);
+      case _LiveViewMode.segments:
+        return _buildLiveSegments(provider, l10n);
+      case _LiveViewMode.liveSummary:
+        return _buildLiveSummary(provider, l10n);
+    }
+  }
+
+  Widget _buildLiveMergedNote(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final content = provider.mergedNoteContent;
+    final isStreaming = provider.isStreamingMerge;
+
+    if (content.isEmpty && !isStreaming) {
+      return _buildLiveEmptyHint(
+        icon: Icons.note_alt_outlined,
+        text: l10n.meetingNoContent,
+      );
+    }
+
+    _scrollToBottom();
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: SingleChildScrollView(
+        controller: _liveScrollController,
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isStreaming)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _cs.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.meetingStreamingMerge,
+                      style: TextStyle(fontSize: 12, color: _cs.primary),
+                    ),
+                  ],
+                ),
+              ),
+            MeetingMarkdownView(
+              markdown: content,
+              selectable: true,
+              density: MeetingMarkdownDensity.regular,
+              onAddToDictionary: _addToDictionary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveSegments(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final segments = provider.currentSegments;
+
+    if (segments.isEmpty && !provider.isPaused) {
+      return _buildLiveEmptyHint(
+        icon: Icons.mic_none_rounded,
+        text: l10n.meetingListening,
+      );
+    }
+
+    _scrollToBottom();
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: SingleChildScrollView(
+        controller: _liveScrollController,
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < segments.length; i++) ...[
+              if (i == 0 || i % 3 == 0) _buildTimeAnchor(segments[i]),
+              _buildSegmentText(segments[i], l10n),
+            ],
+            if (provider.isRecording && !provider.isPaused)
+              _buildRecordingIndicator(l10n),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveSummary(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final summary = provider.incrementalSummary;
+    final isUpdating = provider.isUpdatingIncrementalSummary;
+
+    if (summary.isEmpty && !isUpdating) {
+      return _buildLiveEmptyHint(
+        icon: Icons.auto_awesome,
+        text: l10n.meetingLiveSummaryWaiting,
+      );
+    }
+
+    _scrollToBottom();
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: SingleChildScrollView(
+        controller: _liveScrollController,
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isUpdating)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _cs.tertiary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.meetingSummaryUpdating,
+                      style: TextStyle(fontSize: 12, color: _cs.tertiary),
+                    ),
+                  ],
+                ),
+              ),
+            MeetingMarkdownView(
+              markdown: summary,
+              selectable: true,
+              density: MeetingMarkdownDensity.regular,
+              onAddToDictionary: _addToDictionary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveEmptyHint({required IconData icon, required String text}) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 36, color: _cs.outline.withValues(alpha: 0.5)),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            style: TextStyle(fontSize: 13, color: _cs.outline),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 分段相关辅助 ──
+
+  Widget _buildTimeAnchor(MeetingSegment segment) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 3),
+      child: Text(
+        segment.formattedTimestamp,
+        style: TextStyle(
+          fontSize: 11,
+          color: _cs.outline,
+          fontFamily: 'monospace',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSegmentText(MeetingSegment segment, AppLocalizations l10n) {
+    final isTranscribing = segment.status == SegmentStatus.pending ||
+        segment.status == SegmentStatus.transcribing;
+    final isEnhancing = segment.status == SegmentStatus.enhancing;
+
+    if (segment.status == SegmentStatus.error) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                segment.errorMessage ?? l10n.meetingSegmentError,
+                style: const TextStyle(fontSize: 13, color: Colors.red),
+              ),
+            ),
+            InkWell(
+              onTap: () =>
+                  context.read<MeetingProvider>().retrySegment(segment),
+              child: Text(
+                l10n.meetingRetry,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: _cs.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isTranscribing || isEnhancing) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: isEnhancing ? Colors.purple : _cs.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isEnhancing ? l10n.meetingEnhancing : l10n.meetingTranscribing,
+              style: TextStyle(
+                fontSize: 13,
+                color: isEnhancing ? Colors.purple : _cs.primary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final text = (segment.enhancedText ?? segment.transcription ?? '').trim();
+    if (text.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(
+          l10n.meetingNoContent,
+          style: TextStyle(
+            fontSize: 13,
+            color: _cs.outline,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: SelectableText(
+        text,
+        style: TextStyle(
+          fontSize: 14,
+          color: _cs.onSurface,
+          height: 1.6,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordingIndicator(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          _PulsingDot(color: Colors.red),
+          const SizedBox(width: 8),
+          Text(
+            l10n.meetingRecordingSegment,
+            style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 控制按钮栏 ──
+
+  Widget _buildControlBar(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+    bool isStoppingUi,
+  ) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        border: Border(
+          top: BorderSide(
+            color: _cs.outlineVariant.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // 取消按钮
+          OutlinedButton(
+            onPressed: isStoppingUi
+                ? null
+                : () => _cancelMeeting(provider, l10n),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+            child: Text(l10n.meetingDashboardCancel),
+          ),
+          const SizedBox(width: 12),
+          // 暂停/继续按钮
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: isStoppingUi
+                  ? null
+                  : () {
+                      if (provider.isPaused) {
+                        provider.resumeMeeting();
+                      } else {
+                        provider.pauseMeeting();
+                      }
+                    },
+              icon: Icon(
+                provider.isPaused
+                    ? Icons.play_arrow_rounded
+                    : Icons.pause_rounded,
+                size: 20,
+              ),
+              label: Text(
+                provider.isPaused ? l10n.meetingResume : l10n.meetingPause,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: provider.isPaused
+                    ? _cs.primary
+                    : Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 保存/结束按钮
+          FilledButton.tonalIcon(
+            onPressed: isStoppingUi
+                ? null
+                : () => _endMeeting(provider, l10n),
+            icon: isStoppingUi
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _cs.onSecondaryContainer,
+                    ),
+                  )
+                : const Icon(Icons.save_outlined, size: 18),
+            label: Text(l10n.meetingDashboardSaveNotes),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── FAB ──
+
+  Widget _buildFab(MeetingProvider provider, AppLocalizations l10n) {
+    if (provider.isRecording) return const SizedBox.shrink();
+
+    return FloatingActionButton(
+      onPressed: () => _startNewMeeting(),
+      tooltip: l10n.meetingNew,
+      elevation: 4,
+      child: const Icon(Icons.add, size: 28),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // 辅助方法
+  // ═══════════════════════════════════════════════
+
+  List<MeetingRecord> _getTodayMeetings(List<MeetingRecord> meetings) {
+    final now = DateTime.now();
+    return meetings.where((m) {
+      return m.createdAt.year == now.year &&
+          m.createdAt.month == now.month &&
+          m.createdAt.day == now.day;
+    }).toList();
+  }
+
+  List<MeetingRecord> _getRecentMeetings(List<MeetingRecord> meetings) {
+    // 返回非今天的会议（已按更新时间排序）
+    final now = DateTime.now();
+    return meetings.where((m) {
+      return !(m.createdAt.year == now.year &&
+          m.createdAt.month == now.month &&
+          m.createdAt.day == now.day);
+    }).toList();
+  }
+
+  List<MeetingRecord> _filterMeetings(List<MeetingRecord> meetings) {
+    if (_searchQuery.isEmpty) return meetings;
+    final keyword = _searchQuery.toLowerCase();
+    return meetings.where((m) {
+      return m.title.toLowerCase().contains(keyword) ||
+          (m.summary ?? '').toLowerCase().contains(keyword) ||
+          (m.fullTranscription ?? '').toLowerCase().contains(keyword);
+    }).toList();
+  }
+
+  void _onMeetingTap(MeetingRecord meeting, MeetingProvider provider) {
+    if (meeting.status == MeetingStatus.recording ||
+        meeting.status == MeetingStatus.paused) {
+      // 已有录制中的会议，不做额外导航（右侧面板已显示）
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: provider,
+          child: MeetingDetailPage(meetingId: meeting.id),
+        ),
+      ),
+    );
+  }
+
+  void _startNewMeeting() {
+    final settings = context.read<SettingsProvider>();
+    final meetingProvider = context.read<MeetingProvider>();
+
+    if (settings.config.model.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.pleaseConfigureSttModel),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 直接开始新会议（右侧面板自动出现）
+    meetingProvider.startMeeting(
+      sttConfig: settings.config,
+      aiConfig: settings.effectiveAiEnhanceConfig,
+      aiEnhanceEnabled: settings.aiEnhanceEnabled,
+      dictionarySuffix: settings.dictionaryWordsForPrompt,
+      pinyinMatcher: settings.correctionEffective
+          ? settings.pinyinMatcher
+          : null,
+      correctionPrompt: settings.correctionEffective
+          ? settings.correctionPrompt
+          : null,
+      maxReferenceEntries: settings.correctionMaxReferenceEntries,
+      minCandidateScore: settings.correctionMinCandidateScore,
+    );
+  }
+
+  Future<void> _endMeeting(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) async {
+    if (_isStoppingMeeting) return;
+    setState(() => _isStoppingMeeting = true);
+
+    // 保存标题
+    if (_liveTitleController.text.isNotEmpty &&
+        provider.currentMeeting != null) {
+      await provider.updateMeetingTitle(
+        provider.currentMeeting!.id,
+        _liveTitleController.text,
+      );
+    }
+
+    try {
+      await provider.stopMeetingFast();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.meetingMovedToFinalizing(l10n.meetingFinalizing)),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.meetingStopFailed(e.toString())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isStoppingMeeting = false);
+    }
+  }
+
+  Future<void> _cancelMeeting(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.meetingCancelConfirmTitle),
+        content: Text(l10n.meetingCancelConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await provider.cancelMeeting();
+  }
+
+  Future<void> _showMoveGroupSheet(
+    MeetingProvider provider,
+    MeetingRecord meeting,
+    AppLocalizations l10n,
+  ) async {
+    final groups = provider.allMeetingGroups;
+    final current = provider.getMeetingGroup(meeting.id);
+
+    await showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              ListTile(
+                title: Text(l10n.meetingMoveToGroupTitle),
+                subtitle: Text(
+                  meeting.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              for (final group in groups)
+                ListTile(
+                  leading: Icon(
+                    group == current
+                        ? Icons.check_circle
+                        : Icons.folder_outlined,
+                  ),
+                  title: Text(
+                    group == MeetingProvider.defaultMeetingGroup
+                        ? l10n.meetingUngrouped
+                        : group,
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    unawaited(provider.moveMeetingToGroup(meeting.id, group));
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(
+    MeetingProvider provider,
+    MeetingRecord meeting,
+    AppLocalizations l10n,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.meetingDeleteConfirmTitle),
+        content: Text(l10n.meetingDeleteConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              provider.deleteMeeting(meeting.id);
+              Navigator.pop(ctx);
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addToDictionary(String selectedWord) async {
+    if (selectedWord.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+
+    final entry = await showDictionaryEntryDialog(
+      context,
+      initialOriginal: selectedWord,
+    );
+    if (entry == null || !mounted) return;
+
+    await settings.addDictionaryEntry(entry);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${l10n.addedToDictionary}: ${entry.original}'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  String _statusLabel(MeetingStatus status, AppLocalizations l10n) {
+    switch (status) {
+      case MeetingStatus.recording:
+        return l10n.meetingRecording;
+      case MeetingStatus.paused:
+        return l10n.meetingPaused;
+      case MeetingStatus.finalizing:
+        return l10n.meetingFinalizing;
+      case MeetingStatus.completed:
+        return l10n.meetingCompleted;
+    }
+  }
+
+  Color _statusColor(MeetingStatus status) {
+    switch (status) {
+      case MeetingStatus.recording:
+        return _cs.error;
+      case MeetingStatus.paused:
+        return _cs.tertiary;
+      case MeetingStatus.finalizing:
+        return _cs.primary;
+      case MeetingStatus.completed:
+        return Colors.green;
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (h > 0) return '$h:$m:$s';
+    return '$m:$s';
+  }
+
+  void _scrollToBottom() {
+    if (!_autoFollowScroll) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_liveScrollController.hasClients) {
+        final target = _liveScrollController.position.maxScrollExtent;
+        if ((_liveScrollController.position.pixels - target).abs() < 1) return;
+        _isProgrammaticScrolling = true;
+        _liveScrollController
+            .animateTo(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        )
+            .whenComplete(() {
+          _isProgrammaticScrolling = false;
+        });
+      }
+    });
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (!_liveScrollController.hasClients || _isProgrammaticScrolling) {
+      return false;
+    }
+    final metrics = notification.metrics;
+    final distanceToBottom = metrics.maxScrollExtent - metrics.pixels;
+    final isNearBottom = distanceToBottom <= 64;
+    if (!isNearBottom && _autoFollowScroll) {
+      setState(() => _autoFollowScroll = false);
+    } else if (isNearBottom && !_autoFollowScroll) {
+      setState(() => _autoFollowScroll = true);
+    }
+    return false;
+  }
+}
+
+/// 实时面板视图模式
+enum _LiveViewMode { mergedNote, segments, liveSummary }
+
+// ═══════════════════════════════════════════════
+// 自定义动画组件
+// ═══════════════════════════════════════════════
+
+/// 迷你波形装饰（今日卡片用）
+class _MiniWaveform extends StatefulWidget {
+  final Color color;
+
+  const _MiniWaveform({required this.color});
+
+  @override
+  State<_MiniWaveform> createState() => _MiniWaveformState();
+}
+
+class _MiniWaveformState extends State<_MiniWaveform>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(12, (i) {
+            final phase = (_controller.value * 2 * math.pi) + (i * 0.5);
+            final h = 6.0 + math.sin(phase).abs() * 14.0;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              width: 2.5,
+              height: h,
+              decoration: BoxDecoration(
+                color: widget.color.withValues(
+                  alpha: 0.3 + math.sin(phase).abs() * 0.5,
+                ),
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+/// 实时音频波形可视化组件
+class _LiveWaveform extends StatefulWidget {
+  final Stream<double> amplitudeStream;
+  final Color color;
+  final bool isPaused;
+
+  const _LiveWaveform({
+    required this.amplitudeStream,
+    required this.color,
+    this.isPaused = false,
+  });
+
+  @override
+  State<_LiveWaveform> createState() => _LiveWaveformState();
+}
+
+class _LiveWaveformState extends State<_LiveWaveform>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  StreamSubscription<double>? _amplSub;
+  double _level = 0.0;
+  final List<double> _history = List.filled(64, 0.0);
+  int _historyIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 80),
+    )..repeat();
+    _amplSub = widget.amplitudeStream.listen((level) {
+      if (mounted) {
+        _level = level;
+        _history[_historyIndex % _history.length] = level;
+        _historyIndex++;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _amplSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (_, __) {
+        return CustomPaint(
+          size: Size.infinite,
+          painter: _WaveformPainter(
+            history: _history,
+            historyIndex: _historyIndex,
+            level: widget.isPaused ? 0.0 : _level,
+            color: widget.color,
+            isPaused: widget.isPaused,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WaveformPainter extends CustomPainter {
+  final List<double> history;
+  final int historyIndex;
+  final double level;
+  final Color color;
+  final bool isPaused;
+
+  _WaveformPainter({
+    required this.history,
+    required this.historyIndex,
+    required this.level,
+    required this.color,
+    this.isPaused = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centerY = size.height / 2;
+    final barCount = 64;
+    final barWidth = size.width / barCount - 1.5;
+    final maxBarHeight = size.height * 0.8;
+
+    for (int i = 0; i < barCount; i++) {
+      final hIdx = (historyIndex - barCount + i) % history.length;
+      final amplitude = isPaused ? 0.02 : history[hIdx < 0 ? 0 : hIdx];
+
+      // 根据位置产生渐变效果
+      final distFromCenter = (i - barCount / 2).abs() / (barCount / 2);
+      final envelope = 1.0 - distFromCenter * 0.6;
+      final barHeight = math.max(
+        2.0,
+        amplitude * maxBarHeight * envelope + 2.0,
+      );
+
+      // 颜色渐变 - 从中心到边缘渐淡
+      final alpha = (0.3 + amplitude * 0.5 + (1 - distFromCenter) * 0.2)
+          .clamp(0.0, 1.0);
+
+      final paint = Paint()
+        ..color = color.withValues(alpha: alpha)
+        ..style = PaintingStyle.fill;
+
+      final x = i * (barWidth + 1.5) + 0.75;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(x + barWidth / 2, centerY),
+          width: barWidth,
+          height: barHeight,
+        ),
+        Radius.circular(barWidth / 2),
+      );
+      canvas.drawRRect(rect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaveformPainter oldDelegate) => true;
+}
+
+/// 红点脉冲动画
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: widget.color.withValues(
+              alpha: 0.4 + _controller.value * 0.6,
+            ),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
+    );
+  }
+}

@@ -2438,6 +2438,36 @@ abstract class AppLocalizations {
   /// **'Merging...'**
   String get meetingStreamingMerge;
 
+  /// No description provided for @meetingDashboardToday.
+  ///
+  /// In en, this message translates to:
+  /// **'TODAY\'S MEETINGS'**
+  String get meetingDashboardToday;
+
+  /// No description provided for @meetingDashboardRecents.
+  ///
+  /// In en, this message translates to:
+  /// **'RECENTS'**
+  String get meetingDashboardRecents;
+
+  /// No description provided for @meetingDashboardLive.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE MEETING'**
+  String get meetingDashboardLive;
+
+  /// No description provided for @meetingDashboardCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'CANCEL'**
+  String get meetingDashboardCancel;
+
+  /// No description provided for @meetingDashboardSaveNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVE NOTES'**
+  String get meetingDashboardSaveNotes;
+
   /// No description provided for @meetingDetailTab.
   ///
   /// In en, this message translates to:

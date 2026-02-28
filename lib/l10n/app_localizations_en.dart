@@ -1264,6 +1264,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meetingStreamingMerge => 'Merging...';
 
   @override
+  String get meetingDashboardToday => 'TODAY\'S MEETINGS';
+
+  @override
+  String get meetingDashboardRecents => 'RECENTS';
+
+  @override
+  String get meetingDashboardLive => 'LIVE MEETING';
+
+  @override
+  String get meetingDashboardCancel => 'CANCEL';
+
+  @override
+  String get meetingDashboardSaveNotes => 'SAVE NOTES';
+
+  @override
   String get meetingDetailTab => 'Meeting Details';
 
   @override

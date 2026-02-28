@@ -15,6 +15,7 @@ import 'pages/dictionary_page.dart';
 import 'pages/history_page.dart';
 import 'pages/meeting_list_page.dart';
 import 'pages/meeting_recording_page.dart';
+import 'pages/meeting_dashboard_page.dart';
 import 'pages/dashboard_page.dart';
 import 'settings_screen.dart';
 
@@ -767,12 +768,13 @@ class _MainScreenState extends State<MainScreen> {
       0 => const DashboardPage(),
       1 => const DictionaryPage(),
       2 => const HistoryPage(),
-      3 => const MeetingListPage(),
+      3 => const MeetingDashboardPage(),
       _ => const SizedBox(),
     };
 
     final meetingProvider = context.watch<MeetingProvider>();
-    if (!meetingProvider.isRecording) return page;
+    // 会议仪表盘页面已内嵌实时录制面板，其他页面仍显示录制横幅
+    if (!meetingProvider.isRecording || _selectedNav == 3) return page;
 
     return Column(
       children: [
