@@ -269,8 +269,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.activationMode,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -291,8 +291,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.dictationHotkey,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -309,8 +309,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.meetingHotkey,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -327,8 +327,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.permissions,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -347,8 +347,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.microphoneInput,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -367,8 +367,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.minRecordingDuration,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -385,8 +385,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.vadTitle,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -403,8 +403,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.sceneModeTitle,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -421,8 +421,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.language,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -439,8 +439,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.theme,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -457,8 +457,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.logs,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -475,8 +475,8 @@ class _GeneralPageState extends State<GeneralPage> {
           Text(
             l10n.recordingStorage,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: _cs.onSurface,
             ),
           ),
@@ -498,8 +498,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -553,8 +553,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,8 +620,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -662,8 +662,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -722,8 +722,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -788,8 +788,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -912,8 +912,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1076,7 +1076,7 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cs.tertiaryContainer,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _cs.outline),
       ),
       child: Column(
@@ -1119,8 +1119,8 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -1163,7 +1163,7 @@ class _GeneralPageState extends State<GeneralPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _cs.tertiaryContainer,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _cs.outline),
       ),
       child: Row(
@@ -1205,15 +1205,15 @@ class _PermissionButton extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: cs.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         onTap: loading ? null : onTap,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: cs.outlineVariant),
           ),
           child: Row(
@@ -1318,7 +1318,7 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
               padding: const EdgeInsets.symmetric(vertical: 28),
               decoration: BoxDecoration(
                 color: _cs.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: _listening ? _cs.primary : _cs.outlineVariant,
                   width: _listening ? 2 : 1,
@@ -1345,7 +1345,7 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
                     child: Text(
                       _listening ? '...' : widget.settings.hotkeyLabel,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
@@ -1427,7 +1427,7 @@ class _MeetingHotkeyCaptureState extends State<_MeetingHotkeyCapture> {
               padding: const EdgeInsets.symmetric(vertical: 28),
               decoration: BoxDecoration(
                 color: _cs.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: _listening ? _cs.primary : _cs.outlineVariant,
                   width: _listening ? 2 : 1,
@@ -1454,7 +1454,7 @@ class _MeetingHotkeyCaptureState extends State<_MeetingHotkeyCapture> {
                     child: Text(
                       _listening ? '...' : widget.settings.meetingHotkeyLabel,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
@@ -1548,7 +1548,7 @@ class _ModeCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
           color: cs.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? cs.primary : cs.outlineVariant,
             width: selected ? 2 : 1,

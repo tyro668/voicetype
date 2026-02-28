@@ -58,7 +58,7 @@ class _MeetingListPageState extends State<MeetingListPage> {
     final groupedMeetings = _groupMeetings(filteredMeetings, meetingProvider);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -88,20 +88,20 @@ class _MeetingListPageState extends State<MeetingListPage> {
         .length;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.45)),
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: _cs.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               Icons.forum_outlined,
@@ -117,7 +117,7 @@ class _MeetingListPageState extends State<MeetingListPage> {
                 Text(
                   l10n.meetingMinutes,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: _cs.onSurface,
                   ),
@@ -209,7 +209,9 @@ class _MeetingListPageState extends State<MeetingListPage> {
         fillColor: _cs.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _cs.outlineVariant),
+          borderSide: BorderSide(
+            color: _cs.outlineVariant.withValues(alpha: 0.4),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -339,15 +341,8 @@ class _MeetingListPageState extends State<MeetingListPage> {
         border: Border.all(
           color: isEmpty
               ? _cs.error.withValues(alpha: 0.3)
-              : _cs.outlineVariant.withValues(alpha: 0.55),
+              : _cs.outlineVariant.withValues(alpha: 0.4),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _cs.shadow.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -355,7 +350,7 @@ class _MeetingListPageState extends State<MeetingListPage> {
             ? () => _navigateToRecording(context)
             : () => _navigateToDetail(context, meeting),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -491,8 +486,8 @@ class _MeetingListPageState extends State<MeetingListPage> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(8),
+                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: SizedBox(
                     height: 48,
@@ -530,7 +525,7 @@ class _MeetingListPageState extends State<MeetingListPage> {
 
   Widget _buildStatusChip(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),

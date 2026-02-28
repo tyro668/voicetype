@@ -156,8 +156,8 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -206,8 +206,8 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -260,8 +260,8 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

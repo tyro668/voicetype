@@ -160,13 +160,13 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     final dateStr = DateFormat('yyyy-MM-dd HH:mm').format(meeting.createdAt);
 
     return Scaffold(
-      backgroundColor: _cs.surfaceContainerLow,
+      backgroundColor: _cs.surfaceContainer,
       body: Column(
         children: [
           _buildHeader(meeting, dateStr, l10n, isFinalizingThis),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -233,8 +233,8 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     return Container(
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.45)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
@@ -415,11 +415,13 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     final charCount = _detailController.text.length;
 
     return Container(
-      height: 52,
-      padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
+      height: 58,
+      padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
       decoration: BoxDecoration(
         color: _cs.surface,
-        border: Border(bottom: BorderSide(color: _cs.outlineVariant)),
+        border: Border(
+          bottom: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.55)),
+        ),
       ),
       child: Row(
         children: [
@@ -603,7 +605,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: _cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -630,15 +632,15 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     return Container(
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 面板标题栏
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 10, 6),
+            padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
             child: Row(
               children: [
                 Icon(icon, size: 16, color: _cs.onSurfaceVariant),
@@ -894,8 +896,8 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
     return Container(
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.45)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),

@@ -337,7 +337,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
         }
       },
       child: Scaffold(
-        backgroundColor: _cs.surfaceContainerLow,
+        backgroundColor: _cs.surfaceContainer,
         appBar: AppBar(
           backgroundColor: _cs.surface,
           elevation: 0,
@@ -420,10 +420,12 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                         backgroundColor: _isLongPressing
                             ? Colors.red
                             : provider.isPaused
-                            ? _cs.primary
-                            : Colors.orange,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(36, 36),
+                            ? _cs.primaryContainer
+                            : _cs.surfaceContainerHigh,
+                        foregroundColor: _isLongPressing
+                            ? Colors.white
+                            : _cs.onSurface,
+                        minimumSize: const Size(38, 38),
                         padding: const EdgeInsets.all(6),
                       ),
                       tooltip: provider.isPaused
@@ -451,7 +453,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(36, 36),
+                  minimumSize: const Size(38, 38),
                   padding: const EdgeInsets.all(6),
                 ),
                 tooltip: isStoppingUi ? l10n.meetingStopping : l10n.meetingStop,
@@ -462,8 +464,8 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: _cs.secondaryContainer,
-                borderRadius: BorderRadius.circular(8),
+                color: _cs.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -471,7 +473,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                   Icon(
                     Icons.timer_outlined,
                     size: 16,
-                    color: _cs.onSecondaryContainer,
+                    color: _cs.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -480,7 +482,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'monospace',
-                      color: _cs.onSecondaryContainer,
+                      color: _cs.onSurface,
                     ),
                   ),
                 ],
@@ -524,11 +526,11 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
     _RecordingViewMode effectiveViewMode,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: _cs.surface,
         border: Border(
-          bottom: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.3)),
+          bottom: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.45)),
         ),
       ),
       child: Row(
@@ -572,10 +574,12 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? _cs.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected
+              ? _cs.primaryContainer.withValues(alpha: 0.7)
+              : _cs.surface,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? _cs.primary.withValues(alpha: 0.3)

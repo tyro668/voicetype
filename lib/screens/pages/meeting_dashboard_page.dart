@@ -8,8 +8,6 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
-import '../../models/provider_config.dart';
-import '../../models/ai_enhance_config.dart';
 import '../../providers/meeting_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
@@ -34,12 +32,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _liveTitleController = TextEditingController();
   final ScrollController _liveScrollController = ScrollController();
-  final PageController _carouselController = PageController();
   String _searchQuery = '';
   bool _isStoppingMeeting = false;
   bool _autoFollowScroll = true;
   bool _isProgrammaticScrolling = false;
-  int _currentCarouselPage = 0;
 
   /// 实时会议面板的视图模式
   _LiveViewMode _liveViewMode = _LiveViewMode.mergedNote;
@@ -57,7 +53,6 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     _searchController.dispose();
     _liveTitleController.dispose();
     _liveScrollController.dispose();
-    _carouselController.dispose();
     super.dispose();
   }
 
@@ -66,29 +61,14 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     final provider = context.watch<MeetingProvider>();
     final l10n = AppLocalizations.of(context)!;
 
-    return Stack(
+    return Row(
       children: [
-        Row(
-          children: [
-            // ── 左侧面板（今日会议 + 最近会议列表）──
-            Expanded(
-              flex: provider.isRecording ? 5 : 10,
-              child: _buildLeftPanel(provider, l10n),
-            ),
-            // ── 右侧面板（实时会议）──
-            if (provider.isRecording)
-              Expanded(
-                flex: 5,
-                child: _buildLiveMeetingPanel(provider, l10n),
-              ),
-          ],
+        Expanded(
+          flex: provider.isRecording ? 5 : 10,
+          child: _buildLeftPanel(provider, l10n),
         ),
-        // ── FAB 新建会议 ──
-        Positioned(
-          right: 24,
-          bottom: 24,
-          child: _buildFab(provider, l10n),
-        ),
+        if (provider.isRecording)
+          Expanded(flex: 5, child: _buildLiveMeetingPanel(provider, l10n)),
       ],
     );
   }
@@ -99,17 +79,13 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
 
   Widget _buildLeftPanel(MeetingProvider provider, AppLocalizations l10n) {
     final meetings = provider.meetings;
-    final todayMeetings = _getTodayMeetings(meetings);
-    final recentMeetings = _getRecentMeetings(meetings);
-    final filteredRecent = _filterMeetings(recentMeetings);
+    final filteredMeetings = _filterMeetings(meetings);
 
     return Container(
       decoration: BoxDecoration(
         color: _cs.surfaceContainerLow,
         border: Border(
-          right: BorderSide(
-            color: _cs.outlineVariant.withValues(alpha: 0.3),
-          ),
+          right: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.32)),
         ),
       ),
       child: Column(
@@ -117,59 +93,51 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
         children: [
           // 搜索栏
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-            child: _buildSearchBar(l10n),
-          ),
-          const SizedBox(height: 20),
-          // 今日会议区域
-          if (todayMeetings.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                l10n.meetingDashboardToday,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _cs.onSurfaceVariant,
-                  letterSpacing: 0.8,
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+            child: Row(
+              children: [
+                Expanded(child: _buildSearchBar(l10n)),
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 44,
+                  child: FilledButton(
+                    onPressed: provider.isRecording ? null : _startNewMeeting,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _cs.error,
+                      foregroundColor: _cs.onError,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Icon(Icons.add_rounded, size: 20),
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 180,
-              child: _buildTodayCarousel(todayMeetings, provider, l10n),
-            ),
-            // 轮播指示器
-            if (todayMeetings.length > 1) ...[
-              const SizedBox(height: 10),
-              _buildCarouselDots(todayMeetings.length),
-            ],
-            const SizedBox(height: 20),
-          ],
-          // 最近会议标题
+          ),
+          const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Text(
-              l10n.meetingDashboardRecents,
+              l10n.meetingMinutes,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: _cs.onSurfaceVariant,
-                letterSpacing: 0.8,
+                letterSpacing: 0.2,
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          // 最近会议列表
+          const SizedBox(height: 10),
           Expanded(
-            child: filteredRecent.isEmpty
+            child: filteredMeetings.isEmpty
                 ? _buildEmptyState(l10n)
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: filteredRecent.length,
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+                    itemCount: filteredMeetings.length,
                     itemBuilder: (_, i) =>
-                        _buildRecentCard(filteredRecent[i], provider, l10n),
+                        _buildRecentCard(filteredMeetings[i], provider, l10n),
                   ),
           ),
         ],
@@ -197,7 +165,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
               ),
         filled: true,
         fillColor: _cs.surface,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(vertical: 11),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -205,7 +173,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: _cs.outlineVariant.withValues(alpha: 0.4),
+            color: _cs.outlineVariant.withValues(alpha: 0.28),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -213,192 +181,6 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
           borderSide: BorderSide(color: _cs.primary, width: 1.5),
         ),
       ),
-    );
-  }
-
-  // ── 今日会议轮播 ──
-
-  Widget _buildTodayCarousel(
-    List<MeetingRecord> todayMeetings,
-    MeetingProvider provider,
-    AppLocalizations l10n,
-  ) {
-    return PageView.builder(
-      controller: _carouselController,
-      onPageChanged: (i) => setState(() => _currentCarouselPage = i),
-      itemCount: todayMeetings.length,
-      itemBuilder: (_, i) =>
-          _buildTodayCard(todayMeetings[i], provider, l10n),
-    );
-  }
-
-  Widget _buildTodayCard(
-    MeetingRecord meeting,
-    MeetingProvider provider,
-    AppLocalizations l10n,
-  ) {
-    final isLive = meeting.status == MeetingStatus.recording ||
-        meeting.status == MeetingStatus.paused;
-    final locale = Localizations.localeOf(context).toString();
-    final timeStr = DateFormat('HH:mm', locale).format(meeting.createdAt);
-    final endTimeStr = meeting.totalDuration.inSeconds > 0
-        ? DateFormat(
-            'HH:mm',
-            locale,
-          ).format(meeting.createdAt.add(meeting.totalDuration))
-        : '--:--';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: GestureDetector(
-        onTap: () => _onMeetingTap(meeting, provider),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isLive
-                  ? [
-                      _cs.primaryContainer,
-                      _cs.primaryContainer.withValues(alpha: 0.6),
-                    ]
-                  : [
-                      _cs.surface,
-                      _cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                    ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isLive
-                  ? _cs.primary.withValues(alpha: 0.3)
-                  : _cs.outlineVariant.withValues(alpha: 0.4),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _cs.shadow.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 标题行 + 更多按钮
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      meeting.title,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: _cs.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isLive)
-                    Icon(
-                      Icons.graphic_eq_rounded,
-                      size: 20,
-                      color: _cs.primary,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              // 时间
-              Text(
-                '$timeStr - $endTimeStr',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: _cs.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              // 底部：波形装饰 + LIVE 标签
-              Row(
-                children: [
-                  // 波形装饰
-                  if (isLive) ...[
-                    _MiniWaveform(color: _cs.primary),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'LIVE',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.red.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    _buildStatusChip(
-                      _statusLabel(meeting.status, l10n),
-                      _statusColor(meeting.status),
-                    ),
-                    const Spacer(),
-                    Text(
-                      meeting.formattedDuration,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _cs.onSurfaceVariant,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCarouselDots(int count) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (i) {
-        final isActive = i == _currentCarouselPage;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: isActive ? 20 : 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: isActive
-                ? _cs.primary
-                : _cs.onSurfaceVariant.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(3),
-          ),
-        );
-      }),
     );
   }
 
@@ -412,9 +194,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     final locale = Localizations.localeOf(context).toString();
     final dateStr = DateFormat('MMMd, yyyy', locale).format(meeting.createdAt);
     final durationStr = meeting.formattedDuration;
-    final previewText =
-        (meeting.summary ?? meeting.fullTranscription ?? '').trim();
-    final isEmpty = meeting.status == MeetingStatus.completed &&
+    final previewText = (meeting.summary ?? meeting.fullTranscription ?? '')
+        .trim();
+    final isEmpty =
+        meeting.status == MeetingStatus.completed &&
         (meeting.fullTranscription == null ||
             meeting.fullTranscription!.trim().isEmpty);
 
@@ -429,17 +212,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
             border: Border.all(
               color: isEmpty
                   ? _cs.error.withValues(alpha: 0.3)
-                  : _cs.outlineVariant.withValues(alpha: 0.35),
+                  : _cs.outlineVariant.withValues(alpha: 0.28),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: _cs.shadow.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -449,7 +225,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                     child: Text(
                       meeting.title,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
@@ -466,10 +242,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                 children: [
                   Text(
                     '$dateStr · $durationStr',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _cs.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
                   ),
                   const Spacer(),
                   _buildStatusChip(
@@ -483,9 +256,12 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                 // 内容预览
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
-                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.28),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: SizedBox(
@@ -616,16 +392,14 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       decoration: BoxDecoration(
         color: _cs.surface,
         border: Border(
-          left: BorderSide(
-            color: _cs.outlineVariant.withValues(alpha: 0.2),
-          ),
+          left: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.32)),
         ),
       ),
       child: Column(
         children: [
           // ── 实时会议标题头 ──
           Container(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -637,14 +411,14 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: _cs.onSurfaceVariant,
-                        letterSpacing: 0.8,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _PulsingDot(color: Colors.red),
+                    _PulsingDot(color: _cs.error),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 // 会议标题 (可编辑)
                 TextField(
                   controller: _liveTitleController,
@@ -673,35 +447,56 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                 Text(
                   timeStr,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: _cs.onSurfaceVariant,
                     fontFamily: 'monospace',
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           // ── 音频波形区域 ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: SizedBox(
-              height: 100,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              height: 86,
+              decoration: BoxDecoration(
+                color: _cs.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _cs.outlineVariant.withValues(alpha: 0.24),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: _LiveWaveform(
                 amplitudeStream: provider.amplitudeStream,
-                color: _cs.primary,
+                color: _cs.primary.withValues(alpha: 0.85),
                 isPaused: provider.isPaused,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           // ── 视图切换标签 ──
           _buildLiveViewToggle(l10n),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           // ── 实时转写内容 ──
           Expanded(
-            child: _buildLiveContent(provider, l10n),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: _cs.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _cs.outlineVariant.withValues(alpha: 0.24),
+                  ),
+                ),
+                child: _buildLiveContent(provider, l10n),
+              ),
+            ),
           ),
           // ── 控制按钮栏 ──
           _buildControlBar(provider, l10n, isStoppingUi),
@@ -714,7 +509,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
 
   Widget _buildLiveViewToggle(AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
           _buildViewTab(
@@ -727,8 +522,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
           _buildViewTab(
             label: l10n.meetingSegmentView,
             isSelected: _liveViewMode == _LiveViewMode.segments,
-            onTap: () =>
-                setState(() => _liveViewMode = _LiveViewMode.segments),
+            onTap: () => setState(() => _liveViewMode = _LiveViewMode.segments),
           ),
           const SizedBox(width: 8),
           _buildViewTab(
@@ -750,16 +544,16 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? _cs.primaryContainer
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+              ? _cs.primaryContainer.withValues(alpha: 0.7)
+              : _cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? _cs.primary.withValues(alpha: 0.3)
-                : _cs.outlineVariant.withValues(alpha: 0.4),
+                : _cs.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
         child: Text(
@@ -767,9 +561,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
           style: TextStyle(
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected
-                ? _cs.onPrimaryContainer
-                : _cs.onSurfaceVariant,
+            color: isSelected ? _cs.onPrimaryContainer : _cs.onSurfaceVariant,
           ),
         ),
       ),
@@ -789,10 +581,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     }
   }
 
-  Widget _buildLiveMergedNote(
-    MeetingProvider provider,
-    AppLocalizations l10n,
-  ) {
+  Widget _buildLiveMergedNote(MeetingProvider provider, AppLocalizations l10n) {
     final content = provider.mergedNoteContent;
     final isStreaming = provider.isStreamingMerge;
 
@@ -809,7 +598,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       onNotification: _handleScrollNotification,
       child: SingleChildScrollView(
         controller: _liveScrollController,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -846,10 +635,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     );
   }
 
-  Widget _buildLiveSegments(
-    MeetingProvider provider,
-    AppLocalizations l10n,
-  ) {
+  Widget _buildLiveSegments(MeetingProvider provider, AppLocalizations l10n) {
     final segments = provider.currentSegments;
 
     if (segments.isEmpty && !provider.isPaused) {
@@ -865,7 +651,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       onNotification: _handleScrollNotification,
       child: SingleChildScrollView(
         controller: _liveScrollController,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -881,10 +667,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     );
   }
 
-  Widget _buildLiveSummary(
-    MeetingProvider provider,
-    AppLocalizations l10n,
-  ) {
+  Widget _buildLiveSummary(MeetingProvider provider, AppLocalizations l10n) {
     final summary = provider.incrementalSummary;
     final isUpdating = provider.isUpdatingIncrementalSummary;
 
@@ -901,7 +684,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       onNotification: _handleScrollNotification,
       child: SingleChildScrollView(
         controller: _liveScrollController,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -943,11 +726,11 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 36, color: _cs.outline.withValues(alpha: 0.5)),
+          Icon(icon, size: 34, color: _cs.outline.withValues(alpha: 0.45)),
           const SizedBox(height: 10),
           Text(
             text,
-            style: TextStyle(fontSize: 13, color: _cs.outline),
+            style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ],
@@ -972,7 +755,8 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   }
 
   Widget _buildSegmentText(MeetingSegment segment, AppLocalizations l10n) {
-    final isTranscribing = segment.status == SegmentStatus.pending ||
+    final isTranscribing =
+        segment.status == SegmentStatus.pending ||
         segment.status == SegmentStatus.transcribing;
     final isEnhancing = segment.status == SegmentStatus.enhancing;
 
@@ -1049,11 +833,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: SelectableText(
         text,
-        style: TextStyle(
-          fontSize: 14,
-          color: _cs.onSurface,
-          height: 1.6,
-        ),
+        style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
       ),
     );
   }
@@ -1082,34 +862,9 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     bool isStoppingUi,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        border: Border(
-          top: BorderSide(
-            color: _cs.outlineVariant.withValues(alpha: 0.2),
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
       child: Row(
         children: [
-          // 取消按钮
-          OutlinedButton(
-            onPressed: isStoppingUi
-                ? null
-                : () => _cancelMeeting(provider, l10n),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-            child: Text(l10n.meetingDashboardCancel),
-          ),
-          const SizedBox(width: 12),
           // 暂停/继续按钮
           Expanded(
             child: FilledButton.icon(
@@ -1132,41 +887,40 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                 provider.isPaused ? l10n.meetingResume : l10n.meetingPause,
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: provider.isPaused
-                    ? _cs.primary
-                    : Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: _cs.surfaceContainerHigh,
+                foregroundColor: _cs.onSurface,
+                minimumSize: const Size.fromHeight(44),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 12),
           // 保存/结束按钮
-          FilledButton.tonalIcon(
-            onPressed: isStoppingUi
-                ? null
-                : () => _endMeeting(provider, l10n),
-            icon: isStoppingUi
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: _cs.onSecondaryContainer,
-                    ),
-                  )
-                : const Icon(Icons.save_outlined, size: 18),
-            label: Text(l10n.meetingDashboardSaveNotes),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: isStoppingUi
+                  ? null
+                  : () => _endMeeting(provider, l10n),
+              icon: isStoppingUi
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _cs.onError,
+                      ),
+                    )
+                  : const Icon(Icons.stop_rounded, size: 18),
+              label: Text(l10n.meetingDashboardSaveNotes),
+              style: FilledButton.styleFrom(
+                backgroundColor: _cs.error,
+                foregroundColor: _cs.onError,
+                minimumSize: const Size.fromHeight(44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
           ),
@@ -1175,41 +929,9 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     );
   }
 
-  // ── FAB ──
-
-  Widget _buildFab(MeetingProvider provider, AppLocalizations l10n) {
-    if (provider.isRecording) return const SizedBox.shrink();
-
-    return FloatingActionButton(
-      onPressed: () => _startNewMeeting(),
-      tooltip: l10n.meetingNew,
-      elevation: 4,
-      child: const Icon(Icons.add, size: 28),
-    );
-  }
-
   // ═══════════════════════════════════════════════
   // 辅助方法
   // ═══════════════════════════════════════════════
-
-  List<MeetingRecord> _getTodayMeetings(List<MeetingRecord> meetings) {
-    final now = DateTime.now();
-    return meetings.where((m) {
-      return m.createdAt.year == now.year &&
-          m.createdAt.month == now.month &&
-          m.createdAt.day == now.day;
-    }).toList();
-  }
-
-  List<MeetingRecord> _getRecentMeetings(List<MeetingRecord> meetings) {
-    // 返回非今天的会议（已按更新时间排序）
-    final now = DateTime.now();
-    return meetings.where((m) {
-      return !(m.createdAt.year == now.year &&
-          m.createdAt.month == now.month &&
-          m.createdAt.day == now.day);
-    }).toList();
-  }
 
   List<MeetingRecord> _filterMeetings(List<MeetingRecord> meetings) {
     if (_searchQuery.isEmpty) return meetings;
@@ -1239,7 +961,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
 
   void _startNewMeeting() {
     final settings = context.read<SettingsProvider>();
-    final meetingProvider = context.read<MeetingProvider>();
+    final provider = context.read<MeetingProvider>();
 
     if (settings.config.model.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1251,20 +973,18 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       return;
     }
 
-    // 直接开始新会议（右侧面板自动出现）
-    meetingProvider.startMeeting(
-      sttConfig: settings.config,
-      aiConfig: settings.effectiveAiEnhanceConfig,
-      aiEnhanceEnabled: settings.aiEnhanceEnabled,
-      dictionarySuffix: settings.dictionaryWordsForPrompt,
-      pinyinMatcher: settings.correctionEffective
-          ? settings.pinyinMatcher
-          : null,
-      correctionPrompt: settings.correctionEffective
-          ? settings.correctionPrompt
-          : null,
-      maxReferenceEntries: settings.correctionMaxReferenceEntries,
-      minCandidateScore: settings.correctionMinCandidateScore,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: provider,
+          child: MeetingRecordingPage(
+            sttConfig: settings.config,
+            aiConfig: settings.effectiveAiEnhanceConfig,
+            aiEnhanceEnabled: settings.aiEnhanceEnabled,
+            dictionarySuffix: settings.dictionaryWordsForPrompt,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1305,32 +1025,6 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     } finally {
       if (mounted) setState(() => _isStoppingMeeting = false);
     }
-  }
-
-  Future<void> _cancelMeeting(
-    MeetingProvider provider,
-    AppLocalizations l10n,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.meetingCancelConfirmTitle),
-        content: Text(l10n.meetingCancelConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(l10n.confirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await provider.cancelMeeting();
   }
 
   Future<void> _showMoveGroupSheet(
@@ -1434,10 +1128,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
 
   Widget _buildStatusChip(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
         label,
@@ -1493,13 +1187,13 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
         _isProgrammaticScrolling = true;
         _liveScrollController
             .animateTo(
-          target,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        )
+              target,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            )
             .whenComplete(() {
-          _isProgrammaticScrolling = false;
-        });
+              _isProgrammaticScrolling = false;
+            });
       }
     });
   }
@@ -1686,8 +1380,10 @@ class _WaveformPainter extends CustomPainter {
       );
 
       // 颜色渐变 - 从中心到边缘渐淡
-      final alpha = (0.3 + amplitude * 0.5 + (1 - distFromCenter) * 0.2)
-          .clamp(0.0, 1.0);
+      final alpha = (0.3 + amplitude * 0.5 + (1 - distFromCenter) * 0.2).clamp(
+        0.0,
+        1.0,
+      );
 
       final paint = Paint()
         ..color = color.withValues(alpha: alpha)

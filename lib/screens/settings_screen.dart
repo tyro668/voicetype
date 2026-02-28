@@ -70,7 +70,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               height: 48,
               decoration: BoxDecoration(
                 color: _cs.surface,
-                border: Border(bottom: BorderSide(color: _cs.outlineVariant)),
+                border: Border(
+                  bottom: BorderSide(
+                    color: _cs.outlineVariant.withValues(alpha: 0.32),
+                  ),
+                ),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -109,7 +113,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: BoxDecoration(
                       color: _cs.surfaceContainerLow,
                       border: Border(
-                        right: BorderSide(color: _cs.outlineVariant),
+                        right: BorderSide(
+                          color: _cs.outlineVariant.withValues(alpha: 0.32),
+                        ),
                       ),
                     ),
                     child: Column(
@@ -128,9 +134,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: selected
                                   ? _cs.secondaryContainer
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(12),
                                 onTap: () => setState(() => _selectedIndex = i),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -173,7 +179,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   // 设置内容区域
-                  Expanded(child: _buildPage()),
+                  Expanded(
+                    child: Container(
+                      color: _cs.surfaceContainerLow,
+                      child: _buildPage(),
+                    ),
+                  ),
                 ],
               ),
             ),

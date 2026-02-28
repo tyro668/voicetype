@@ -51,7 +51,7 @@ class _AiModelPageState extends State<AiModelPage> {
                   side: BorderSide(color: _cs.outline),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -75,8 +75,8 @@ class _AiModelPageState extends State<AiModelPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -331,7 +331,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                       l10n.addTextModel,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
                     ),
@@ -470,14 +470,14 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected ? _cs.primary : _cs.outlineVariant,
               width: isSelected ? 1.5 : 1,
             ),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             onTap: exists
                 ? () => setState(() {
                     _selectedModel = AiModel(
@@ -841,7 +841,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       l10n.editTextModel,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
                     ),

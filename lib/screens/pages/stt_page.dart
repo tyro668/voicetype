@@ -53,7 +53,7 @@ class _SttPageState extends State<SttPage> {
                   side: BorderSide(color: _cs.outline),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -76,8 +76,8 @@ class _SttPageState extends State<SttPage> {
     return Text(
       l10n.voiceModelSettings,
       style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
         color: _cs.onSurface,
       ),
     );
@@ -304,7 +304,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                       l10n.addVoiceModel,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
                     ),
@@ -445,14 +445,14 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected ? _cs.primary : _cs.outlineVariant,
               width: isSelected ? 1.5 : 1,
             ),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             onTap: exists
                 ? () => setState(() {
                     _selectedModel = SttModel(
@@ -825,7 +825,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       l10n.editVoiceModel,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: _cs.onSurface,
                       ),
                     ),
