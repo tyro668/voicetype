@@ -1021,10 +1021,9 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     }
 
     final text = segment.displayTextWithoutSpeaker;
-    final isZh = Localizations.localeOf(context).languageCode == 'zh';
     final speaker = MeetingSegment.speakerLabel(
       segment.detectedSpeakerId,
-      isZh: isZh,
+      userFormatter: l10n.userLabel,
     );
     if (text.isEmpty) {
       return Padding(
@@ -1054,7 +1053,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                speaker,
+                l10n.userIdLabel(speaker),
                 style: TextStyle(
                   fontSize: 11,
                   color: _cs.onSecondaryContainer,

@@ -599,7 +599,64 @@ class AppLocalizationsZh extends AppLocalizations {
   String get speakerModelEnable => '启用 3D-Speaker';
 
   @override
+  String get speakerModelHeaderTitle => '3D-Speaker 声纹识别';
+
+  @override
+  String get speakerModelHeaderSubtitle => '高精度说话人分离与识别引擎';
+
+  @override
+  String get speakerModelBasicSettings => '基础设置';
+
+  @override
+  String get speakerModelAlgorithmParams => '算法参数';
+
+  @override
+  String get speakerModelManagement => '声纹模型管理';
+
+  @override
+  String get speakerModelImportLocal => '导入本地模型';
+
+  @override
+  String get speakerModelSingleSpeakerMode => '单人演讲模式';
+
+  @override
+  String get speakerModelSingleSpeakerModeDesc => '适用于单人发言场景，强制全部分段归为同一说话人';
+
+  @override
   String get speakerModelMaxSpeakers => '最大说话人数';
+
+  @override
+  String get speakerModelMaxSpeakersDesc => '限制一次会议最多分出多少个说话人簇';
+
+  @override
+  String get speakerModelPresetTitle => '一键预设';
+
+  @override
+  String get speakerModelPresetConsistency => '一致性优先';
+
+  @override
+  String get speakerModelPresetBalanced => '均衡';
+
+  @override
+  String get speakerModelPresetSeparation => '区分优先';
+
+  @override
+  String get speakerModelOnlineBaseThreshold => '在线判定阈值';
+
+  @override
+  String get speakerModelOnlineBaseThresholdDesc => '越低越容易合并为同一人，越高越容易拆分为不同人';
+
+  @override
+  String get speakerModelTop1Top2Margin => '候选区分间隔';
+
+  @override
+  String get speakerModelTop1Top2MarginDesc => '越小越容易接受当前最佳候选，提高连续一致性';
+
+  @override
+  String get speakerModelOfflineMergeThreshold => '离线合并阈值';
+
+  @override
+  String get speakerModelOfflineMergeThresholdDesc => '会后重聚类时的合并阈值，越低越容易合并';
 
   @override
   String get speakerModelPathNotSet => '未设置模型路径（将尝试默认目录）';
@@ -653,6 +710,16 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String speakerModelDownloadStatusUnknown(String downloaded) {
     return '已下载 $downloaded（总大小未知）';
+  }
+
+  @override
+  String userLabel(String id) {
+    return '用户$id';
+  }
+
+  @override
+  String userIdLabel(String user) {
+    return '用户ID: $user';
   }
 
   @override

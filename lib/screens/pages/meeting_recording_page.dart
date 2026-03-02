@@ -88,6 +88,10 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
             speaker3dEnabled: settings.speaker3dEnabled,
             speaker3dModelPath: settings.speaker3dModelPath,
             speaker3dMaxSpeakers: settings.speaker3dMaxSpeakers,
+            speaker3dOnlineBaseThreshold: settings.speaker3dOnlineBaseThreshold,
+            speaker3dTop1Top2Margin: settings.speaker3dTop1Top2Margin,
+            speaker3dOfflineMergeThreshold:
+                settings.speaker3dOfflineMergeThreshold,
             dictionarySuffix: widget.dictionarySuffix,
             pinyinMatcher: settings.correctionEffective
                 ? settings.pinyinMatcher
@@ -850,7 +854,11 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
       );
     }
 
-    final text = (segment.enhancedText ?? segment.transcription ?? '').trim();
+    final text = segment.displayTextWithoutSpeaker;
+    final speaker = MeetingSegment.speakerLabel(
+      segment.detectedSpeakerId,
+      userFormatter: l10n.userLabel,
+    );
     if (text.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -867,9 +875,31 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: SelectableText(
-        text,
-        style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (speaker.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                l10n.userIdLabel(speaker),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _cs.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          SelectableText(
+            text,
+            style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
+          ),
+        ],
       ),
     );
   }

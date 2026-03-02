@@ -126,13 +126,16 @@ class MeetingSegment {
     return '$spk: $text';
   }
 
-  static String speakerLabel(String? speakerId, {required bool isZh}) {
+  static String speakerLabel(
+    String? speakerId, {
+    required String Function(String index) userFormatter,
+  }) {
     final normalized = normalizeSpeakerId(speakerId);
     if (normalized == null) return '';
     final indexMatch = RegExp(r'^(?:Speaker)(\d+)$').firstMatch(normalized);
     if (indexMatch == null) return normalized;
     final idx = indexMatch.group(1)!;
-    return isZh ? '讲话人$idx' : 'Speaker$idx';
+    return userFormatter(idx);
   }
 
   static String withSpeakerPrefix(String text, String speakerId) {

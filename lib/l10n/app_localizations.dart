@@ -1250,11 +1250,125 @@ abstract class AppLocalizations {
   /// **'Enable 3D-Speaker'**
   String get speakerModelEnable;
 
+  /// No description provided for @speakerModelHeaderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'3D-Speaker Voice Recognition'**
+  String get speakerModelHeaderTitle;
+
+  /// No description provided for @speakerModelHeaderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'High-accuracy speaker diarization and recognition engine'**
+  String get speakerModelHeaderSubtitle;
+
+  /// No description provided for @speakerModelBasicSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic Settings'**
+  String get speakerModelBasicSettings;
+
+  /// No description provided for @speakerModelAlgorithmParams.
+  ///
+  /// In en, this message translates to:
+  /// **'Algorithm Parameters'**
+  String get speakerModelAlgorithmParams;
+
+  /// No description provided for @speakerModelManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaker Model Management'**
+  String get speakerModelManagement;
+
+  /// No description provided for @speakerModelImportLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Local Model'**
+  String get speakerModelImportLocal;
+
+  /// No description provided for @speakerModelSingleSpeakerMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Single-speaker presentation mode'**
+  String get speakerModelSingleSpeakerMode;
+
+  /// No description provided for @speakerModelSingleSpeakerModeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Force all segments to one speaker label for solo talks'**
+  String get speakerModelSingleSpeakerModeDesc;
+
   /// No description provided for @speakerModelMaxSpeakers.
   ///
   /// In en, this message translates to:
   /// **'Max speakers'**
   String get speakerModelMaxSpeakers;
+
+  /// No description provided for @speakerModelMaxSpeakersDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Upper bound for speaker clusters in one meeting'**
+  String get speakerModelMaxSpeakersDesc;
+
+  /// No description provided for @speakerModelPresetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One-click presets'**
+  String get speakerModelPresetTitle;
+
+  /// No description provided for @speakerModelPresetConsistency.
+  ///
+  /// In en, this message translates to:
+  /// **'Consistency first'**
+  String get speakerModelPresetConsistency;
+
+  /// No description provided for @speakerModelPresetBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get speakerModelPresetBalanced;
+
+  /// No description provided for @speakerModelPresetSeparation.
+  ///
+  /// In en, this message translates to:
+  /// **'Separation first'**
+  String get speakerModelPresetSeparation;
+
+  /// No description provided for @speakerModelOnlineBaseThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Online base threshold'**
+  String get speakerModelOnlineBaseThreshold;
+
+  /// No description provided for @speakerModelOnlineBaseThresholdDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower value merges more aggressively, higher value splits more easily'**
+  String get speakerModelOnlineBaseThresholdDesc;
+
+  /// No description provided for @speakerModelTop1Top2Margin.
+  ///
+  /// In en, this message translates to:
+  /// **'Top1-Top2 margin'**
+  String get speakerModelTop1Top2Margin;
+
+  /// No description provided for @speakerModelTop1Top2MarginDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Smaller margin accepts best match more often, improving continuity'**
+  String get speakerModelTop1Top2MarginDesc;
+
+  /// No description provided for @speakerModelOfflineMergeThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline merge threshold'**
+  String get speakerModelOfflineMergeThreshold;
+
+  /// No description provided for @speakerModelOfflineMergeThresholdDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower value merges clusters after meeting, higher value keeps them separate'**
+  String get speakerModelOfflineMergeThresholdDesc;
 
   /// No description provided for @speakerModelPathNotSet.
   ///
@@ -1349,6 +1463,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Downloaded {downloaded} (total size unknown)'**
   String speakerModelDownloadStatusUnknown(String downloaded);
+
+  /// No description provided for @userLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User{id}'**
+  String userLabel(String id);
+
+  /// No description provided for @userIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID: {user}'**
+  String userIdLabel(String user);
 
   /// No description provided for @dashboard.
   ///

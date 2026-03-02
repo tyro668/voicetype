@@ -628,7 +628,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String get speakerModelEnable => 'Enable 3D-Speaker';
 
   @override
+  String get speakerModelHeaderTitle => '3D-Speaker Voice Recognition';
+
+  @override
+  String get speakerModelHeaderSubtitle =>
+      'High-accuracy speaker diarization and recognition engine';
+
+  @override
+  String get speakerModelBasicSettings => 'Basic Settings';
+
+  @override
+  String get speakerModelAlgorithmParams => 'Algorithm Parameters';
+
+  @override
+  String get speakerModelManagement => 'Speaker Model Management';
+
+  @override
+  String get speakerModelImportLocal => 'Import Local Model';
+
+  @override
+  String get speakerModelSingleSpeakerMode =>
+      'Single-speaker presentation mode';
+
+  @override
+  String get speakerModelSingleSpeakerModeDesc =>
+      'Force all segments to one speaker label for solo talks';
+
+  @override
   String get speakerModelMaxSpeakers => 'Max speakers';
+
+  @override
+  String get speakerModelMaxSpeakersDesc =>
+      'Upper bound for speaker clusters in one meeting';
+
+  @override
+  String get speakerModelPresetTitle => 'One-click presets';
+
+  @override
+  String get speakerModelPresetConsistency => 'Consistency first';
+
+  @override
+  String get speakerModelPresetBalanced => 'Balanced';
+
+  @override
+  String get speakerModelPresetSeparation => 'Separation first';
+
+  @override
+  String get speakerModelOnlineBaseThreshold => 'Online base threshold';
+
+  @override
+  String get speakerModelOnlineBaseThresholdDesc =>
+      'Lower value merges more aggressively, higher value splits more easily';
+
+  @override
+  String get speakerModelTop1Top2Margin => 'Top1-Top2 margin';
+
+  @override
+  String get speakerModelTop1Top2MarginDesc =>
+      'Smaller margin accepts best match more often, improving continuity';
+
+  @override
+  String get speakerModelOfflineMergeThreshold => 'Offline merge threshold';
+
+  @override
+  String get speakerModelOfflineMergeThresholdDesc =>
+      'Lower value merges clusters after meeting, higher value keeps them separate';
 
   @override
   String get speakerModelPathNotSet =>
@@ -684,6 +748,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String speakerModelDownloadStatusUnknown(String downloaded) {
     return 'Downloaded $downloaded (total size unknown)';
+  }
+
+  @override
+  String userLabel(String id) {
+    return 'User$id';
+  }
+
+  @override
+  String userIdLabel(String user) {
+    return 'User ID: $user';
   }
 
   @override

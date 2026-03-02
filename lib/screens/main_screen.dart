@@ -419,6 +419,9 @@ class _MainScreenState extends State<MainScreen> {
         speaker3dEnabled: settings.speaker3dEnabled,
         speaker3dModelPath: settings.speaker3dModelPath,
         speaker3dMaxSpeakers: settings.speaker3dMaxSpeakers,
+        speaker3dOnlineBaseThreshold: settings.speaker3dOnlineBaseThreshold,
+        speaker3dTop1Top2Margin: settings.speaker3dTop1Top2Margin,
+        speaker3dOfflineMergeThreshold: settings.speaker3dOfflineMergeThreshold,
         dictionarySuffix: settings.dictionaryWordsForPrompt,
         pinyinMatcher: settings.correctionEffective
             ? settings.pinyinMatcher

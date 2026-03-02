@@ -176,6 +176,9 @@ class MeetingRecordingService {
     bool speaker3dEnabled = true,
     String speaker3dModelPath = '',
     int speaker3dMaxSpeakers = 6,
+    double speaker3dOnlineBaseThreshold = 0.78,
+    double speaker3dTop1Top2Margin = 0.04,
+    double speaker3dOfflineMergeThreshold = 0.80,
     int? segmentSeconds,
     int windowSize = 5,
     PinyinMatcher? pinyinMatcher,
@@ -199,6 +202,9 @@ class MeetingRecordingService {
       preferThreeDSpeaker: speaker3dEnabled,
       threeDSpeakerModelPath: speaker3dModelPath,
       maxSpeakers: speaker3dMaxSpeakers,
+      onlineBaseThreshold: speaker3dOnlineBaseThreshold,
+      top1Top2Margin: speaker3dTop1Top2Margin,
+      offlineMergeThreshold: speaker3dOfflineMergeThreshold,
     );
 
     // 智能分段参数
@@ -603,6 +609,9 @@ class MeetingRecordingService {
     required bool preferThreeDSpeaker,
     required String threeDSpeakerModelPath,
     required int maxSpeakers,
+    required double onlineBaseThreshold,
+    required double top1Top2Margin,
+    required double offlineMergeThreshold,
   }) {
     final previous = _speakerDiarization;
     _speakerDiarization = SpeakerDiarizationService(
@@ -610,7 +619,10 @@ class MeetingRecordingService {
       threeDSpeakerModelPath: threeDSpeakerModelPath.trim().isEmpty
           ? null
           : threeDSpeakerModelPath.trim(),
-      maxSpeakers: maxSpeakers.clamp(2, 12),
+      maxSpeakers: maxSpeakers.clamp(1, 12),
+      onlineBaseThreshold: onlineBaseThreshold.clamp(0.5, 0.95).toDouble(),
+      top1Top2Margin: top1Top2Margin.clamp(0.0, 0.20).toDouble(),
+      offlineMergeThreshold: offlineMergeThreshold.clamp(0.5, 0.95).toDouble(),
     );
     unawaited(previous.dispose());
   }

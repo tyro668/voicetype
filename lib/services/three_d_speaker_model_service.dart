@@ -18,6 +18,15 @@ class ThreeDSpeakerModelService {
     'https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx',
   ];
 
+  static const List<String> _modelScopeModelUrls = [
+    'https://www.modelscope.cn/models/damo/speech_campplus_sv_zh_en_16k-common_advanced/repo?Revision=master&FilePath=3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx',
+    'https://www.modelscope.cn/models/damo/speech_campplus_sv_zh-cn_16k-common/repo?Revision=master&FilePath=3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx',
+    'https://www.modelscope.cn/models/damo/speech_campplus_sv_en_voxceleb_16k/repo?Revision=master&FilePath=3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx',
+    'https://www.modelscope.cn/api/v1/models/damo/speech_campplus_sv_zh_en_16k-common_advanced/repo?Revision=master&FilePath=3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx',
+    'https://www.modelscope.cn/api/v1/models/damo/speech_campplus_sv_zh-cn_16k-common/repo?Revision=master&FilePath=3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx',
+    'https://www.modelscope.cn/api/v1/models/damo/speech_campplus_sv_en_voxceleb_16k/repo?Revision=master&FilePath=3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx',
+  ];
+
   static const List<String> _mirrorPrefixes = [
     'https://ghproxy.com/',
     'https://mirror.ghproxy.com/',
@@ -26,6 +35,7 @@ class ThreeDSpeakerModelService {
 
   static List<String> _buildAutoModelUrls() {
     final urls = <String>[];
+    urls.addAll(_modelScopeModelUrls);
     for (final base in _baseModelUrls) {
       for (final prefix in _mirrorPrefixes) {
         urls.add('$prefix$base');
@@ -36,7 +46,7 @@ class ThreeDSpeakerModelService {
   }
 
   static List<String> _buildDirectModelUrls() {
-    return List<String>.from(_baseModelUrls);
+    return [..._modelScopeModelUrls, ..._baseModelUrls];
   }
 
   static List<String> _buildMirrorModelUrls() {
@@ -70,6 +80,46 @@ class ThreeDSpeakerModelService {
   static Future<String> defaultModelPath() async {
     final dir = await defaultModelDir();
     return p.join(dir, defaultFileName);
+  }
+
+  static Future<String> importModelFile(String sourcePath) async {
+    final source = File(sourcePath.trim());
+    if (!await source.exists()) {
+      throw ThreeDSpeakerModelException('Selected model file does not exist');
+    }
+
+    final targetPath = await defaultModelPath();
+    final sourceResolved = await source.resolveSymbolicLinks();
+    final targetFile = File(targetPath);
+    final targetResolved = await targetFile.exists()
+        ? await targetFile.resolveSymbolicLinks()
+        : targetPath;
+    if (sourceResolved == targetResolved) {
+      return targetPath;
+    }
+
+    final tmpPath = '$targetPath.importing.tmp';
+    final tmpFile = File(tmpPath);
+    if (await tmpFile.exists()) {
+      await tmpFile.delete();
+    }
+
+    await source.copy(tmpPath);
+    final copiedSize = await tmpFile.length();
+    if (copiedSize < 1024 * 1024) {
+      await tmpFile.delete();
+      throw ThreeDSpeakerModelException(
+        'Imported file too small ($copiedSize bytes)',
+      );
+    }
+
+    if (await targetFile.exists()) {
+      await targetFile.delete();
+    }
+    await tmpFile.rename(targetPath);
+
+    await LogService.info('3D_SPEAKER', 'model imported: $targetPath');
+    return targetPath;
   }
 
   static Future<bool> isModelReady({String? modelPath}) async {
@@ -114,6 +164,16 @@ class ThreeDSpeakerModelService {
           );
         }
 
+        final mimeType =
+            response.headers.contentType?.mimeType.toLowerCase() ?? '';
+        if (mimeType.contains('text/html')) {
+          await response.drain<void>();
+          client.close();
+          throw ThreeDSpeakerModelException(
+            'Unexpected HTML response from $host',
+          );
+        }
+
         final total = response.contentLength;
         var received = 0;
         final sink = File(tmpPath).openWrite();
@@ -131,6 +191,12 @@ class ThreeDSpeakerModelService {
         await sink.flush();
         await sink.close();
         client.close();
+
+        if (received < 1024 * 1024) {
+          throw ThreeDSpeakerModelException(
+            'Downloaded file too small ($received bytes) from $host',
+          );
+        }
 
         final file = File(modelPath);
         if (await file.exists()) {
