@@ -1,4 +1,4 @@
-enum SttProviderType { cloud, whisperCpp }
+enum SttProviderType { cloud, whisperCpp, senseVoice }
 
 /// 激活模式
 enum ActivationMode { tapToTalk, pushToTalk }
@@ -34,7 +34,7 @@ class SttProviderConfig {
   });
 
   Map<String, dynamic> toJson() => {
-    'type': type.index,
+    'type': type.name,
     'name': name,
     'baseUrl': baseUrl,
     'apiKey': apiKey,
@@ -42,14 +42,24 @@ class SttProviderConfig {
   };
 
   factory SttProviderConfig.fromJson(Map<String, dynamic> json) {
-    // 兼容旧数据：旧 enum 顺序为 cloud=0, whisper=1, whisperCpp=2
-    // 新 enum 顺序为 cloud=0, whisperCpp=1
-    final typeIndex = json['type'] as int;
+    final rawType = json['type'];
     final SttProviderType type;
-    if (typeIndex >= 2) {
-      type = SttProviderType.whisperCpp; // 旧 whisperCpp=2 → 新 whisperCpp
-    } else if (typeIndex == 1) {
-      type = SttProviderType.cloud; // 旧 whisper=1 → 降级为 cloud
+    if (rawType is String) {
+      type = _parseProviderType(rawType);
+    } else if (rawType is int) {
+      switch (rawType) {
+        case 1:
+        case 2:
+          type = SttProviderType.whisperCpp;
+          break;
+        case 3:
+          type = SttProviderType.senseVoice;
+          break;
+        case 0:
+        default:
+          type = SttProviderType.cloud;
+          break;
+      }
     } else {
       type = SttProviderType.cloud;
     }
@@ -164,6 +174,11 @@ class SttProviderConfig {
     ),
   ];
 
+  /// 根据模型文件名判断是否为 SenseVoice 模型
+  static bool isSenseVoiceModel(String modelId) {
+    return modelId.contains('sense-voice');
+  }
+
   static List<SttProviderConfig> fromPresetJsonList(List<dynamic> items) {
     return items
         .whereType<Map<String, dynamic>>()
@@ -183,6 +198,7 @@ class SttProviderConfig {
         )
         .where(
           (preset) =>
+              preset.type != SttProviderType.senseVoice &&
               preset.name.isNotEmpty &&
               (preset.baseUrl.isNotEmpty ||
                   preset.type == SttProviderType.whisperCpp) &&
@@ -195,6 +211,8 @@ class SttProviderConfig {
     switch (value) {
       case 'whisperCpp':
         return SttProviderType.whisperCpp;
+      case 'senseVoice':
+        return SttProviderType.senseVoice;
       case 'whisper': // 兼容旧数据，降级为 cloud
       case 'cloud':
       default:

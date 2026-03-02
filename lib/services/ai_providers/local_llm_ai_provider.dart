@@ -44,9 +44,31 @@ class LocalLlmAiProvider extends AiProvider {
 
   @override
   Stream<String> enhanceStream(String text, {Duration? timeout}) async* {
-    // 本地模型不支持流式，回退到批量
-    final result = await enhance(text, timeout: timeout);
-    yield result.text;
+    if (text.trim().isEmpty) {
+      yield text;
+      return;
+    }
+
+    await LogService.info(
+      'AI',
+      'start local streaming enhance model=${config.model} textLength=${text.length}',
+    );
+
+    final localPrompt = await LocalLlmService.localPrompt;
+
+    try {
+      await for (final chunk in LocalLlmService.enhanceStream(
+        modelFileName: config.model,
+        systemPrompt: localPrompt,
+        userMessage: text,
+      )) {
+        yield chunk;
+      }
+      await LogService.info('AI', 'local streaming enhance complete');
+    } catch (e) {
+      await LogService.error('AI', 'local streaming enhance failed: $e');
+      throw AiEnhanceException('AI增强失败 (本地模型): $e');
+    }
   }
 
   @override

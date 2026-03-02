@@ -76,15 +76,23 @@ class AiVendorPreset {
       isLocal: true,
       models: [
         AiModel(
+          id: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
+          description: 'Qwen2.5 7B Q4_K_M (~4.7GB)',
+        ),
+        AiModel(
           id: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
           description: 'Qwen2.5 0.5B Q5_K_M (~400MB)',
         ),
         AiModel(
-          id: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
-          description: 'Qwen2.5 0.5B Q4_K_M (~350MB)',
+          id: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf',
+          description: 'Qwen2.5 14B Q4_K_M (~8.9GB)',
+        ),
+        AiModel(
+          id: 'DeepSeek-V2-Lite-Chat-Q4_K_M.gguf',
+          description: 'DeepSeek-V2-Lite (16B) Q4_K_M (~9.8GB)',
         ),
       ],
-      defaultModelIdOverride: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
+      defaultModelIdOverride: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
     ),
   ];
 

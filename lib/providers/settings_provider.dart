@@ -776,13 +776,19 @@ class SettingsProvider extends ChangeNotifier {
   void _syncSttConfigFromActiveEntry() {
     final active = activeSttModelEntry;
     if (active != null) {
-      // 根据 vendorName 判断 provider type
+      // 根据 vendorName + 模型文件名判断 provider type
       SttProviderType type;
       if (active.vendorName == 'Local Model' ||
           active.vendorName == '本地模型' ||
           active.vendorName == '本地 whisper.cpp' ||
-          active.vendorName == 'whisper.cpp') {
-        type = SttProviderType.whisperCpp;
+          active.vendorName == 'whisper.cpp' ||
+          active.vendorName == 'SenseVoice' ||
+          active.vendorName == 'sensevoice' ||
+          active.vendorName == '本地 SenseVoice') {
+        // 通过模型文件名区分 SenseVoice 和 Whisper
+        type = SttProviderConfig.isSenseVoiceModel(active.model)
+            ? SttProviderType.senseVoice
+            : SttProviderType.whisperCpp;
       } else {
         type = SttProviderType.cloud;
       }

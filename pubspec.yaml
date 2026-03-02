@@ -46,11 +46,13 @@ dependencies:
   fl_chart: ^0.70.2
   whisper_flutter_new: ^1.0.1
   ffi: ^2.1.0
+  llamadart: ^0.6.2
   lpinyin: ^2.0.3
   data_table_2: ^2.7.2
   csv: ^6.0.0
   file_picker: ^8.1.7
   flutter_smooth_markdown: ^0.7.1
+  sherpa_onnx: ^1.12.28
 
 dev_dependencies:
   flutter_test:

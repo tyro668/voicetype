@@ -29,8 +29,7 @@ class LocalLlmService {
         'assets/prompts/local_model_prompt.md',
       );
     } catch (_) {
-      _localPromptCache =
-          '你是文字编辑助手。清理语音转文字文本：删除语气词和重复词，修正标点，保持原意。直接输出结果。';
+      _localPromptCache = '你是文字编辑助手。清理语音转文字文本：删除语气词和重复词，修正标点，保持原意。直接输出结果。';
     }
     return _localPromptCache!;
   }
@@ -65,11 +64,18 @@ class LocalLlmService {
     throw LocalLlmException('精简版不支持本地文本模型，请使用云端 AI 服务');
   }
 
-  static Future<LocalLlmCheckResult> checkAvailability(String modelFileName) async {
-    return const LocalLlmCheckResult(
-      ok: false,
-      message: '精简版不支持本地文本模型',
-    );
+  static Stream<String> enhanceStream({
+    required String modelFileName,
+    required String systemPrompt,
+    required String userMessage,
+  }) async* {
+    throw LocalLlmException('精简版不支持本地文本模型，请使用云端 AI 服务');
+  }
+
+  static Future<LocalLlmCheckResult> checkAvailability(
+    String modelFileName,
+  ) async {
+    return const LocalLlmCheckResult(ok: false, message: '精简版不支持本地文本模型');
   }
 }
 

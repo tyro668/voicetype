@@ -29,6 +29,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   var fnTapEligibleEventTap: Bool = false
   var fnTapEligibleNSEvent: Bool = false
   var lastFnDownTime: CFAbsoluteTime = 0
+  var lastFnEmitTime: CFAbsoluteTime = 0
+  var lastFnEmitType: String = ""
   private lazy var logFileURL: URL = {
     let libraryDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
     let logsDir = libraryDir?.appendingPathComponent("Logs")
@@ -299,6 +301,17 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     source: String,
     hasModifiersOverride: Bool? = nil
   ) {
+    // Fn 键去重：CGEventTap 和 NSEvent 都可能触发，短时间内只发一次
+    if keyCode == kVK_FunctionKey {
+      let now = CFAbsoluteTimeGetCurrent()
+      if type == lastFnEmitType && (now - lastFnEmitTime) < 0.08 {
+        log("[hotkey] dedup Fn \(type) from \(source), skip")
+        return
+      }
+      lastFnEmitTime = now
+      lastFnEmitType = type
+    }
+
     // 获取当前修饰键状态（Cmd/Ctrl/Alt/Shift）
     let flags = NSEvent.modifierFlags
     let hasModifiersFromFlags = !flags.intersection([.command, .control, .option, .shift]).isEmpty
@@ -498,6 +511,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     previousFnPressedNSEvent = false
     fnTapEligibleEventTap = false
     fnTapEligibleNSEvent = false
+    lastFnEmitTime = 0
+    lastFnEmitType = ""
 
     // Fn 键不走 Carbon：直接使用 EventTap + NSEvent 兜底
     if keyCode == kVK_FunctionKey {
@@ -560,6 +575,8 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     previousFnPressedNSEvent = false
     fnTapEligibleEventTap = false
     fnTapEligibleNSEvent = false
+    lastFnEmitTime = 0
+    lastFnEmitType = ""
   }
 
   @discardableResult
@@ -650,8 +667,11 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       return nil
     } else if event.type == .flagsChanged {
       // Fn key special handling
-      let voiceIsFn = voiceUsesFallback && registeredHotKeyCode == kVK_FunctionKey
-      let meetingIsFn = meetingUsesFallback && registeredMeetingKeyCode == kVK_FunctionKey
+      // 不依赖 voiceUsesFallback/meetingUsesFallback 判断 Fn：
+      // CGEventTap 在部分 macOS 版本上可能无法可靠接收 Fn flagsChanged 事件，
+      // 因此 NSEvent 始终作为 Fn 的后备通道，通过 emitGlobalKeyEvent 去重防止重复。
+      let voiceIsFn = registeredHotKeyCode == kVK_FunctionKey && hotKeyRef == nil
+      let meetingIsFn = meetingHotKeyEnabled && registeredMeetingKeyCode == kVK_FunctionKey && meetingHotKeyRef == nil
       if (voiceIsFn || meetingIsFn) && kc == kVK_FunctionKey {
         let fnPressed = event.modifierFlags.contains(.function)
         let now = CFAbsoluteTimeGetCurrent()

@@ -610,7 +610,9 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           decoration: BoxDecoration(
             color: _cs.surfaceContainerLow,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+            border: Border.all(
+              color: _cs.outlineVariant.withValues(alpha: 0.28),
+            ),
           ),
           child: _testOutputController.text.isEmpty
               ? Text(
@@ -770,6 +772,7 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
     setState(() {
       _testing = true;
       _testError = '';
+      _testOutputController.text = '';
     });
 
     final correctionEntries = _activeCorrectionEntries(settings);
@@ -798,8 +801,20 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
 
       final config = settings.effectiveAiEnhanceConfig;
       final service = AiEnhanceService(config);
-      final result = await service.enhance(inputText);
-      var outputText = result.text;
+      final outputBuffer = StringBuffer();
+      await for (final chunk in service.enhanceStream(inputText)) {
+        if (!mounted) break;
+        outputBuffer.write(chunk);
+        setState(() {
+          _testOutputController.text = outputBuffer.toString();
+        });
+      }
+
+      var outputText = outputBuffer.toString().trim();
+      if (outputText.isEmpty) {
+        final result = await service.enhance(inputText);
+        outputText = result.text;
+      }
       if (correctionEntries.isNotEmpty) {
         outputText = _applyDictionaryCorrections(outputText, correctionEntries);
         outputText = _restoreChineseTermsFromTransliteration(
@@ -807,7 +822,13 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           correctionEntries,
         );
       }
-      _testOutputController.text = outputText;
+      if (mounted) {
+        setState(() {
+          _testOutputController.text = outputText;
+        });
+      } else {
+        _testOutputController.text = outputText;
+      }
     } catch (e) {
       setState(() {
         _testError = e.toString();

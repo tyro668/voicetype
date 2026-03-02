@@ -298,10 +298,41 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   String? _downloadError;
   String _downloadStatus = '';
   final Map<String, bool> _modelDownloaded = {};
+  Set<String> _recommendedModelFileNames = const {};
+  String? _recommendationSummary;
 
-  List<AiVendorPreset> get _vendorOptions => widget.presets;
+  List<AiVendorPreset> get _vendorOptions {
+    final local = <AiVendorPreset>[];
+    final others = <AiVendorPreset>[];
+    for (final preset in widget.presets) {
+      if (preset.isLocal) {
+        local.add(preset);
+      } else {
+        others.add(preset);
+      }
+    }
+    return [...local, ...others];
+  }
 
   bool get _isLocalModel => _selectedVendor?.isLocal == true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommendation();
+  }
+
+  Future<void> _loadRecommendation() async {
+    try {
+      final recommendation =
+          await LocalLlmService.recommendModelsForCurrentMachine();
+      if (!mounted) return;
+      setState(() {
+        _recommendedModelFileNames = recommendation.recommendedModelFileNames;
+        _recommendationSummary = recommendation.summary;
+      });
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -317,98 +348,105 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
+        constraints: BoxConstraints(
+          maxWidth: 440,
+          maxHeight: MediaQuery.of(context).size.height * 0.82,
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      l10n.addTextModel,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _cs.onSurface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            l10n.addTextModel,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: _cs.onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
+                      const SizedBox(height: 14),
 
-                FormFieldLabel(l10n.vendor, required: true),
-                const SizedBox(height: 6),
-                _buildVendorDropdown(l10n),
-                const SizedBox(height: 12),
+                      FormFieldLabel(l10n.vendor, required: true),
+                      const SizedBox(height: 6),
+                      _buildVendorDropdown(l10n),
+                      const SizedBox(height: 12),
 
-                if (_isLocalModel)
-                  _buildLocalModelSection(l10n)
-                else ...[
-                  FormFieldLabel(l10n.model, required: true),
-                  const SizedBox(height: 6),
-                  if (_isCustom)
-                    _buildTextField(
-                      controller: _customModelController,
-                      hintText: l10n.enterModelName('gpt-4o-mini'),
-                    )
-                  else
-                    _buildModelDropdown(l10n),
-                  const SizedBox(height: 12),
+                      if (_isLocalModel)
+                        _buildLocalModelSection(l10n)
+                      else ...[
+                        FormFieldLabel(l10n.model, required: true),
+                        const SizedBox(height: 6),
+                        if (_isCustom)
+                          _buildTextField(
+                            controller: _customModelController,
+                            hintText: l10n.enterModelName('gpt-4o-mini'),
+                          )
+                        else
+                          _buildModelDropdown(l10n),
+                        const SizedBox(height: 12),
 
-                  if (_isCustom) ...[
-                    FormFieldLabel(l10n.endpointUrl, required: true),
-                    const SizedBox(height: 6),
-                    _buildTextField(
-                      controller: _customBaseUrlController,
-                      hintText: 'https://api.openai.com/v1',
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                        if (_isCustom) ...[
+                          FormFieldLabel(l10n.endpointUrl, required: true),
+                          const SizedBox(height: 6),
+                          _buildTextField(
+                            controller: _customBaseUrlController,
+                            hintText: 'https://api.openai.com/v1',
+                          ),
+                          const SizedBox(height: 12),
+                        ],
 
-                  FormFieldLabel(l10n.apiKey, required: true),
-                  const SizedBox(height: 6),
-                  _buildTextField(
-                    controller: _apiKeyController,
-                    hintText: l10n.enterApiKey,
-                    obscureText: true,
-                  ),
-                ],
-
-                const SizedBox(height: 14),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _canSubmit ? _submit : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _cs.onSurface,
-                      foregroundColor: _cs.onPrimary,
-                      disabledBackgroundColor: _cs.outline,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      l10n.addModel,
-                      style: const TextStyle(fontSize: 14),
-                    ),
+                        FormFieldLabel(l10n.apiKey, required: true),
+                        const SizedBox(height: 6),
+                        _buildTextField(
+                          controller: _apiKeyController,
+                          hintText: l10n.enterApiKey,
+                          obscureText: true,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _canSubmit ? _submit : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _cs.onSurface,
+                    foregroundColor: _cs.onPrimary,
+                    disabledBackgroundColor: _cs.outline,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    l10n.addModel,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -421,29 +459,33 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         FormFieldLabel(l10n.selectModel, required: true),
+        if (_recommendationSummary != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: _cs.secondaryContainer,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.memory, size: 14, color: _cs.onSecondaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _recommendationSummary!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _cs.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         ...kLocalLlmModels.map((m) => _buildModelDownloadTile(m)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.blue.withValues(alpha: 0.05),
-            border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.info_outline, size: 14, color: Colors.blue),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l10n.localModelAiHint,
-                  style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 12),
       ],
     );
@@ -453,6 +495,9 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     final isSelected = _selectedModel?.id == model.fileName;
     final downloaded = _modelDownloaded[model.fileName];
     final isDownloading = _downloading && isSelected;
+    final isRecommended = _recommendedModelFileNames.contains(model.fileName);
+    final isTopRecommended =
+        model.fileName == 'Qwen2.5-7B-Instruct-Q4_K_M.gguf';
 
     return FutureBuilder<bool>(
       future: downloaded != null
@@ -506,13 +551,59 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          model.fileName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _cs.onSurface,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                model.fileName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _cs.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (isTopRecommended)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _cs.primaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '最推荐',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: _cs.onPrimaryContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            else if (isRecommended)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _cs.primaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '推荐',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: _cs.onPrimaryContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(

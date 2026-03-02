@@ -5,6 +5,7 @@ import 'stt_providers/zai_stt_provider.dart';
 import 'stt_providers/aliyun_stt_provider.dart';
 import 'stt_providers/gemini_stt_provider.dart';
 import 'stt_providers/whisper_cpp_stt_provider.dart';
+import 'stt_providers/sense_voice_stt_provider.dart';
 
 // Re-export types for backward compatibility
 export 'stt_providers/stt_provider.dart'
@@ -26,6 +27,11 @@ class SttService {
     // 本地 whisper.cpp
     if (config.type == SttProviderType.whisperCpp) {
       return WhisperCppSttProvider(config);
+    }
+
+    // 本地 SenseVoice FFI
+    if (config.type == SttProviderType.senseVoice) {
+      return SenseVoiceSttProvider(config);
     }
 
     final baseUrl = config.baseUrl.trim().toLowerCase();

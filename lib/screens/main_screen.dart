@@ -252,6 +252,12 @@ class _MainScreenState extends State<MainScreen> {
   bool _hasValidSttModel(SettingsProvider settings) {
     final model = settings.config.model.trim();
     if (model.isEmpty) return false;
+    // 本地模型（SenseVoice / whisperCpp）只需检查 model 非空即可；
+    // 它们的模型文件名不在云端 preset 的 availableModels 列表中。
+    if (settings.config.type == SttProviderType.senseVoice ||
+        settings.config.type == SttProviderType.whisperCpp) {
+      return true;
+    }
     final preset = settings.currentPreset;
     if (preset != null && preset.availableModels.isNotEmpty) {
       return preset.availableModels.any((m) => m.id == model);

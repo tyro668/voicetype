@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/provider_config.dart';
 import '../../models/stt_model_entry.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/sense_voice_ffi_service.dart';
 import '../../services/stt_service.dart';
 import '../../services/whisper_cpp_service.dart';
 import '../../widgets/model_form_widgets.dart';
@@ -24,7 +25,14 @@ class _SttPageState extends State<SttPage> {
     return entry.vendorName == 'Local Model' ||
         entry.vendorName == '本地模型' ||
         entry.vendorName == '本地 whisper.cpp' ||
-        entry.vendorName == 'whisper.cpp';
+        entry.vendorName == 'whisper.cpp' ||
+        entry.vendorName == 'SenseVoice' ||
+        entry.vendorName == 'sensevoice' ||
+        entry.vendorName == '本地 SenseVoice';
+  }
+
+  static bool isSenseVoiceModelEntry(SttModelEntry entry) {
+    return SttProviderConfig.isSenseVoiceModel(entry.model);
   }
 
   @override
@@ -126,7 +134,9 @@ class _SttPageState extends State<SttPage> {
     );
 
     final config = SttProviderConfig(
-      type: isLocalModelEntry(entry)
+      type: isSenseVoiceModelEntry(entry)
+          ? SttProviderType.senseVoice
+          : isLocalModelEntry(entry)
           ? SttProviderType.whisperCpp
           : SttProviderType.cloud,
       name: entry.vendorName,
@@ -258,6 +268,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     }
   }
 
+  String _localizedSenseVoiceLocalDescription(SenseVoiceModel model) {
+    return model.description;
+  }
+
   SttProviderConfig? _selectedVendor;
   SttModel? _selectedModel;
   bool _isCustom = false;
@@ -272,7 +286,18 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   String _downloadStatus = '';
   final Map<String, bool> _modelDownloaded = {};
 
-  List<SttProviderConfig> get _vendorOptions => widget.presets;
+  List<SttProviderConfig> get _vendorOptions {
+    final local = <SttProviderConfig>[];
+    final others = <SttProviderConfig>[];
+    for (final preset in widget.presets) {
+      if (preset.type == SttProviderType.whisperCpp) {
+        local.add(preset);
+      } else {
+        others.add(preset);
+      }
+    }
+    return [...local, ...others];
+  }
 
   bool get _isLocalModel => _selectedVendor?.type == SttProviderType.whisperCpp;
 
@@ -290,98 +315,105 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
+        constraints: BoxConstraints(
+          maxWidth: 440,
+          maxHeight: MediaQuery.of(context).size.height * 0.82,
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      l10n.addVoiceModel,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _cs.onSurface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            l10n.addVoiceModel,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: _cs.onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
+                      const SizedBox(height: 14),
 
-                FormFieldLabel(l10n.vendor, required: true),
-                const SizedBox(height: 6),
-                _buildVendorDropdown(l10n),
-                const SizedBox(height: 12),
+                      FormFieldLabel(l10n.vendor, required: true),
+                      const SizedBox(height: 6),
+                      _buildVendorDropdown(l10n),
+                      const SizedBox(height: 12),
 
-                if (_isLocalModel)
-                  _buildLocalModelSection(l10n)
-                else ...[
-                  FormFieldLabel(l10n.model, required: true),
-                  const SizedBox(height: 6),
-                  if (_isCustom)
-                    _buildTextField(
-                      controller: _customModelController,
-                      hintText: l10n.enterModelName('whisper-1'),
-                    )
-                  else
-                    _buildModelDropdown(l10n),
-                  const SizedBox(height: 12),
+                      if (_isLocalModel)
+                        _buildLocalModelSection(l10n)
+                      else ...[
+                        FormFieldLabel(l10n.model, required: true),
+                        const SizedBox(height: 6),
+                        if (_isCustom)
+                          _buildTextField(
+                            controller: _customModelController,
+                            hintText: l10n.enterModelName('whisper-1'),
+                          )
+                        else
+                          _buildModelDropdown(l10n),
+                        const SizedBox(height: 12),
 
-                  if (_isCustom) ...[
-                    FormFieldLabel(l10n.endpointUrl, required: true),
-                    const SizedBox(height: 6),
-                    _buildTextField(
-                      controller: _customBaseUrlController,
-                      hintText: 'https://api.openai.com/v1',
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                        if (_isCustom) ...[
+                          FormFieldLabel(l10n.endpointUrl, required: true),
+                          const SizedBox(height: 6),
+                          _buildTextField(
+                            controller: _customBaseUrlController,
+                            hintText: 'https://api.openai.com/v1',
+                          ),
+                          const SizedBox(height: 12),
+                        ],
 
-                  FormFieldLabel(l10n.apiKey, required: true),
-                  const SizedBox(height: 6),
-                  _buildTextField(
-                    controller: _apiKeyController,
-                    hintText: l10n.enterApiKey,
-                    obscureText: true,
-                  ),
-                ],
-
-                const SizedBox(height: 14),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _canSubmit ? _submit : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _cs.onSurface,
-                      foregroundColor: _cs.onPrimary,
-                      disabledBackgroundColor: _cs.outline,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      l10n.addModel,
-                      style: const TextStyle(fontSize: 14),
-                    ),
+                        FormFieldLabel(l10n.apiKey, required: true),
+                        const SizedBox(height: 6),
+                        _buildTextField(
+                          controller: _apiKeyController,
+                          hintText: l10n.enterApiKey,
+                          obscureText: true,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _canSubmit ? _submit : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _cs.onSurface,
+                    foregroundColor: _cs.onPrimary,
+                    disabledBackgroundColor: _cs.outline,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    l10n.addModel,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -393,32 +425,29 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.green.withValues(alpha: 0.05),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle, size: 16, color: Colors.green),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l10n.localModelSttHint,
-                  style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
         FormFieldLabel(l10n.selectModel, required: true),
         const SizedBox(height: 8),
+        _buildSectionLabel('SenseVoice'),
+        ...kSenseVoiceModels.map((m) => _buildSenseVoiceModelDownloadTile(m)),
+        const SizedBox(height: 12),
+        _buildSectionLabel('Whisper'),
         ...kWhisperModels.map((m) => _buildModelDownloadTile(m)),
         const SizedBox(height: 12),
       ],
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: _cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 
@@ -646,6 +675,251 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     }
   }
 
+  Widget _buildSenseVoiceModelDownloadTile(SenseVoiceModel model) {
+    final isSelected = _selectedModel?.id == model.fileName;
+    final downloaded = _modelDownloaded[model.fileName];
+    final isDownloading = _downloading && isSelected;
+
+    return FutureBuilder<bool>(
+      future: downloaded != null
+          ? Future.value(downloaded)
+          : SenseVoiceFfiService.isModelDownloaded(model.fileName),
+      builder: (context, snapshot) {
+        final exists = snapshot.data ?? downloaded ?? false;
+        if (snapshot.hasData && _modelDownloaded[model.fileName] == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _modelDownloaded[model.fileName] = exists);
+            }
+          });
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? _cs.primary : _cs.outlineVariant,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: exists
+                ? () => setState(() {
+                    _selectedModel = SttModel(
+                      id: model.fileName,
+                      description: _localizedSenseVoiceLocalDescription(model),
+                    );
+                  })
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    size: 18,
+                    color: isSelected
+                        ? _cs.primary
+                        : exists
+                        ? _cs.outline
+                        : _cs.outline.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                model.fileName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _cs.onSurface,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _cs.primaryContainer,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '推荐',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: _cs.onPrimaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _localizedSenseVoiceLocalDescription(model),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _cs.onSurfaceVariant,
+                          ),
+                        ),
+                        if (isDownloading) ...[
+                          const SizedBox(height: 6),
+                          if (_downloadStatus.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                _downloadStatus,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: _cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: _downloadProgress,
+                              minHeight: 4,
+                              backgroundColor: _cs.surfaceContainerHighest,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: _cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                        if (_downloadError != null && isSelected) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _downloadError!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (exists)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.l10n.downloaded,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (isDownloading)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _cs.primary,
+                      ),
+                    )
+                  else
+                    TextButton.icon(
+                      onPressed: () => _downloadSenseVoiceModel(model),
+                      icon: const Icon(Icons.download, size: 16),
+                      label: Text(
+                        widget.l10n.download,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _downloadSenseVoiceModel(SenseVoiceModel model) async {
+    setState(() {
+      _downloading = true;
+      _downloadProgress = 0.0;
+      _downloadError = null;
+      _downloadStatus = '';
+      _selectedModel = SttModel(
+        id: model.fileName,
+        description: _localizedSenseVoiceLocalDescription(model),
+      );
+    });
+
+    try {
+      await SenseVoiceFfiService.downloadModel(
+        model,
+        onProgress: (progress) {
+          if (mounted) {
+            setState(() => _downloadProgress = progress);
+          }
+        },
+        onStatus: (message) {
+          if (mounted) {
+            setState(() => _downloadStatus = message);
+          }
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _modelDownloaded[model.fileName] = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _downloadError = e.toString();
+        });
+      }
+    }
+  }
+
   bool get _canSubmit {
     if (_downloading) return false;
     if (_isLocalModel) {
@@ -801,6 +1075,12 @@ class _EditModelDialogState extends State<_EditModelDialog> {
 
   bool get _isLocalModel => _SttPageState.isLocalModelEntry(widget.entry);
 
+  bool get _isSenseVoiceModel => SttProviderConfig.isSenseVoiceModel(
+    widget.entry.model.isNotEmpty
+        ? widget.entry.model
+        : _modelController.text.trim(),
+  );
+
   bool get _isCustom =>
       !_isLocalModel &&
       !widget.presets.any((p) => p.name == widget.entry.vendorName);
@@ -855,7 +1135,9 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       Expanded(
                         child: _buildTextField(
                           controller: _modelController,
-                          hintText: 'ggml-tiny.bin',
+                          hintText: _isSenseVoiceModel
+                              ? 'sense-voice-zh-en'
+                              : 'ggml-tiny.bin',
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -939,7 +1221,9 @@ class _EditModelDialogState extends State<_EditModelDialog> {
 
   Future<void> _openModelFileLocation(String fileName) async {
     if (fileName.isEmpty) return;
-    final dir = await WhisperCppService.defaultModelDir;
+    final dir = _isSenseVoiceModel
+        ? await SenseVoiceFfiService.defaultModelDir
+        : await WhisperCppService.defaultModelDir;
     if (Platform.isWindows) {
       await Process.run('explorer', [dir]);
     } else {
