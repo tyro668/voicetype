@@ -122,6 +122,12 @@ abstract class AppLocalizations {
   /// **'Voice Model'**
   String get voiceModelSettings;
 
+  /// No description provided for @speakerModelSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaker Model'**
+  String get speakerModelSettings;
+
   /// No description provided for @textModelSettings.
   ///
   /// In en, this message translates to:
@@ -1195,6 +1201,154 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get themeDark;
+
+  /// No description provided for @localModelIdleUnloadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local model idle unload'**
+  String get localModelIdleUnloadTitle;
+
+  /// No description provided for @localModelIdleUnloadDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Unload local model after idle period to reduce memory usage'**
+  String get localModelIdleUnloadDescription;
+
+  /// No description provided for @localModelIdleUnloadTiming.
+  ///
+  /// In en, this message translates to:
+  /// **'Release timing'**
+  String get localModelIdleUnloadTiming;
+
+  /// No description provided for @off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get off;
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} min'**
+  String minutesShort(int value);
+
+  /// No description provided for @speakerModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting speaker ID (3D-Speaker)'**
+  String get speakerModelTitle;
+
+  /// No description provided for @speakerModelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use local 3D-Speaker model for diarization with configurable max speakers and model path'**
+  String get speakerModelDescription;
+
+  /// No description provided for @speakerModelEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable 3D-Speaker'**
+  String get speakerModelEnable;
+
+  /// No description provided for @speakerModelMaxSpeakers.
+  ///
+  /// In en, this message translates to:
+  /// **'Max speakers'**
+  String get speakerModelMaxSpeakers;
+
+  /// No description provided for @speakerModelPathNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Model path not set (default paths will be tried)'**
+  String get speakerModelPathNotSet;
+
+  /// No description provided for @speakerModelPickModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick model'**
+  String get speakerModelPickModel;
+
+  /// No description provided for @speakerModelDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading...'**
+  String get speakerModelDownloading;
+
+  /// No description provided for @speakerModelDownloadDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Download default'**
+  String get speakerModelDownloadDefault;
+
+  /// No description provided for @speakerModelDownloadSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Download source'**
+  String get speakerModelDownloadSource;
+
+  /// No description provided for @speakerModelDownloadSourceAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get speakerModelDownloadSourceAuto;
+
+  /// No description provided for @speakerModelDownloadSourceDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct only'**
+  String get speakerModelDownloadSourceDirect;
+
+  /// No description provided for @speakerModelDownloadSourceMirror.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirror only'**
+  String get speakerModelDownloadSourceMirror;
+
+  /// No description provided for @speakerModelReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Model file ready'**
+  String get speakerModelReady;
+
+  /// No description provided for @speakerModelMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Model file not found, please re-select'**
+  String get speakerModelMissing;
+
+  /// No description provided for @speakerModelDefaultLookup.
+  ///
+  /// In en, this message translates to:
+  /// **'Default search: <app>/models/3d-speaker/model.onnx'**
+  String get speakerModelDefaultLookup;
+
+  /// No description provided for @speakerModelDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'3D-Speaker model downloaded'**
+  String get speakerModelDownloaded;
+
+  /// No description provided for @speakerModelDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed. Check network or pick an ONNX model manually'**
+  String get speakerModelDownloadFailed;
+
+  /// No description provided for @speakerModelDownloadStatusKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded {downloaded} / {total} ({percent}%)'**
+  String speakerModelDownloadStatusKnown(
+    String downloaded,
+    String total,
+    String percent,
+  );
+
+  /// No description provided for @speakerModelDownloadStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded {downloaded} (total size unknown)'**
+  String speakerModelDownloadStatusUnknown(String downloaded);
 
   /// No description provided for @dashboard.
   ///

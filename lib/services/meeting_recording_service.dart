@@ -19,6 +19,7 @@ import 'pinyin_matcher.dart';
 import 'vad_service.dart';
 import 'correction_stats_service.dart';
 import 'incremental_summary_service.dart';
+import 'speaker_diarization_service.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
 class MeetingRecordingService {
@@ -26,6 +27,7 @@ class MeetingRecordingService {
   static const Duration _segmentStartTimeout = Duration(seconds: 8);
 
   final AudioRecorderService _recorder = AudioRecorderService();
+  SpeakerDiarizationService _speakerDiarization = SpeakerDiarizationService();
 
   /// 分段时长（秒），默认 30 秒（仅回退模式使用）
   int segmentDurationSeconds = 30;
@@ -171,6 +173,9 @@ class MeetingRecordingService {
     required SttProviderConfig sttConfig,
     AiEnhanceConfig? aiConfig,
     bool aiEnhanceEnabled = false,
+    bool speaker3dEnabled = true,
+    String speaker3dModelPath = '',
+    int speaker3dMaxSpeakers = 6,
     int? segmentSeconds,
     int windowSize = 5,
     PinyinMatcher? pinyinMatcher,
@@ -189,6 +194,12 @@ class MeetingRecordingService {
     _sttConfig = sttConfig;
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
+
+    _recreateSpeakerDiarization(
+      preferThreeDSpeaker: speaker3dEnabled,
+      threeDSpeakerModelPath: speaker3dModelPath,
+      maxSpeakers: speaker3dMaxSpeakers,
+    );
 
     // 智能分段参数
     _softMinSeconds = softMinSeconds;
@@ -209,6 +220,7 @@ class MeetingRecordingService {
     _correctionContext.reset();
     unawaited(_flushGlossaryStats());
     _sessionGlossary.reset();
+    _speakerDiarization.reset();
     if (pinyinMatcher != null &&
         aiConfig != null &&
         correctionPrompt != null &&
@@ -504,6 +516,9 @@ class MeetingRecordingService {
       await _waitForMergerComplete(timeout: const Duration(seconds: 10));
     }
 
+    // 会议结束后执行一次全局说话人重聚类，修正在线阶段误分。
+    await _runOfflineSpeakerRefinement(_currentMeeting!.id);
+
     // 更新会议状态：进入后台整理中
     final meeting = _currentMeeting!;
     _refreshRecordingDuration();
@@ -524,6 +539,80 @@ class MeetingRecordingService {
     final result = meeting;
     _currentMeeting = null;
     return result;
+  }
+
+  Future<void> _runOfflineSpeakerRefinement(String meetingId) async {
+    try {
+      final refined = _speakerDiarization.refineOfflineAssignments();
+      if (refined.isEmpty) return;
+
+      final db = AppDatabase.instance;
+      final segments = await db.getMeetingSegments(meetingId);
+      var updated = 0;
+
+      for (final segment in segments) {
+        final result = refined[segment.id];
+        if (result == null) continue;
+
+        final nextSpeaker =
+            MeetingSegment.normalizeSpeakerId(result.speakerId) ??
+            result.speakerId;
+        final prevSpeaker = MeetingSegment.normalizeSpeakerId(
+          segment.speakerId,
+        );
+        final speakerChanged = prevSpeaker != nextSpeaker;
+        final confidenceChanged =
+            (segment.speakerConfidence ?? -1) != result.confidence;
+
+        segment.speakerId = nextSpeaker;
+        segment.speakerConfidence = result.confidence;
+
+        if ((segment.transcription ?? '').trim().isNotEmpty) {
+          segment.transcription = MeetingSegment.withSpeakerPrefix(
+            segment.transcription!,
+            nextSpeaker,
+          );
+        }
+        if ((segment.enhancedText ?? '').trim().isNotEmpty) {
+          segment.enhancedText = MeetingSegment.withSpeakerPrefix(
+            segment.enhancedText!,
+            nextSpeaker,
+          );
+        }
+
+        if (speakerChanged || confidenceChanged) {
+          await db.updateMeetingSegment(segment);
+          _onSegmentUpdated.add(segment);
+          updated++;
+        }
+      }
+
+      await LogService.info(
+        'MEETING',
+        'offline speaker refinement applied: $updated segments updated',
+      );
+    } catch (e) {
+      await LogService.error(
+        'MEETING',
+        'offline speaker refinement failed: $e',
+      );
+    }
+  }
+
+  void _recreateSpeakerDiarization({
+    required bool preferThreeDSpeaker,
+    required String threeDSpeakerModelPath,
+    required int maxSpeakers,
+  }) {
+    final previous = _speakerDiarization;
+    _speakerDiarization = SpeakerDiarizationService(
+      preferThreeDSpeaker: preferThreeDSpeaker,
+      threeDSpeakerModelPath: threeDSpeakerModelPath.trim().isEmpty
+          ? null
+          : threeDSpeakerModelPath.trim(),
+      maxSpeakers: maxSpeakers.clamp(2, 12),
+    );
+    unawaited(previous.dispose());
   }
 
   /// 取消并丢弃当前会议
@@ -761,6 +850,23 @@ class MeetingRecordingService {
         }
       }
 
+      // 1.6 说话人区分（本地）
+      try {
+        final diarization = await _speakerDiarization.assignSpeaker(
+          audioPath: pending.audioPath,
+          segmentKey: segment.id,
+        );
+        if (diarization != null) {
+          segment.speakerId = diarization.speakerId;
+          segment.speakerConfidence = diarization.confidence;
+        }
+      } catch (e) {
+        await LogService.error(
+          'MEETING',
+          'speaker diarization failed for segment ${segment.segmentIndex}: $e',
+        );
+      }
+
       // 2. AI 文字增强（如果启用）
       // M1: 使用纠错后文本（segment.transcription）作为增强输入，
       // 而非原始 rawText，确保增强阶段基于最准确的文本。
@@ -788,6 +894,21 @@ class MeetingRecordingService {
             'AI enhance failed for segment ${segment.segmentIndex}: $e',
           );
           // 增强失败不影响转写结果
+        }
+      }
+
+      if (segment.speakerId != null && segment.speakerId!.trim().isNotEmpty) {
+        if ((segment.transcription ?? '').trim().isNotEmpty) {
+          segment.transcription = MeetingSegment.withSpeakerPrefix(
+            segment.transcription!,
+            segment.speakerId!,
+          );
+        }
+        if ((segment.enhancedText ?? '').trim().isNotEmpty) {
+          segment.enhancedText = MeetingSegment.withSpeakerPrefix(
+            segment.enhancedText!,
+            segment.speakerId!,
+          );
         }
       }
 
@@ -1063,6 +1184,7 @@ class MeetingRecordingService {
     _onStatusChanged.close();
     _onDurationChanged.close();
     _onTitleGenerated.close();
+    unawaited(_speakerDiarization.dispose());
     _recorder.dispose();
   }
 }

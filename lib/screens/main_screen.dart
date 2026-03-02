@@ -416,6 +416,9 @@ class _MainScreenState extends State<MainScreen> {
         sttConfig: settings.config,
         aiConfig: settings.effectiveAiEnhanceConfig,
         aiEnhanceEnabled: settings.aiEnhanceEnabled,
+        speaker3dEnabled: settings.speaker3dEnabled,
+        speaker3dModelPath: settings.speaker3dModelPath,
+        speaker3dMaxSpeakers: settings.speaker3dMaxSpeakers,
         dictionarySuffix: settings.dictionaryWordsForPrompt,
         pinyinMatcher: settings.correctionEffective
             ? settings.pinyinMatcher

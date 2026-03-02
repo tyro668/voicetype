@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceModelSettings => 'Voice Model';
 
   @override
+  String get speakerModelSettings => 'Speaker Model';
+
+  @override
   String get textModelSettings => 'Text Model';
 
   @override
@@ -595,6 +598,93 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeDark => 'Dark';
+
+  @override
+  String get localModelIdleUnloadTitle => 'Local model idle unload';
+
+  @override
+  String get localModelIdleUnloadDescription =>
+      'Unload local model after idle period to reduce memory usage';
+
+  @override
+  String get localModelIdleUnloadTiming => 'Release timing';
+
+  @override
+  String get off => 'Off';
+
+  @override
+  String minutesShort(int value) {
+    return '$value min';
+  }
+
+  @override
+  String get speakerModelTitle => 'Meeting speaker ID (3D-Speaker)';
+
+  @override
+  String get speakerModelDescription =>
+      'Use local 3D-Speaker model for diarization with configurable max speakers and model path';
+
+  @override
+  String get speakerModelEnable => 'Enable 3D-Speaker';
+
+  @override
+  String get speakerModelMaxSpeakers => 'Max speakers';
+
+  @override
+  String get speakerModelPathNotSet =>
+      'Model path not set (default paths will be tried)';
+
+  @override
+  String get speakerModelPickModel => 'Pick model';
+
+  @override
+  String get speakerModelDownloading => 'Downloading...';
+
+  @override
+  String get speakerModelDownloadDefault => 'Download default';
+
+  @override
+  String get speakerModelDownloadSource => 'Download source';
+
+  @override
+  String get speakerModelDownloadSourceAuto => 'Auto';
+
+  @override
+  String get speakerModelDownloadSourceDirect => 'Direct only';
+
+  @override
+  String get speakerModelDownloadSourceMirror => 'Mirror only';
+
+  @override
+  String get speakerModelReady => 'Model file ready';
+
+  @override
+  String get speakerModelMissing => 'Model file not found, please re-select';
+
+  @override
+  String get speakerModelDefaultLookup =>
+      'Default search: <app>/models/3d-speaker/model.onnx';
+
+  @override
+  String get speakerModelDownloaded => '3D-Speaker model downloaded';
+
+  @override
+  String get speakerModelDownloadFailed =>
+      'Download failed. Check network or pick an ONNX model manually';
+
+  @override
+  String speakerModelDownloadStatusKnown(
+    String downloaded,
+    String total,
+    String percent,
+  ) {
+    return 'Downloaded $downloaded / $total ($percent%)';
+  }
+
+  @override
+  String speakerModelDownloadStatusUnknown(String downloaded) {
+    return 'Downloaded $downloaded (total size unknown)';
+  }
 
   @override
   String get dashboard => 'Dashboard';

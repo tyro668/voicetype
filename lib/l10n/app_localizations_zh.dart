@@ -21,6 +21,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get voiceModelSettings => '语音模型';
 
   @override
+  String get speakerModelSettings => '声纹模型';
+
+  @override
   String get textModelSettings => '文本模型';
 
   @override
@@ -567,6 +570,90 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get themeDark => '深色';
+
+  @override
+  String get localModelIdleUnloadTitle => '本地模型空闲自动释放';
+
+  @override
+  String get localModelIdleUnloadDescription => '长时间不使用时自动卸载模型，降低内存占用';
+
+  @override
+  String get localModelIdleUnloadTiming => '释放时机';
+
+  @override
+  String get off => '关闭';
+
+  @override
+  String minutesShort(int value) {
+    return '$value 分钟';
+  }
+
+  @override
+  String get speakerModelTitle => '会议声纹识别（3D-Speaker）';
+
+  @override
+  String get speakerModelDescription =>
+      '启用本地 3D-Speaker 模型做说话人区分，可设置最大说话人数与模型路径';
+
+  @override
+  String get speakerModelEnable => '启用 3D-Speaker';
+
+  @override
+  String get speakerModelMaxSpeakers => '最大说话人数';
+
+  @override
+  String get speakerModelPathNotSet => '未设置模型路径（将尝试默认目录）';
+
+  @override
+  String get speakerModelPickModel => '选择模型';
+
+  @override
+  String get speakerModelDownloading => '下载中...';
+
+  @override
+  String get speakerModelDownloadDefault => '下载默认模型';
+
+  @override
+  String get speakerModelDownloadSource => '下载源';
+
+  @override
+  String get speakerModelDownloadSourceAuto => '自动';
+
+  @override
+  String get speakerModelDownloadSourceDirect => '仅直连';
+
+  @override
+  String get speakerModelDownloadSourceMirror => '仅镜像';
+
+  @override
+  String get speakerModelReady => '模型文件已就绪';
+
+  @override
+  String get speakerModelMissing => '模型文件不存在，请重新选择';
+
+  @override
+  String get speakerModelDefaultLookup =>
+      '默认查找：应用目录/models/3d-speaker/model.onnx';
+
+  @override
+  String get speakerModelDownloaded => '3D-Speaker 模型下载完成';
+
+  @override
+  String get speakerModelDownloadFailed => '下载失败，请检查网络或手动选择 onnx 模型';
+
+  @override
+  String speakerModelDownloadStatusKnown(
+    String downloaded,
+    String total,
+    String percent,
+  ) {
+    return '已下载 $downloaded / $total（$percent%）';
+  }
+
+  @override
+  String speakerModelDownloadStatusUnknown(String downloaded) {
+    return '已下载 $downloaded（总大小未知）';
+  }
 
   @override
   String get dashboard => '仪表盘';

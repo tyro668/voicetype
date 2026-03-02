@@ -21,7 +21,6 @@ class GeneralPage extends StatefulWidget {
 
 class _GeneralPageState extends State<GeneralPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
-  bool get _isZh => Localizations.localeOf(context).languageCode == 'zh';
 
   bool? _micPermission;
   bool? _accessibilityPermission;
@@ -477,7 +476,7 @@ class _GeneralPageState extends State<GeneralPage> {
 
           // ===== 本地模型闲置释放 =====
           Text(
-            _isZh ? '本地模型空闲自动释放' : 'Local model idle unload',
+            l10n.localModelIdleUnloadTitle,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -486,13 +485,11 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            _isZh
-                ? '长时间不使用时自动卸载模型，降低内存占用'
-                : 'Unload local model after idle period to reduce memory usage',
+            l10n.localModelIdleUnloadDescription,
             style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-          _buildLocalLlmIdleUnloadSection(settings),
+          _buildLocalLlmIdleUnloadSection(settings, l10n),
           const SizedBox(height: 36),
 
           // ===== 日志 =====
@@ -828,7 +825,10 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildLocalLlmIdleUnloadSection(SettingsProvider settings) {
+  Widget _buildLocalLlmIdleUnloadSection(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
     const options = [0, 1, 3, 5, 10];
     final current = options.contains(settings.localLlmIdleUnloadMinutes)
         ? settings.localLlmIdleUnloadMinutes
@@ -847,7 +847,7 @@ class _GeneralPageState extends State<GeneralPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              _isZh ? '释放时机' : 'Release timing',
+              l10n.localModelIdleUnloadTiming,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -867,9 +867,7 @@ class _GeneralPageState extends State<GeneralPage> {
                   (value) => DropdownMenuItem<int>(
                     value: value,
                     child: Text(
-                      value == 0
-                          ? (_isZh ? '关闭' : 'Off')
-                          : (_isZh ? '$value 分钟' : '$value min'),
+                      value == 0 ? l10n.off : l10n.minutesShort(value),
                     ),
                   ),
                 )

@@ -59,6 +59,14 @@ class SettingsProvider extends ChangeNotifier {
   static const _retrospectiveCorrectionEnabledKey =
       'retrospective_correction_enabled';
   static const _localLlmIdleUnloadMinutesKey = 'local_llm_idle_unload_minutes';
+  static const _speaker3dEnabledKey = 'speaker_3d_enabled';
+  static const _speaker3dModelPathKey = 'speaker_3d_model_path';
+  static const _speaker3dMaxSpeakersKey = 'speaker_3d_max_speakers';
+  static const _speaker3dDownloadSourceModeKey =
+      'speaker_3d_download_source_mode';
+  static const _speaker3dDownloadSourceModeAuto = 'auto';
+  static const _speaker3dDownloadSourceModeDirect = 'direct';
+  static const _speaker3dDownloadSourceModeMirror = 'mirror';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -123,6 +131,10 @@ class SettingsProvider extends ChangeNotifier {
   bool _retrospectiveCorrectionEnabled = false;
   String _correctionPrompt = '';
   int _localLlmIdleUnloadMinutes = 3;
+  bool _speaker3dEnabled = true;
+  String _speaker3dModelPath = '';
+  int _speaker3dMaxSpeakers = 6;
+  String _speaker3dDownloadSourceMode = _speaker3dDownloadSourceModeAuto;
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
   );
@@ -193,6 +205,10 @@ class SettingsProvider extends ChangeNotifier {
   bool get retrospectiveCorrectionEnabled => _retrospectiveCorrectionEnabled;
   String get correctionPrompt => _correctionPrompt;
   int get localLlmIdleUnloadMinutes => _localLlmIdleUnloadMinutes;
+  bool get speaker3dEnabled => _speaker3dEnabled;
+  String get speaker3dModelPath => _speaker3dModelPath;
+  int get speaker3dMaxSpeakers => _speaker3dMaxSpeakers;
+  String get speaker3dDownloadSourceMode => _speaker3dDownloadSourceMode;
   PinyinMatcher get pinyinMatcher => _pinyinMatcher;
   int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
   double get correctionMinCandidateScore => _correctionMinCandidateScore;
@@ -504,6 +520,33 @@ class SettingsProvider extends ChangeNotifier {
     if (localLlmIdleUnloadMinutesStr != null) {
       _localLlmIdleUnloadMinutes =
           int.tryParse(localLlmIdleUnloadMinutesStr)?.clamp(0, 30) ?? 3;
+    }
+
+    final speaker3dEnabledStr = await db.getSetting(_speaker3dEnabledKey);
+    if (speaker3dEnabledStr != null) {
+      _speaker3dEnabled = speaker3dEnabledStr == 'true';
+    }
+
+    final speaker3dModelPathStr = await db.getSetting(_speaker3dModelPathKey);
+    if (speaker3dModelPathStr != null) {
+      _speaker3dModelPath = speaker3dModelPathStr.trim();
+    }
+
+    final speaker3dMaxSpeakersStr = await db.getSetting(
+      _speaker3dMaxSpeakersKey,
+    );
+    if (speaker3dMaxSpeakersStr != null) {
+      _speaker3dMaxSpeakers =
+          int.tryParse(speaker3dMaxSpeakersStr)?.clamp(2, 12) ?? 6;
+    }
+
+    final speaker3dDownloadSourceModeStr = await db.getSetting(
+      _speaker3dDownloadSourceModeKey,
+    );
+    if (speaker3dDownloadSourceModeStr != null) {
+      _speaker3dDownloadSourceMode = _normalizeSpeaker3dDownloadSourceMode(
+        speaker3dDownloadSourceModeStr,
+      );
     }
 
     // 加载纠错 prompt
@@ -1368,6 +1411,48 @@ class SettingsProvider extends ChangeNotifier {
     );
     await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
     notifyListeners();
+  }
+
+  Future<void> setSpeaker3dEnabled(bool enabled) async {
+    _speaker3dEnabled = enabled;
+    await _saveSetting(_speaker3dEnabledKey, enabled.toString());
+    notifyListeners();
+  }
+
+  Future<void> setSpeaker3dModelPath(String path) async {
+    _speaker3dModelPath = path.trim();
+    await _saveSetting(_speaker3dModelPathKey, _speaker3dModelPath);
+    notifyListeners();
+  }
+
+  Future<void> setSpeaker3dMaxSpeakers(int value) async {
+    _speaker3dMaxSpeakers = value.clamp(2, 12);
+    await _saveSetting(
+      _speaker3dMaxSpeakersKey,
+      _speaker3dMaxSpeakers.toString(),
+    );
+    notifyListeners();
+  }
+
+  Future<void> setSpeaker3dDownloadSourceMode(String mode) async {
+    _speaker3dDownloadSourceMode = _normalizeSpeaker3dDownloadSourceMode(mode);
+    await _saveSetting(
+      _speaker3dDownloadSourceModeKey,
+      _speaker3dDownloadSourceMode,
+    );
+    notifyListeners();
+  }
+
+  String _normalizeSpeaker3dDownloadSourceMode(String mode) {
+    final normalized = mode.trim().toLowerCase();
+    switch (normalized) {
+      case _speaker3dDownloadSourceModeDirect:
+      case _speaker3dDownloadSourceModeMirror:
+      case _speaker3dDownloadSourceModeAuto:
+        return normalized;
+      default:
+        return _speaker3dDownloadSourceModeAuto;
+    }
   }
 
   bool _containsChinese(String text) {

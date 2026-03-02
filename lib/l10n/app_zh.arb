@@ -4,6 +4,7 @@
   "loading": "加载中...",
   "generalSettings": "通用设置",
   "voiceModelSettings": "语音模型",
+  "speakerModelSettings": "声纹模型",
   "textModelSettings": "文本模型",
   "promptWorkshop": "提示词设置",
   "aiEnhanceHub": "智能增强",
@@ -214,6 +215,59 @@
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
   "themeDark": "深色",
+
+  "localModelIdleUnloadTitle": "本地模型空闲自动释放",
+  "localModelIdleUnloadDescription": "长时间不使用时自动卸载模型，降低内存占用",
+  "localModelIdleUnloadTiming": "释放时机",
+  "off": "关闭",
+  "minutesShort": "{value} 分钟",
+  "@minutesShort": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+
+  "speakerModelTitle": "会议声纹识别（3D-Speaker）",
+  "speakerModelDescription": "启用本地 3D-Speaker 模型做说话人区分，可设置最大说话人数与模型路径",
+  "speakerModelEnable": "启用 3D-Speaker",
+  "speakerModelMaxSpeakers": "最大说话人数",
+  "speakerModelPathNotSet": "未设置模型路径（将尝试默认目录）",
+  "speakerModelPickModel": "选择模型",
+  "speakerModelDownloading": "下载中...",
+  "speakerModelDownloadDefault": "下载默认模型",
+  "speakerModelDownloadSource": "下载源",
+  "speakerModelDownloadSourceAuto": "自动",
+  "speakerModelDownloadSourceDirect": "仅直连",
+  "speakerModelDownloadSourceMirror": "仅镜像",
+  "speakerModelReady": "模型文件已就绪",
+  "speakerModelMissing": "模型文件不存在，请重新选择",
+  "speakerModelDefaultLookup": "默认查找：应用目录/models/3d-speaker/model.onnx",
+  "speakerModelDownloaded": "3D-Speaker 模型下载完成",
+  "speakerModelDownloadFailed": "下载失败，请检查网络或手动选择 onnx 模型",
+  "speakerModelDownloadStatusKnown": "已下载 {downloaded} / {total}（{percent}%）",
+  "@speakerModelDownloadStatusKnown": {
+    "placeholders": {
+      "downloaded": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "speakerModelDownloadStatusUnknown": "已下载 {downloaded}（总大小未知）",
+  "@speakerModelDownloadStatusUnknown": {
+    "placeholders": {
+      "downloaded": {
+        "type": "String"
+      }
+    }
+  },
 
   "dashboard": "仪表盘",
   "totalTranscriptions": "总转录次数",

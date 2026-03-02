@@ -9,6 +9,7 @@
 
   "generalSettings": "General",
   "voiceModelSettings": "Voice Model",
+  "speakerModelSettings": "Speaker Model",
   "textModelSettings": "Text Model",
   "promptWorkshop": "Prompt Settings",
   "aiEnhanceHub": "AI Enhancement",
@@ -219,6 +220,59 @@
   "themeSystem": "System",
   "themeLight": "Light",
   "themeDark": "Dark",
+
+  "localModelIdleUnloadTitle": "Local model idle unload",
+  "localModelIdleUnloadDescription": "Unload local model after idle period to reduce memory usage",
+  "localModelIdleUnloadTiming": "Release timing",
+  "off": "Off",
+  "minutesShort": "{value} min",
+  "@minutesShort": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+
+  "speakerModelTitle": "Meeting speaker ID (3D-Speaker)",
+  "speakerModelDescription": "Use local 3D-Speaker model for diarization with configurable max speakers and model path",
+  "speakerModelEnable": "Enable 3D-Speaker",
+  "speakerModelMaxSpeakers": "Max speakers",
+  "speakerModelPathNotSet": "Model path not set (default paths will be tried)",
+  "speakerModelPickModel": "Pick model",
+  "speakerModelDownloading": "Downloading...",
+  "speakerModelDownloadDefault": "Download default",
+  "speakerModelDownloadSource": "Download source",
+  "speakerModelDownloadSourceAuto": "Auto",
+  "speakerModelDownloadSourceDirect": "Direct only",
+  "speakerModelDownloadSourceMirror": "Mirror only",
+  "speakerModelReady": "Model file ready",
+  "speakerModelMissing": "Model file not found, please re-select",
+  "speakerModelDefaultLookup": "Default search: <app>/models/3d-speaker/model.onnx",
+  "speakerModelDownloaded": "3D-Speaker model downloaded",
+  "speakerModelDownloadFailed": "Download failed. Check network or pick an ONNX model manually",
+  "speakerModelDownloadStatusKnown": "Downloaded {downloaded} / {total} ({percent}%)",
+  "@speakerModelDownloadStatusKnown": {
+    "placeholders": {
+      "downloaded": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "speakerModelDownloadStatusUnknown": "Downloaded {downloaded} (total size unknown)",
+  "@speakerModelDownloadStatusUnknown": {
+    "placeholders": {
+      "downloaded": {
+        "type": "String"
+      }
+    }
+  },
 
   "dashboard": "Dashboard",
   "totalTranscriptions": "Total Transcriptions",
