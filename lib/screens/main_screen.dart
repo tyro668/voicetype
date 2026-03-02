@@ -10,6 +10,7 @@ import '../providers/recording_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/meeting_provider.dart';
 import '../services/log_service.dart';
+import '../services/audio_recorder.dart';
 import '../services/overlay_service.dart';
 import 'pages/dictionary_page.dart';
 import 'pages/history_page.dart';
@@ -95,6 +96,10 @@ class _MainScreenState extends State<MainScreen> {
   SettingsProvider? _settingsProvider;
   bool _didShowAccessibilityGuide = false;
   bool _didShowInputMonitoringGuide = false;
+  bool _homeMicPermission = false;
+  bool _homeAccessibilityPermission = false;
+  bool _checkingHomePermissions = false;
+  bool _homePermissionsChecked = false;
   LogicalKeyboardKey? _lastRegisteredHotkey;
   LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
   bool _fnTapToTalkPressCandidate = false;
@@ -126,7 +131,44 @@ class _MainScreenState extends State<MainScreen> {
       };
       settings.addListener(_settingsListener);
       _settingsListener();
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        unawaited(_refreshHomePermissions());
+      }
     });
+  }
+
+  Future<void> _refreshHomePermissions() async {
+    if (defaultTargetPlatform != TargetPlatform.macOS) return;
+    if (_checkingHomePermissions) return;
+    setState(() => _checkingHomePermissions = true);
+    try {
+      final mic = await AudioRecorderService().hasPermission();
+      final accessibility = await OverlayService.checkAccessibility();
+      if (!mounted) return;
+      setState(() {
+        _homeMicPermission = mic;
+        _homeAccessibilityPermission = accessibility;
+        _homePermissionsChecked = true;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _checkingHomePermissions = false);
+      }
+    }
+  }
+
+  Future<void> _requestMicPermissionFromHome() async {
+    await AudioRecorderService().hasPermission();
+    await _refreshHomePermissions();
+    if (_homeMicPermission) return;
+    await OverlayService.openMicrophonePrivacy();
+  }
+
+  Future<void> _requestAccessibilityPermissionFromHome() async {
+    await OverlayService.requestAccessibility();
+    await _refreshHomePermissions();
+    if (_homeAccessibilityPermission) return;
+    await OverlayService.openAccessibilityPrivacy();
   }
 
   void _registerCurrentHotkey(SettingsProvider settings) {
@@ -755,13 +797,28 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildContent() {
-    final Widget page = switch (_selectedNav) {
+    Widget page = switch (_selectedNav) {
       0 => const DashboardPage(),
       1 => const DictionaryPage(),
       2 => const HistoryPage(),
       3 => const MeetingDashboardPage(),
       _ => const SizedBox(),
     };
+
+    final showHomePermissionCard =
+        _selectedNav == 0 &&
+        defaultTargetPlatform == TargetPlatform.macOS &&
+        _homePermissionsChecked &&
+        (!_homeMicPermission || !_homeAccessibilityPermission);
+
+    if (showHomePermissionCard) {
+      page = Column(
+        children: [
+          _buildHomePermissionCard(),
+          Expanded(child: page),
+        ],
+      );
+    }
 
     final meetingProvider = context.watch<MeetingProvider>();
     // 会议仪表盘页面已内嵌实时录制面板，其他页面仍显示录制横幅
@@ -772,6 +829,134 @@ class _MainScreenState extends State<MainScreen> {
         _buildRecordingBanner(meetingProvider),
         Expanded(child: page),
       ],
+    );
+  }
+
+  Widget _buildHomePermissionCard() {
+    final l10n = AppLocalizations.of(context)!;
+    final showMic = !_homeMicPermission;
+    final showAccessibility = !_homeAccessibilityPermission;
+
+    Widget permissionItem({
+      required IconData icon,
+      required String title,
+      required VoidCallback onTap,
+    }) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _cs.outlineVariant.withValues(alpha: 0.6),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 16, color: _cs.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _cs.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l10n.permissionDenied,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: _cs.error,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 30,
+                child: FilledButton.tonal(
+                  onPressed: onTap,
+                  child: Text(l10n.openSettings),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(32, 24, 32, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainer,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.security_outlined, size: 18, color: _cs.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.permissions,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _cs.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.fixPermissionIssues,
+                onPressed: _checkingHomePermissions
+                    ? null
+                    : _refreshHomePermissions,
+                icon: _checkingHomePermissions
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _cs.primary,
+                        ),
+                      )
+                    : const Icon(Icons.refresh, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (showMic)
+                permissionItem(
+                  icon: Icons.mic_outlined,
+                  title: l10n.testMicrophonePermission,
+                  onTap: _requestMicPermissionFromHome,
+                ),
+              if (showMic && showAccessibility) const SizedBox(width: 10),
+              if (showAccessibility)
+                permissionItem(
+                  icon: Icons.accessibility_new_outlined,
+                  title: l10n.testAccessibilityPermission,
+                  onTap: _requestAccessibilityPermissionFromHome,
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

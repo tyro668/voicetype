@@ -153,6 +153,7 @@ class _GeneralPageState extends State<GeneralPage> {
   }
 
   Future<void> _openRecordingsDirectory() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final ProcessResult result;
       if (Platform.isWindows) {
@@ -161,19 +162,21 @@ class _GeneralPageState extends State<GeneralPage> {
         result = await Process.run('open', [_recordingsDirPath]);
       }
       if (result.exitCode != 0 && !Platform.isWindows) {
-        _showError(AppLocalizations.of(context)!.openFolderFailed);
+        _showError(l10n.openFolderFailed);
       }
     } catch (e) {
-      _showError(AppLocalizations.of(context)!.openFolderFailed);
+      _showError(l10n.openFolderFailed);
     }
   }
 
   Future<void> _copyRecordingsPath() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
     await Clipboard.setData(ClipboardData(text: _recordingsDirPath));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.recordingPathCopied),
+          content: Text(l10n.recordingPathCopied),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -212,11 +215,12 @@ class _GeneralPageState extends State<GeneralPage> {
       }
       await _loadRecordingsInfo();
     } catch (e) {
-      _showError(AppLocalizations.of(context)!.cleanupFailed);
+      _showError(l10n.cleanupFailed);
     }
   }
 
   Future<void> _openLogDirectory() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final ProcessResult result;
       if (Platform.isWindows) {
@@ -225,19 +229,21 @@ class _GeneralPageState extends State<GeneralPage> {
         result = await Process.run('open', [_logDirPath]);
       }
       if (result.exitCode != 0 && !Platform.isWindows) {
-        _showError(AppLocalizations.of(context)!.openFolderFailed);
+        _showError(l10n.openFolderFailed);
       }
     } catch (e) {
-      _showError(AppLocalizations.of(context)!.openFolderFailed);
+      _showError(l10n.openFolderFailed);
     }
   }
 
   Future<void> _copyLogPath() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
     await Clipboard.setData(ClipboardData(text: _logPath));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.logPathCopied),
+          content: Text(l10n.logPathCopied),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -561,7 +567,11 @@ class _GeneralPageState extends State<GeneralPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.mic_off_outlined, size: 20, color: _cs.onSurfaceVariant),
+              Icon(
+                Icons.mic_off_outlined,
+                size: 20,
+                color: _cs.onSurfaceVariant,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -936,20 +946,14 @@ class _GeneralPageState extends State<GeneralPage> {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _cs.tertiaryContainer,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   '$_recordingsFileCount ${l10n.files}  ·  ${LogService.formatFileSize(_recordingsTotalSize)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.green.shade700,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.green.shade700),
                 ),
               ),
             ],
@@ -1372,7 +1376,9 @@ class _HotkeyCaptureState extends State<_HotkeyCapture> {
           child: TextButton.icon(
             onPressed: () => widget.settings.resetHotkey(),
             icon: const Icon(Icons.restore, size: 16),
-            label: Text(widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F2' : 'Fn')),
+            label: Text(
+              widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F2' : 'Fn'),
+            ),
             style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),
@@ -1481,7 +1487,9 @@ class _MeetingHotkeyCaptureState extends State<_MeetingHotkeyCapture> {
           child: TextButton.icon(
             onPressed: () => widget.settings.resetMeetingHotkey(),
             icon: const Icon(Icons.restore, size: 16),
-            label: Text(widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F3' : 'F2')),
+            label: Text(
+              widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F3' : 'F2'),
+            ),
             style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),

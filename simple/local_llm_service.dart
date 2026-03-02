@@ -13,6 +13,23 @@ class LocalLlmModel {
   });
 }
 
+class LocalMachineSpec {
+  final int cpuCores;
+  final double? totalMemoryGB;
+
+  const LocalMachineSpec({required this.cpuCores, required this.totalMemoryGB});
+}
+
+class LocalModelRecommendation {
+  final Set<String> recommendedModelFileNames;
+  final String summary;
+
+  const LocalModelRecommendation({
+    required this.recommendedModelFileNames,
+    required this.summary,
+  });
+}
+
 /// 预定义可下载模型列表（精简版不支持本地模型，保留空列表）
 const kLocalLlmModels = <LocalLlmModel>[];
 
@@ -39,6 +56,18 @@ class LocalLlmService {
   static Future<bool> isModelDownloaded(String fileName) async => false;
 
   static Future<String> modelFilePath(String fileName) async => '';
+
+  static Future<LocalMachineSpec> detectMachineSpec() async {
+    return const LocalMachineSpec(cpuCores: 0, totalMemoryGB: null);
+  }
+
+  static Future<LocalModelRecommendation>
+  recommendModelsForCurrentMachine() async {
+    return const LocalModelRecommendation(
+      recommendedModelFileNames: <String>{},
+      summary: '精简版不支持本地文本模型推荐，请使用云端 AI 服务。',
+    );
+  }
 
   static Future<void> downloadModel(
     LocalLlmModel model, {

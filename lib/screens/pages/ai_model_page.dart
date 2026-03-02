@@ -507,8 +507,9 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         final exists = snapshot.data ?? downloaded ?? false;
         if (snapshot.hasData && _modelDownloaded[model.fileName] == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted)
+            if (mounted) {
               setState(() => _modelDownloaded[model.fileName] = exists);
+            }
           });
         }
 
@@ -732,23 +733,29 @@ class _AddModelDialogState extends State<_AddModelDialog> {
       await LocalLlmService.downloadModel(
         model,
         onProgress: (progress) {
-          if (mounted) setState(() => _downloadProgress = progress);
+          if (mounted) {
+            setState(() => _downloadProgress = progress);
+          }
         },
         onStatus: (message) {
-          if (mounted) setState(() => _downloadStatus = message);
+          if (mounted) {
+            setState(() => _downloadStatus = message);
+          }
         },
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _downloading = false;
           _modelDownloaded[model.fileName] = true;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _downloading = false;
           _downloadError = e.toString();
         });
+      }
     }
   }
 
