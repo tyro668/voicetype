@@ -33,6 +33,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   final TextEditingController _liveTitleController = TextEditingController();
   final ScrollController _liveScrollController = ScrollController();
   String _searchQuery = '';
+  String? _selectedMeetingId;
   bool _isStoppingMeeting = false;
   bool _autoFollowScroll = true;
   bool _isProgrammaticScrolling = false;
@@ -60,17 +61,61 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   Widget build(BuildContext context) {
     final provider = context.watch<MeetingProvider>();
     final l10n = AppLocalizations.of(context)!;
+    final currentMeetingId = provider.currentMeeting?.id;
+    final meetings = provider.meetings;
+    if (meetings.isEmpty) {
+      _selectedMeetingId = null;
+    } else {
+      final hasSelected =
+          _selectedMeetingId != null &&
+          meetings.any((m) => m.id == _selectedMeetingId);
+      if (!hasSelected) {
+        _selectedMeetingId = meetings.first.id;
+      }
+      if (provider.isRecording && currentMeetingId != null) {
+        _selectedMeetingId ??= currentMeetingId;
+      }
+    }
+    final selectedMeeting = meetings
+        .where((m) => m.id == _selectedMeetingId)
+        .cast<MeetingRecord?>()
+        .firstOrNull;
+    final showRightPanel = provider.isRecording || selectedMeeting != null;
 
     return Row(
       children: [
         Expanded(
-          flex: provider.isRecording ? 5 : 10,
+          flex: showRightPanel ? 5 : 10,
           child: _buildLeftPanel(provider, l10n),
         ),
-        if (provider.isRecording)
-          Expanded(flex: 5, child: _buildLiveMeetingPanel(provider, l10n)),
+        if (showRightPanel)
+          Expanded(
+            flex: 5,
+            child: _buildRightPanel(provider, l10n, selectedMeeting),
+          ),
       ],
     );
+  }
+
+  Widget _buildRightPanel(
+    MeetingProvider provider,
+    AppLocalizations l10n,
+    MeetingRecord? selectedMeeting,
+  ) {
+    final currentId = provider.currentMeeting?.id;
+    final selectedIsCurrentRecording =
+        selectedMeeting != null &&
+        (selectedMeeting.status == MeetingStatus.recording ||
+            selectedMeeting.status == MeetingStatus.paused) &&
+        selectedMeeting.id == currentId;
+
+    if (selectedIsCurrentRecording) {
+      return _buildLiveMeetingPanel(provider, l10n);
+    }
+    if (selectedMeeting != null) {
+      return _buildMeetingDetailSidePanel(selectedMeeting, provider, l10n);
+    }
+    return _buildLiveMeetingPanel(provider, l10n);
   }
 
   // ═══════════════════════════════════════════════
@@ -200,6 +245,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
         meeting.status == MeetingStatus.completed &&
         (meeting.fullTranscription == null ||
             meeting.fullTranscription!.trim().isEmpty);
+    final isSelected = _selectedMeetingId == meeting.id;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -207,12 +253,17 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
         onTap: () => _onMeetingTap(meeting, provider),
         child: Container(
           decoration: BoxDecoration(
-            color: _cs.surface,
+            color: isSelected
+                ? _cs.primaryContainer.withValues(alpha: 0.24)
+                : _cs.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isEmpty
+              color: isSelected
+                  ? _cs.primary.withValues(alpha: 0.45)
+                  : isEmpty
                   ? _cs.error.withValues(alpha: 0.3)
                   : _cs.outlineVariant.withValues(alpha: 0.28),
+              width: isSelected ? 1.4 : 1.0,
             ),
           ),
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -369,6 +420,162 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   // ═══════════════════════════════════════════════
   // 右侧实时会议面板
   // ═══════════════════════════════════════════════
+
+  Widget _buildMeetingDetailSidePanel(
+    MeetingRecord meeting,
+    MeetingProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final locale = Localizations.localeOf(context).toString();
+    final dateStr = DateFormat(
+      'MMMd, yyyy HH:mm',
+      locale,
+    ).format(meeting.createdAt);
+    final summary = (meeting.summary ?? '').trim();
+    final transcription = (meeting.fullTranscription ?? '').trim();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        border: Border(
+          left: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.32)),
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.meetingDetailTab,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _cs.onSurfaceVariant,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(
+                          value: provider,
+                          child: MeetingDetailPage(meetingId: meeting.id),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                  label: Text(l10n.trayOpen),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meeting.title,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: _cs.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        '$dateStr · ${meeting.formattedDuration}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      _buildStatusChip(
+                        _statusLabel(meeting.status, l10n),
+                        _statusColor(meeting.status),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSectionTitle(l10n.meetingSummaryTab),
+                  const SizedBox(height: 8),
+                  _buildDetailCard(
+                    child: summary.isNotEmpty
+                        ? MeetingMarkdownView(
+                            markdown: summary,
+                            selectable: true,
+                            density: MeetingMarkdownDensity.regular,
+                            onAddToDictionary: _addToDictionary,
+                          )
+                        : _buildPanelEmptyText(l10n.meetingNoContent),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSectionTitle(l10n.meetingMergedNoteView),
+                  const SizedBox(height: 8),
+                  _buildDetailCard(
+                    child: transcription.isNotEmpty
+                        ? MeetingMarkdownView(
+                            markdown: transcription,
+                            selectable: true,
+                            density: MeetingMarkdownDensity.regular,
+                            onAddToDictionary: _addToDictionary,
+                          )
+                        : _buildPanelEmptyText(l10n.meetingNoContent),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: _cs.onSurfaceVariant,
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+
+  Widget _buildDetailCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildPanelEmptyText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        color: _cs.onSurfaceVariant,
+        fontStyle: FontStyle.italic,
+      ),
+    );
+  }
 
   Widget _buildLiveMeetingPanel(
     MeetingProvider provider,
@@ -944,19 +1151,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   }
 
   void _onMeetingTap(MeetingRecord meeting, MeetingProvider provider) {
-    if (meeting.status == MeetingStatus.recording ||
-        meeting.status == MeetingStatus.paused) {
-      // 已有录制中的会议，不做额外导航（右侧面板已显示）
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: provider,
-          child: MeetingDetailPage(meetingId: meeting.id),
-        ),
-      ),
-    );
+    setState(() => _selectedMeetingId = meeting.id);
   }
 
   void _startNewMeeting() {

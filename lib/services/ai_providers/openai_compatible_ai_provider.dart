@@ -41,6 +41,7 @@ class OpenAiCompatibleAiProvider extends AiProvider {
 
     final resolvedPrompt = resolvePrompt();
     final headers = buildHeaders();
+    headers['Content-Type'] = 'application/json; charset=utf-8';
     final body = json.encode({
       'model': config.model,
       'temperature': 0.2,
@@ -156,12 +157,12 @@ class OpenAiCompatibleAiProvider extends AiProvider {
     httpClient.connectionTimeout = const Duration(seconds: 10);
     try {
       final request = await httpClient.postUrl(uri);
-      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
       final apiKey = config.apiKey.trim();
       if (apiKey.isNotEmpty) {
         request.headers.set('Authorization', 'Bearer $apiKey');
       }
-      request.write(json.encode(bodyMap));
+      request.add(utf8.encode(json.encode(bodyMap)));
 
       final response = await request.close().timeout(
         timeout ?? _defaultStreamTimeout,

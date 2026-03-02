@@ -88,7 +88,22 @@ class MeetingRecordingService {
   MeetingRecord? get currentMeeting => _currentMeeting;
   bool get isRecording => _isRecording;
   bool get isPaused => _isPaused;
-  Duration get recordingDuration => _recordingDuration;
+  Duration get recordingDuration {
+    if (_isRecording && !_isPaused && _recordingStartTime != null) {
+      _refreshRecordingDuration();
+    }
+    return _recordingDuration;
+  }
+
+  void _refreshRecordingDuration({bool emit = false}) {
+    final start = _recordingStartTime;
+    if (start == null) return;
+    final live = DateTime.now().difference(start) - _pausedDuration;
+    _recordingDuration = live.isNegative ? Duration.zero : live;
+    if (emit) {
+      _onDurationChanged.add(_recordingDuration);
+    }
+  }
 
   /// 会话内手动覆盖术语映射（来自词典编辑）。
   void applySessionGlossaryOverride(String original, String corrected) {
@@ -270,9 +285,7 @@ class MeetingRecordingService {
     _recordingStartTime = now;
     _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_isPaused) {
-        _recordingDuration =
-            DateTime.now().difference(_recordingStartTime!) - _pausedDuration;
-        _onDurationChanged.add(_recordingDuration);
+        _refreshRecordingDuration(emit: true);
       }
     });
 
@@ -354,7 +367,7 @@ class MeetingRecordingService {
         'silence detected at ${elapsed}s, soft-cutting segment',
       );
 
-      await _finalizeCurrentSegment();
+      await _finalizeCurrentSegmentWithTimeout();
       await _startSegmentRecording();
       _startSmartSegmentControl();
     } catch (e) {
@@ -376,7 +389,7 @@ class MeetingRecordingService {
 
       await LogService.info('MEETING', 'hard cut at ${_hardMaxSeconds}s');
 
-      await _finalizeCurrentSegment();
+      await _finalizeCurrentSegmentWithTimeout();
       await _startSegmentRecording();
       _startSmartSegmentControl();
     } catch (e) {
@@ -391,6 +404,7 @@ class MeetingRecordingService {
   Future<void> pause() async {
     if (!_isRecording || _isPaused) return;
 
+    _refreshRecordingDuration();
     _isPaused = true;
     _pauseStartTime = DateTime.now();
     _segmentTimer?.cancel();
@@ -398,7 +412,7 @@ class MeetingRecordingService {
     _stopSmartSegmentControl();
 
     // 停止当前录音段并保存
-    await _finalizeCurrentSegment();
+    await _finalizeCurrentSegmentWithTimeout();
 
     _merger?.pause();
 
@@ -468,7 +482,9 @@ class MeetingRecordingService {
     // 停止当前录音段
     if (!_isPaused) {
       try {
-        await _finalizeCurrentSegment();
+        await _finalizeCurrentSegmentWithTimeout(
+          timeout: const Duration(seconds: 10),
+        );
       } catch (e) {
         await LogService.error(
           'MEETING',
@@ -490,6 +506,7 @@ class MeetingRecordingService {
 
     // 更新会议状态：进入后台整理中
     final meeting = _currentMeeting!;
+    _refreshRecordingDuration();
     meeting.status = MeetingStatus.finalizing;
     meeting.updatedAt = DateTime.now();
     meeting.totalDuration = _recordingDuration;
@@ -572,7 +589,7 @@ class MeetingRecordingService {
 
     _segmentSwitching = true;
     try {
-      await _finalizeCurrentSegment();
+      await _finalizeCurrentSegmentWithTimeout();
       await _startSegmentRecording();
     } catch (e) {
       await LogService.error('MEETING', 'segment rotation failed: $e');
@@ -666,6 +683,21 @@ class MeetingRecordingService {
     await LogService.info(
       'MEETING',
       'segment ${segment.segmentIndex} finalized: $audioPath ($fileSize bytes)',
+    );
+  }
+
+  Future<void> _finalizeCurrentSegmentWithTimeout({
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
+    await _finalizeCurrentSegment().timeout(
+      timeout,
+      onTimeout: () async {
+        await LogService.error(
+          'MEETING',
+          'finalize segment timeout after ${timeout.inSeconds}s, forcing recorder stop',
+        );
+        await _recorder.stopWithTimeout(const Duration(seconds: 2));
+      },
     );
   }
 

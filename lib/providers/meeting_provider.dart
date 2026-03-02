@@ -61,6 +61,8 @@ class MeetingProvider extends ChangeNotifier {
 
   /// 振幅监听
   StreamSubscription<double>? _amplitudeSub;
+  Timer? _recordingHeartbeatTimer;
+  double _latestAmplitudeLevel = 0.0;
 
   /// AI 增强配置（会议期间保留，用于结束时合并整理）
   AiEnhanceConfig? _aiConfig;
@@ -274,12 +276,45 @@ class MeetingProvider extends ChangeNotifier {
 
     _statusSub = _recordingService.onStatusChanged.listen((status) {
       _status = status;
+      if (status == 'recording') {
+        _startRecordingHeartbeat();
+      } else {
+        _stopRecordingHeartbeat();
+      }
       notifyListeners();
     });
 
     _durationSub = _recordingService.onDurationChanged.listen((_) {
       notifyListeners();
     });
+  }
+
+  void _startRecordingHeartbeat() {
+    _recordingHeartbeatTimer?.cancel();
+
+    void tick() {
+      if (!isRecording || isPaused) return;
+      notifyListeners();
+      unawaited(
+        OverlayService.updateOverlay(
+          state: 'recording',
+          duration: _durationStr,
+          level: _latestAmplitudeLevel,
+          stateLabel: _recordingLabel,
+          owner: _overlayOwner,
+        ),
+      );
+    }
+
+    tick();
+    _recordingHeartbeatTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      tick();
+    });
+  }
+
+  void _stopRecordingHeartbeat() {
+    _recordingHeartbeatTimer?.cancel();
+    _recordingHeartbeatTimer = null;
   }
 
   /// 监听合并器的 onStreamChunk 和 onMergeCompleted 事件流
@@ -379,6 +414,9 @@ class MeetingProvider extends ChangeNotifier {
   Future<void> _loadMeetings() async {
     try {
       await _recordingService.recoverStuckRecordingIfNeeded();
+      if (!isRecording) {
+        _stopRecordingHeartbeat();
+      }
       await _ensureMeetingGroupsLoaded();
       _meetings = await AppDatabase.instance.getAllMeetings();
       // 修复因崩溃/异常导致的残留 recording/paused 状态
@@ -587,6 +625,7 @@ class MeetingProvider extends ChangeNotifier {
       // 监听音频振幅，实时更新 overlay
       _amplitudeSub?.cancel();
       _amplitudeSub = _recordingService.amplitudeStream.listen((level) {
+        _latestAmplitudeLevel = level;
         OverlayService.updateOverlay(
           state: 'recording',
           duration: _durationStr,
@@ -595,6 +634,7 @@ class MeetingProvider extends ChangeNotifier {
           owner: _overlayOwner,
         );
       });
+      _startRecordingHeartbeat();
 
       await _loadMeetings();
       notifyListeners();
@@ -613,6 +653,7 @@ class MeetingProvider extends ChangeNotifier {
       await _recordingService.pause();
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
+      _stopRecordingHeartbeat();
       // 暂停时隐藏 overlay
       unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
     } catch (e) {
@@ -638,6 +679,7 @@ class MeetingProvider extends ChangeNotifier {
       // 重新监听振幅
       _amplitudeSub?.cancel();
       _amplitudeSub = _recordingService.amplitudeStream.listen((level) {
+        _latestAmplitudeLevel = level;
         OverlayService.updateOverlay(
           state: 'recording',
           duration: _durationStr,
@@ -646,6 +688,7 @@ class MeetingProvider extends ChangeNotifier {
           owner: _overlayOwner,
         );
       });
+      _startRecordingHeartbeat();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -661,6 +704,7 @@ class MeetingProvider extends ChangeNotifier {
     try {
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
+      _stopRecordingHeartbeat();
 
       // 点击结束后立即隐藏录音标识 overlay，不展示处理进度
       unawaited(OverlayService.hideOverlay(owner: _overlayOwner));
@@ -903,6 +947,7 @@ class MeetingProvider extends ChangeNotifier {
     try {
       _amplitudeSub?.cancel();
       _amplitudeSub = null;
+      _stopRecordingHeartbeat();
       _cancelMergerListeners();
 
       // 点击结束后立即隐藏录音标识 overlay，不展示处理进度
@@ -1366,6 +1411,7 @@ class MeetingProvider extends ChangeNotifier {
     _statusSub?.cancel();
     _durationSub?.cancel();
     _amplitudeSub?.cancel();
+    _stopRecordingHeartbeat();
     _cancelMergerListeners();
     _recordingService.dispose();
     super.dispose();
