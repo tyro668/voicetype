@@ -48,7 +48,7 @@ class AudioRecorderService {
         '${now.second.toString().padLeft(2, '0')}';
     final shortId = const Uuid().v4().substring(0, 6);
     _currentShortId = shortId;
-    _currentPath = path.join(recordingsDir.path, '${ts}-$shortId.wav');
+    _currentPath = path.join(recordingsDir.path, '$ts-$shortId.wav');
 
     final file = File(_currentPath!);
     if (!await file.exists()) {
@@ -112,7 +112,7 @@ class AudioRecorderService {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mi = dt.minute.toString().padLeft(2, '0');
     final ss = dt.second.toString().padLeft(2, '0');
-    return '${dt.year}年${mm}月${dd}日${hh}时${mi}分${ss}秒';
+    return '${dt.year}年$mm月$dd日$hh时$mi分$ss秒';
   }
 
   String _formatDurationForName(int seconds) {
@@ -120,9 +120,9 @@ class AudioRecorderService {
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
     final s = seconds % 60;
-    if (h > 0) return '${h}时${m}分${s}秒';
-    if (m > 0) return '${m}分${s}秒';
-    return '${s}秒';
+    if (h > 0) return '$h时$m分$s秒';
+    if (m > 0) return '$m分$s秒';
+    return '$s秒';
   }
 
   String _extractShortId(String rawPath) {

@@ -188,7 +188,7 @@ class LocalLlmService {
           ..add(_kModelQwen7BQ4)
           ..add(_kModelQwen05Q5);
       } else {
-        recommended..add(_kModelQwen05Q5);
+        recommended.add(_kModelQwen05Q5);
       }
     } else {
       if (cores >= 16) {
@@ -201,7 +201,7 @@ class LocalLlmService {
           ..add(_kModelQwen7BQ4)
           ..add(_kModelQwen05Q5);
       } else {
-        recommended..add(_kModelQwen05Q5);
+        recommended.add(_kModelQwen05Q5);
       }
     }
 

@@ -21,6 +21,7 @@ class GeneralPage extends StatefulWidget {
 
 class _GeneralPageState extends State<GeneralPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
+  bool get _isZh => Localizations.localeOf(context).languageCode == 'zh';
 
   bool? _micPermission;
   bool? _accessibilityPermission;
@@ -106,6 +107,21 @@ class _GeneralPageState extends State<GeneralPage> {
         _checkingAccessibility = false;
       });
     }
+  }
+
+  Future<void> _openAccessibilityPrivacyAndRemind(AppLocalizations l10n) async {
+    await OverlayService.openAccessibilityPrivacy();
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          '${l10n.openAccessibilityPrivacy} → ${l10n.testAccessibilityPermission}',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _loadLogInfo() async {
@@ -459,6 +475,26 @@ class _GeneralPageState extends State<GeneralPage> {
           _buildThemeSelector(settings, l10n),
           const SizedBox(height: 36),
 
+          // ===== 本地模型闲置释放 =====
+          Text(
+            _isZh ? '本地模型空闲自动释放' : 'Local model idle unload',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _isZh
+                ? '长时间不使用时自动卸载模型，降低内存占用'
+                : 'Unload local model after idle period to reduce memory usage',
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _buildLocalLlmIdleUnloadSection(settings),
+          const SizedBox(height: 36),
+
           // ===== 日志 =====
           Text(
             l10n.logs,
@@ -792,6 +828,58 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
+  Widget _buildLocalLlmIdleUnloadSection(SettingsProvider settings) {
+    const options = [0, 1, 3, 5, 10];
+    final current = options.contains(settings.localLlmIdleUnloadMinutes)
+        ? settings.localLlmIdleUnloadMinutes
+        : 3;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.memory_outlined, size: 20, color: _cs.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _isZh ? '释放时机' : 'Release timing',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          DropdownButton<int>(
+            value: current,
+            onChanged: (value) {
+              if (value == null) return;
+              settings.setLocalLlmIdleUnloadMinutes(value);
+            },
+            items: options
+                .map(
+                  (value) => DropdownMenuItem<int>(
+                    value: value,
+                    child: Text(
+                      value == 0
+                          ? (_isZh ? '关闭' : 'Off')
+                          : (_isZh ? '$value 分钟' : '$value min'),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogSection(AppLocalizations l10n) {
     return Container(
       width: double.infinity,
@@ -1109,7 +1197,7 @@ class _GeneralPageState extends State<GeneralPage> {
               ),
               _HintActionButton(
                 label: l10n.openAccessibilityPrivacy,
-                onTap: OverlayService.openAccessibilityPrivacy,
+                onTap: () => _openAccessibilityPrivacyAndRemind(l10n),
               ),
             ],
           ),

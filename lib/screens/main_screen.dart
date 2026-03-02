@@ -94,8 +94,6 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedNav = 0;
   late VoidCallback _settingsListener;
   SettingsProvider? _settingsProvider;
-  bool _didShowAccessibilityGuide = false;
-  bool _didShowInputMonitoringGuide = false;
   bool _homeMicPermission = false;
   bool _homeAccessibilityPermission = false;
   bool _checkingHomePermissions = false;
@@ -120,14 +118,12 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     OverlayService.init();
     OverlayService.onGlobalKeyEvent = _handleGlobalKeyEvent;
-    _ensureAccessibilityPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = context.read<SettingsProvider>();
       _settingsProvider = settings;
       _settingsListener = () {
         _registerCurrentHotkey(settings);
         _registerMeetingHotkey(settings);
-        _ensureInputMonitoringPermissionIfNeeded(settings.hotkey);
       };
       settings.addListener(_settingsListener);
       _settingsListener();
@@ -169,6 +165,18 @@ class _MainScreenState extends State<MainScreen> {
     await _refreshHomePermissions();
     if (_homeAccessibilityPermission) return;
     await OverlayService.openAccessibilityPrivacy();
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          '${l10n.openAccessibilityPrivacy} → ${l10n.testAccessibilityPermission}',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _registerCurrentHotkey(SettingsProvider settings) {
@@ -183,9 +191,6 @@ class _MainScreenState extends State<MainScreen> {
     OverlayService.registerHotkey(keyCode: keyCode).then((ok) {
       LogService.info('HOTKEY', 'registerHotkey result=$ok');
       if (!mounted || ok) return;
-      if (settings.hotkey == LogicalKeyboardKey.fn) {
-        _showInputMonitoringGuide();
-      }
     });
   }
 
@@ -200,95 +205,6 @@ class _MainScreenState extends State<MainScreen> {
     OverlayService.registerMeetingHotkey(keyCode: keyCode).then((ok) {
       LogService.info('HOTKEY', 'registerMeetingHotkey result=$ok');
     });
-  }
-
-  Future<void> _ensureAccessibilityPermission() async {
-    if (defaultTargetPlatform != TargetPlatform.macOS) return;
-    final granted = await OverlayService.checkAccessibility();
-    if (!granted) {
-      await OverlayService.requestAccessibility();
-      final recheck = await OverlayService.checkAccessibility();
-      if (!recheck && mounted && !_didShowAccessibilityGuide) {
-        _didShowAccessibilityGuide = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _showAccessibilityGuide();
-          }
-        });
-      }
-    }
-  }
-
-  Future<void> _ensureInputMonitoringPermissionIfNeeded(
-    LogicalKeyboardKey hotkey,
-  ) async {
-    if (defaultTargetPlatform != TargetPlatform.macOS) return;
-    if (hotkey != LogicalKeyboardKey.fn) return;
-    final granted = await OverlayService.checkInputMonitoring();
-    if (granted) return;
-
-    await OverlayService.requestInputMonitoring();
-    final recheck = await OverlayService.checkInputMonitoring();
-    if (!recheck && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _showInputMonitoringGuide();
-        }
-      });
-    }
-  }
-
-  void _showInputMonitoringGuide() {
-    if (_didShowInputMonitoringGuide) return;
-    _didShowInputMonitoringGuide = true;
-
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.inputMonitoringRequired),
-        content: Text(l10n.inputMonitoringDescription),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.later),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              OverlayService.openInputMonitoringPrivacy();
-            },
-            child: Text(l10n.openSettings),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAccessibilityGuide() {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.accessibilityRequired),
-        content: Text(l10n.accessibilityDescription),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.later),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              OverlayService.openAccessibilityPrivacy();
-            },
-            child: Text(l10n.openSettings),
-          ),
-        ],
-      ),
-    );
   }
 
   bool _hasValidSttModel(SettingsProvider settings) {

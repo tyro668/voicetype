@@ -36,6 +36,9 @@ const kLocalLlmModels = <LocalLlmModel>[];
 /// 精简版 LocalLlmService — 不支持本地文本模型
 class LocalLlmService {
   static bool get isEngineLoaded => false;
+  static int get idleUnloadMinutes => 0;
+
+  static Future<void> setIdleUnloadMinutes(int minutes) async {}
 
   static String? _localPromptCache;
 

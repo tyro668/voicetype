@@ -21,8 +21,6 @@ class AiModelPage extends StatefulWidget {
 class _AiModelPageState extends State<AiModelPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
-  bool get _isZh => Localizations.localeOf(context).languageCode == 'zh';
-
   static bool isLocalAiModelEntry(AiModelEntry entry) {
     return entry.vendorName == 'Local Model' || entry.vendorName == '本地模型';
   }
@@ -41,8 +39,6 @@ class _AiModelPageState extends State<AiModelPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildEnableSection(settings, l10n),
-            const SizedBox(height: 12),
-            _buildLocalLlmIdleUnloadSection(settings),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -108,68 +104,6 @@ class _AiModelPageState extends State<AiModelPage> {
       icon: Icons.psychology_outlined,
       title: l10n.noModelsAdded,
       subtitle: l10n.addTextModelHint,
-    );
-  }
-
-  Widget _buildLocalLlmIdleUnloadSection(SettingsProvider settings) {
-    const options = [0, 1, 3, 5, 10];
-    final current = options.contains(settings.localLlmIdleUnloadMinutes)
-        ? settings.localLlmIdleUnloadMinutes
-        : 3;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isZh ? '本地模型空闲自动释放' : 'Local model idle unload',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _isZh
-                      ? '长时间不使用时自动卸载模型，降低内存占用'
-                      : 'Unload local model after idle period to reduce memory usage',
-                  style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          DropdownButton<int>(
-            value: current,
-            onChanged: (value) {
-              if (value == null) return;
-              settings.setLocalLlmIdleUnloadMinutes(value);
-            },
-            items: options
-                .map(
-                  (v) => DropdownMenuItem<int>(
-                    value: v,
-                    child: Text(
-                      v == 0
-                          ? (_isZh ? '关闭' : 'Off')
-                          : (_isZh ? '$v 分钟' : '$v min'),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
     );
   }
 

@@ -1448,7 +1448,7 @@ class _MiniWaveformState extends State<_MiniWaveform>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) {
+      builder: (context, _) {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(12, (i) {
@@ -1523,7 +1523,7 @@ class _LiveWaveformState extends State<_LiveWaveform>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animController,
-      builder: (_, __) {
+      builder: (context, _) {
         return CustomPaint(
           size: Size.infinite,
           painter: _WaveformPainter(
@@ -1633,7 +1633,7 @@ class _PulsingDotState extends State<_PulsingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) {
+      builder: (context, _) {
         return Container(
           width: 8,
           height: 8,
