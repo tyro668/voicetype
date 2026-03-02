@@ -15,6 +15,7 @@ import '../models/stt_model_entry.dart';
 import '../database/app_database.dart';
 import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
+import '../services/local_llm_service.dart';
 
 class DictionaryCsvImportResult {
   final int totalRows;
@@ -57,6 +58,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _correctionEnabledKey = 'correction_enabled';
   static const _retrospectiveCorrectionEnabledKey =
       'retrospective_correction_enabled';
+  static const _localLlmIdleUnloadMinutesKey = 'local_llm_idle_unload_minutes';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -120,6 +122,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _correctionEnabled = true;
   bool _retrospectiveCorrectionEnabled = false;
   String _correctionPrompt = '';
+  int _localLlmIdleUnloadMinutes = 3;
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
   );
@@ -189,6 +192,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get correctionEnabled => _correctionEnabled;
   bool get retrospectiveCorrectionEnabled => _retrospectiveCorrectionEnabled;
   String get correctionPrompt => _correctionPrompt;
+  int get localLlmIdleUnloadMinutes => _localLlmIdleUnloadMinutes;
   PinyinMatcher get pinyinMatcher => _pinyinMatcher;
   int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
   double get correctionMinCandidateScore => _correctionMinCandidateScore;
@@ -494,12 +498,22 @@ class SettingsProvider extends ChangeNotifier {
       _retrospectiveCorrectionEnabled = retroStr == 'true';
     }
 
+    final localLlmIdleUnloadMinutesStr = await db.getSetting(
+      _localLlmIdleUnloadMinutesKey,
+    );
+    if (localLlmIdleUnloadMinutesStr != null) {
+      _localLlmIdleUnloadMinutes =
+          int.tryParse(localLlmIdleUnloadMinutesStr)?.clamp(0, 30) ?? 3;
+    }
+
     // 加载纠错 prompt
     try {
       _correctionPrompt = await rootBundle.loadString(
         'assets/prompts/correction_prompt.md',
       );
     } catch (_) {}
+
+    await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
 
     notifyListeners();
   }
@@ -1343,6 +1357,16 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setRetrospectiveCorrectionEnabled(bool enabled) async {
     _retrospectiveCorrectionEnabled = enabled;
     await _saveSetting(_retrospectiveCorrectionEnabledKey, enabled.toString());
+    notifyListeners();
+  }
+
+  Future<void> setLocalLlmIdleUnloadMinutes(int minutes) async {
+    _localLlmIdleUnloadMinutes = minutes.clamp(0, 30);
+    await _saveSetting(
+      _localLlmIdleUnloadMinutesKey,
+      _localLlmIdleUnloadMinutes.toString(),
+    );
+    await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
     notifyListeners();
   }
 

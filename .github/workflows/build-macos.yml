@@ -122,7 +122,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: voicetype-macos-${{ steps.version.outputs.VERSION }}
+          name: offhand-macos-${{ steps.version.outputs.VERSION }}
           path: build/${{ steps.package.outputs.DMG_NAME }}
           retention-days: 30
 

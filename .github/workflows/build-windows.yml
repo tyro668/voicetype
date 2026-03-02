@@ -87,7 +87,7 @@ jobs:
             throw "Release directory not found"
           }
           $version = "${{ steps.version.outputs.VERSION }}"
-          $zipName = "voicetype-windows-$version.zip"
+          $zipName = "offhand-windows-$version.zip"
           Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
           echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
           echo "ZIP_PATH=build\$zipName" >> $env:GITHUB_OUTPUT
@@ -97,7 +97,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: voicetype-windows-${{ steps.version.outputs.VERSION }}
+          name: offhand-windows-${{ steps.version.outputs.VERSION }}
           path: build/${{ steps.package.outputs.ZIP_NAME }}
           retention-days: 30
 

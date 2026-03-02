@@ -193,7 +193,7 @@ jobs:
             throw "Release directory not found"
           }
           $version = "${{ steps.version.outputs.VERSION }}"
-          $zipName = "voicetype-windows-$version.zip"
+          $zipName = "offhand-windows-$version.zip"
           Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
           echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
 
@@ -257,6 +257,14 @@ jobs:
         run: |
           & "$env:FLUTTER_BIN/flutter.bat" build windows --release
 
+      - name: Extract version (simple)
+        id: version_simple
+        shell: pwsh
+        run: |
+          $match = Select-String -Path "pubspec.yaml" -Pattern '^version:\s*([^\s+]+)'
+          $ver = if ($match.Matches.Count -gt 0) { $match.Matches[0].Groups[1].Value } else { "0.0.0" }
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+
       - name: Package release artifacts
         shell: pwsh
         id: package
@@ -267,7 +275,8 @@ jobs:
           if (-not $releaseDir) {
             throw "Release directory not found"
           }
-          $zipName = "voicetype-windows-simple-version.zip"
+          $version = "${{ steps.version_simple.outputs.VERSION }}"
+          $zipName = "offhand-windows-simple-$version.zip"
           Compress-Archive -Path "$($releaseDir.FullName)\*" -DestinationPath "build\$zipName" -Force
           echo "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
 

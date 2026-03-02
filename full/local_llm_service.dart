@@ -89,6 +89,32 @@ class LocalModelRecommendation {
 class LocalLlmService {
   static LlamaEngine? _engine;
   static String? _currentModel;
+  static Timer? _idleUnloadTimer;
+  static int _activeInferenceCount = 0;
+  static Duration _idleUnloadDelay = const Duration(minutes: 3);
+
+  static int get idleUnloadMinutes => _idleUnloadDelay.inMinutes;
+
+  static Future<void> setIdleUnloadMinutes(int minutes) async {
+    final normalized = minutes.clamp(0, 30);
+    _idleUnloadDelay = Duration(minutes: normalized);
+
+    if (normalized == 0) {
+      _idleUnloadTimer?.cancel();
+      _idleUnloadTimer = null;
+      await LogService.info('LOCAL_LLM', 'idle unload disabled');
+      return;
+    }
+
+    await LogService.info(
+      'LOCAL_LLM',
+      'idle unload delay set to ${_idleUnloadDelay.inMinutes} min',
+    );
+
+    if (_engine != null && _activeInferenceCount == 0) {
+      _scheduleIdleUnload();
+    }
+  }
 
   static const _kModelQwen05Q5 = 'qwen2.5-0.5b-instruct-q5_k_m.gguf';
   static const _kModelQwen05Q4 = 'qwen2.5-0.5b-instruct-q4_k_m.gguf';
@@ -355,6 +381,8 @@ class LocalLlmService {
 
   /// 加载模型到引擎（如果尚未加载或模型不同）
   static Future<void> loadModel(String modelFileName) async {
+    _idleUnloadTimer?.cancel();
+    _idleUnloadTimer = null;
     if (_engine != null && _currentModel == modelFileName) {
       return;
     }
@@ -382,6 +410,8 @@ class LocalLlmService {
 
   /// 卸载当前模型，释放资源
   static Future<void> unloadModel() async {
+    _idleUnloadTimer?.cancel();
+    _idleUnloadTimer = null;
     if (_engine != null) {
       await _engine!.dispose();
       _engine = null;
@@ -415,13 +445,43 @@ class LocalLlmService {
   }) async* {
     await loadModel(modelFileName);
 
-    final session = ChatSession(_engine!, systemPrompt: systemPrompt);
-    await for (final chunk in session.create([LlamaTextContent(userMessage)])) {
-      final content = chunk.choices.first.delta.content;
-      if (content != null && content.isNotEmpty) {
-        yield content;
+    _activeInferenceCount += 1;
+
+    try {
+      final session = ChatSession(_engine!, systemPrompt: systemPrompt);
+      await for (final chunk in session.create([
+        LlamaTextContent(userMessage),
+      ])) {
+        final content = chunk.choices.first.delta.content;
+        if (content != null && content.isNotEmpty) {
+          yield content;
+        }
       }
+    } finally {
+      if (_activeInferenceCount > 0) {
+        _activeInferenceCount -= 1;
+      }
+      _scheduleIdleUnload();
     }
+  }
+
+  static void _scheduleIdleUnload() {
+    _idleUnloadTimer?.cancel();
+
+    if (_engine == null || _activeInferenceCount > 0) {
+      return;
+    }
+
+    if (_idleUnloadDelay <= Duration.zero) {
+      return;
+    }
+
+    _idleUnloadTimer = Timer(_idleUnloadDelay, () async {
+      if (_engine == null || _activeInferenceCount > 0) {
+        return;
+      }
+      await unloadModel();
+    });
   }
 
   /// 检查本地模型可用性
