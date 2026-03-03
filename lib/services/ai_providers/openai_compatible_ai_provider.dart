@@ -17,6 +17,13 @@ class OpenAiCompatibleAiProvider extends AiProvider {
 
   OpenAiCompatibleAiProvider(super.config);
 
+  /// 检测模型是否可能默认启用了 thinking 能力（如 qwen3 / qwen3.5 系列），
+  /// 需要在请求中显式禁用以避免返回思考过程。
+  bool get _shouldDisableThinking {
+    final m = config.model.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+    return RegExp(r'qwen3').hasMatch(m);
+  }
+
   /// `/chat/completions` 端点 URL。子类可 override。
   String get chatCompletionsUrl =>
       '${normalizeBaseUrl(config.baseUrl)}/chat/completions';
@@ -42,14 +49,18 @@ class OpenAiCompatibleAiProvider extends AiProvider {
     final resolvedPrompt = resolvePrompt();
     final headers = buildHeaders();
     headers['Content-Type'] = 'application/json; charset=utf-8';
-    final body = json.encode({
+    final bodyMap = <String, dynamic>{
       'model': config.model,
       'temperature': 0.2,
       'messages': [
         {'role': 'system', 'content': resolvedPrompt},
         {'role': 'user', 'content': buildEnhanceUserMessage(text)},
       ],
-    });
+    };
+    if (_shouldDisableThinking) {
+      bodyMap['enable_thinking'] = false;
+    }
+    final body = json.encode(bodyMap);
 
     final uri = Uri.parse(chatCompletionsUrl);
 
@@ -143,7 +154,7 @@ class OpenAiCompatibleAiProvider extends AiProvider {
       throw AiEnhanceException('AI增强失败: 无效的端点 URL');
     }
 
-    final bodyMap = {
+    final bodyMap = <String, dynamic>{
       'model': config.model,
       'temperature': 0.2,
       'stream': true,
@@ -152,6 +163,9 @@ class OpenAiCompatibleAiProvider extends AiProvider {
         {'role': 'user', 'content': buildEnhanceUserMessage(text)},
       ],
     };
+    if (_shouldDisableThinking) {
+      bodyMap['enable_thinking'] = false;
+    }
 
     final httpClient = HttpClient();
     httpClient.connectionTimeout = const Duration(seconds: 10);
