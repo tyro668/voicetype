@@ -6,6 +6,8 @@ import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
 class AudioRecorderService {
+  static bool _preferBuiltInMicrophone = true;
+
   AudioRecorder _recorder = AudioRecorder();
   String? _currentPath;
   DateTime? _recordingStartedAt;
@@ -15,6 +17,12 @@ class AudioRecorderService {
   Stream<double> get amplitudeStream => _amplitudeController.stream;
   String? get currentPath => _currentPath;
   Timer? _amplitudeTimer;
+
+  static bool get preferBuiltInMicrophone => _preferBuiltInMicrophone;
+
+  static void setPreferBuiltInMicrophone(bool enabled) {
+    _preferBuiltInMicrophone = enabled;
+  }
 
   Future<bool> hasPermission() async {
     final granted = await _recorder.hasPermission();
@@ -55,12 +63,15 @@ class AudioRecorderService {
       await file.create(recursive: true);
     }
 
+    final selectedDevice = await _resolveInputDeviceForRecording();
+
     await _recorder.start(
-      const RecordConfig(
+      RecordConfig(
         encoder: AudioEncoder.wav,
         sampleRate: 16000,
         numChannels: 1,
         bitRate: 128000,
+        device: selectedDevice,
       ),
       path: _currentPath!,
     );
@@ -185,7 +196,61 @@ class AudioRecorderService {
 
   /// 列出所有可用的音频输入设备
   Future<List<InputDevice>> listInputDevices() async {
-    return await _recorder.listInputDevices();
+    try {
+      return await _recorder.listInputDevices();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<InputDevice?> getPreferredInputDevice() async {
+    final devices = await listInputDevices();
+    return _resolveInputDevice(devices);
+  }
+
+  Future<InputDevice?> _resolveInputDeviceForRecording() async {
+    final devices = await listInputDevices();
+    return _resolveInputDevice(devices);
+  }
+
+  InputDevice? _resolveInputDevice(List<InputDevice> devices) {
+    if (devices.isEmpty) return null;
+
+    final defaultDevice = _pickDefaultDevice(devices);
+
+    if (!Platform.isMacOS || !_preferBuiltInMicrophone) {
+      return defaultDevice;
+    }
+
+    final builtIn = _pickBuiltInDevice(devices);
+    return builtIn ?? defaultDevice;
+  }
+
+  InputDevice _pickDefaultDevice(List<InputDevice> devices) {
+    for (final device in devices) {
+      final id = device.id.toLowerCase();
+      final label = device.label.toLowerCase();
+      if (id == 'default' || label.contains('default')) {
+        return device;
+      }
+    }
+    return devices.first;
+  }
+
+  InputDevice? _pickBuiltInDevice(List<InputDevice> devices) {
+    for (final device in devices) {
+      final label = device.label.toLowerCase();
+      if (label.contains('built-in') ||
+          label.contains('internal') ||
+          label.contains('macbook') ||
+          label.contains('内置') ||
+          label.contains('内建') ||
+          label.contains('內置') ||
+          label.contains('內建')) {
+        return device;
+      }
+    }
+    return null;
   }
 
   void dispose() {

@@ -25,7 +25,6 @@ class _GeneralPageState extends State<GeneralPage> {
   bool? _micPermission;
   bool? _accessibilityPermission;
   String _currentDeviceName = '';
-  bool _preferBuiltIn = true;
   bool _checkingMic = false;
   bool _checkingAccessibility = false;
 
@@ -65,9 +64,10 @@ class _GeneralPageState extends State<GeneralPage> {
   Future<void> _loadInputDevices() async {
     final recorder = AudioRecorderService();
     final devices = await recorder.listInputDevices();
+    final preferred = await recorder.getPreferredInputDevice();
     if (mounted) {
       setState(() {
-        _currentDeviceName = _pickDeviceName(devices);
+        _currentDeviceName = preferred?.label ?? _pickDeviceName(devices);
       });
     }
     recorder.dispose();
@@ -379,7 +379,7 @@ class _GeneralPageState extends State<GeneralPage> {
             style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-          _buildPreferBuiltIn(l10n),
+          _buildPreferBuiltIn(settings, l10n),
           const SizedBox(height: 12),
           _buildCurrentDevice(l10n),
           const SizedBox(height: 36),
@@ -1204,7 +1204,7 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
-  Widget _buildPreferBuiltIn(AppLocalizations l10n) {
+  Widget _buildPreferBuiltIn(SettingsProvider settings, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -1235,9 +1235,12 @@ class _GeneralPageState extends State<GeneralPage> {
             ),
           ),
           Switch.adaptive(
-            value: _preferBuiltIn,
+            value: settings.preferBuiltInMicrophone,
             activeTrackColor: _cs.primary,
-            onChanged: (v) => setState(() => _preferBuiltIn = v),
+            onChanged: (v) async {
+              await settings.setPreferBuiltInMicrophone(v);
+              await _loadInputDevices();
+            },
           ),
         ],
       ),

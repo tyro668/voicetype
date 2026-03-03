@@ -15,6 +15,7 @@ import '../models/stt_model_entry.dart';
 import '../database/app_database.dart';
 import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
+import '../services/audio_recorder.dart';
 import '../services/local_llm_service.dart';
 
 class DictionaryCsvImportResult {
@@ -49,6 +50,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _localeKey = 'locale';
   static const _networkProxyModeKey = 'network_proxy_mode';
   static const _themeModeKey = 'theme_mode';
+  static const _preferBuiltInMicrophoneKey = 'prefer_built_in_microphone';
   static const _vadEnabledKey = 'vad_enabled';
   static const _vadSilenceThresholdKey = 'vad_silence_threshold';
   static const _vadSilenceDurationKey = 'vad_silence_duration';
@@ -127,6 +129,7 @@ class SettingsProvider extends ChangeNotifier {
   Locale _locale = const Locale('zh');
   NetworkProxyMode _networkProxyMode = NetworkProxyMode.none;
   ThemeMode _themeMode = ThemeMode.system;
+  bool _preferBuiltInMicrophone = true;
 
   // VAD settings
   bool _vadEnabled = false;
@@ -195,6 +198,7 @@ class SettingsProvider extends ChangeNotifier {
   Locale get locale => _locale;
   NetworkProxyMode get networkProxyMode => _networkProxyMode;
   ThemeMode get themeMode => _themeMode;
+  bool get preferBuiltInMicrophone => _preferBuiltInMicrophone;
 
   // VAD getters
   bool get vadEnabled => _vadEnabled;
@@ -476,6 +480,14 @@ class SettingsProvider extends ChangeNotifier {
         _ => ThemeMode.system,
       };
     }
+
+    final preferBuiltInMicrophoneStr = await db.getSetting(
+      _preferBuiltInMicrophoneKey,
+    );
+    if (preferBuiltInMicrophoneStr != null) {
+      _preferBuiltInMicrophone = preferBuiltInMicrophoneStr == 'true';
+    }
+    AudioRecorderService.setPreferBuiltInMicrophone(_preferBuiltInMicrophone);
 
     final proxyModeStr = await db.getSetting(_networkProxyModeKey);
     _networkProxyMode = NetworkProxyModeX.fromStorage(proxyModeStr);
@@ -1105,6 +1117,13 @@ class SettingsProvider extends ChangeNotifier {
       ThemeMode.system => 'system',
     };
     await _saveSetting(_themeModeKey, value);
+    notifyListeners();
+  }
+
+  Future<void> setPreferBuiltInMicrophone(bool enabled) async {
+    _preferBuiltInMicrophone = enabled;
+    AudioRecorderService.setPreferBuiltInMicrophone(enabled);
+    await _saveSetting(_preferBuiltInMicrophoneKey, enabled.toString());
     notifyListeners();
   }
 
