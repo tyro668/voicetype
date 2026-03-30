@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/markdown_term_import_result.dart';
 import '../../models/term_context_entry.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/modern_ui.dart';
 
 class ContextPage extends StatefulWidget {
   final bool embedded;
@@ -36,29 +38,40 @@ class _ContextPageState extends State<ContextPage> {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final search = _searchCtrl.text.trim().toLowerCase();
-    final entries = settings.termContextEntries.where((entry) {
-      if (search.isEmpty) return true;
-      return entry.sourceName.toLowerCase().contains(search) ||
-          (entry.content ?? '').toLowerCase().contains(search);
-    }).toList(growable: false)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final entries =
+        settings.termContextEntries
+            .where((entry) {
+              if (search.isEmpty) return true;
+              return entry.sourceName.toLowerCase().contains(search) ||
+                  entry.displayTitle.toLowerCase().contains(search) ||
+                  (entry.content ?? '').toLowerCase().contains(search);
+            })
+            .toList(growable: false)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _selectedIds.removeWhere((id) => !entries.any((entry) => entry.id == id));
 
-    final content = Column(
-      children: [
-        _buildToolbar(settings, entries, l10n),
-        const SizedBox(height: 12),
-        Expanded(
-          child: entries.isEmpty
-              ? _buildEmptyState(settings, l10n)
-              : ListView.separated(
-                  itemCount: entries.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) =>
-                      _buildEntryCard(settings, entries[index], l10n),
-                ),
-        ),
-      ],
+    final content = ModernSurfaceCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildToolbar(settings, entries, l10n),
+          const SizedBox(height: 18),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: entries.isEmpty
+                  ? _buildEmptyState(l10n)
+                  : ListView.separated(
+                      key: ValueKey(entries.length),
+                      itemCount: entries.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) =>
+                          _buildEntryCard(settings, entries[index], l10n),
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (widget.embedded) {
@@ -66,10 +79,8 @@ class _ContextPageState extends State<ContextPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [Expanded(child: content)],
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      child: content,
     );
   }
 
@@ -78,153 +89,146 @@ class _ContextPageState extends State<ContextPage> {
     List<TermContextEntry> entries,
     AppLocalizations l10n,
   ) {
-    final allSelected = entries.isNotEmpty && _selectedIds.length == entries.length;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.45)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 860;
-          final actions = Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (entries.isNotEmpty)
-                FilterChip(
-                  selected: allSelected,
-                  onSelected: (_) => _toggleSelectAll(entries),
-                  label: Text(l10n.contextSelectAll),
+    final allSelected =
+        entries.isNotEmpty && _selectedIds.length == entries.length;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 960;
+        final summaryText = _selectedIds.isNotEmpty
+            ? l10n.contextSelectedCount(_selectedIds.length)
+            : l10n.contextCount(entries.length);
+
+        final actions = Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (entries.isNotEmpty)
+              FilterChip(
+                selected: allSelected,
+                onSelected: (_) => _toggleSelectAll(entries),
+                label: Text(l10n.contextSelectAll),
+                selectedColor: _cs.primaryContainer.withValues(alpha: 0.72),
+                side: BorderSide(
+                  color: _cs.outlineVariant.withValues(alpha: 0.45),
                 ),
-              if (_selectedIds.isNotEmpty)
-                FilledButton.icon(
-                  onPressed: () => _handleBulkDelete(settings, l10n),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: Text(l10n.contextDeleteSelected),
-                ),
-              FilledButton.icon(
-                onPressed: () => _handleImportMarkdown(settings, l10n),
-                icon: const Icon(Icons.upload_file_outlined, size: 18),
-                label: Text(l10n.contextImportMarkdown),
               ),
-            ],
-          );
-
-          final searchField = TextField(
-            controller: _searchCtrl,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              isDense: true,
-              prefixIcon: const Icon(Icons.search, size: 18),
-              hintText: l10n.contextSearchHint,
-              border: const OutlineInputBorder(),
-            ),
-          );
-
-          final summary = Text(
-            _selectedIds.isNotEmpty
-                ? l10n.contextSelectedCount(_selectedIds.length)
-                : l10n.contextCount(entries.length),
-            style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!widget.embedded) ...[
-                  Text(
-                    l10n.contextTab,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: _cs.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                actions,
-                const SizedBox(height: 12),
-                searchField,
-                const SizedBox(height: 8),
-                summary,
-              ],
-            );
-          }
-
-          return Column(
-            children: [
-              Row(
-                children: [
-                  if (!widget.embedded) ...[
-                    Expanded(
-                      child: Text(
-                        l10n.contextTab,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: _cs.onSurface,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
+            if (_selectedIds.isNotEmpty)
+              ShadButton.outline(
+                onPressed: () => _handleBulkDelete(settings, l10n),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.delete_outline, size: 16),
+                    const SizedBox(width: 8),
+                    Text(l10n.contextDeleteSelected),
                   ],
-                  Flexible(child: actions),
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
+          ],
+        );
+
+        final searchField = ShadInput(
+          controller: _searchCtrl,
+          onChanged: (_) => setState(() {}),
+          placeholder: Text(l10n.contextSearchHint),
+          leading: Icon(Icons.search, size: 18, color: _cs.onSurfaceVariant),
+        );
+
+        final importButton = ShadButton(
+          onPressed: () => _handleImportMarkdown(settings, l10n),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.upload_file_outlined, size: 16),
+              const SizedBox(width: 8),
+              Text(l10n.contextImportMarkdown),
+            ],
+          ),
+        );
+
+        final summary = Text(
+          summaryText,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: _cs.onSurfaceVariant,
+          ),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
                   Expanded(child: searchField),
-                  const SizedBox(width: 12),
-                  summary,
+                  const SizedBox(width: 10),
+                  importButton,
+                ],
+              ),
+              if (entries.isNotEmpty || _selectedIds.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                actions,
+              ],
+              const SizedBox(height: 14),
+              summary,
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: searchField),
+                const SizedBox(width: 12),
+                importButton,
+                const SizedBox(width: 12),
+                summary,
+              ],
+            ),
+            if (entries.isNotEmpty || _selectedIds.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Spacer(),
+                  Flexible(child: actions),
                 ],
               ),
             ],
-          );
-        },
-      ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState(SettingsProvider settings, AppLocalizations l10n) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _cs.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.45)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.article_outlined, size: 40, color: _cs.primary),
-              const SizedBox(height: 12),
-              Text(
+  Widget _buildEmptyState(AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (constraints.maxHeight - 16).clamp(0, double.infinity),
+            ),
+            child: Center(
+              child: Text(
                 l10n.contextEmpty,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
                   color: _cs.onSurface,
                 ),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => _handleImportMarkdown(settings, l10n),
-                icon: const Icon(Icons.upload_file_outlined),
-                label: Text(l10n.contextImportMarkdown),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -234,110 +238,143 @@ class _ContextPageState extends State<ContextPage> {
     AppLocalizations l10n,
   ) {
     final selected = _selectedIds.contains(entry.id);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
-        final info = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              entry.displayTitle,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: _cs.onSurface,
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: selected
+              ? _cs.primary.withValues(alpha: 0.7)
+              : _cs.outlineVariant.withValues(
+                  alpha: entry.enabled ? 0.5 : 0.25,
+                ),
+          width: selected ? 1.4 : 1,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 760;
+          final info = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    entry.displayTitle,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _cs.onSurface,
+                    ),
+                  ),
+                  _buildMetaChip(entry.enabled ? '启用中' : '已停用'),
+                  _buildMetaChip(entry.sourceName),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              entry.contentPreview.isEmpty
-                  ? l10n.contextContentEmpty
-                  : entry.contentPreview,
-              style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-            ),
-          ],
-        );
-        final actions = compact
-            ? Row(
+              const SizedBox(height: 10),
+              Text(
+                entry.contentPreview.isEmpty
+                    ? l10n.contextContentEmpty
+                    : entry.contentPreview,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.55,
+                  color: _cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          );
+
+          final controls = Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    entry.enabled ? '启用' : '停用',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Switch(
                     value: entry.enabled,
                     onChanged: (value) =>
                         settings.setTermContextEntryEnabled(entry.id, value),
                   ),
-                  IconButton(
-                    onPressed: () => _handleDelete(settings, entry, l10n),
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: l10n.delete,
-                  ),
                 ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Switch(
-                    value: entry.enabled,
-                    onChanged: (value) =>
-                        settings.setTermContextEntryEnabled(entry.id, value),
-                  ),
-                  IconButton(
-                    onPressed: () => _handleDelete(settings, entry, l10n),
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: l10n.delete,
-                  ),
-                ],
-              );
+              ),
+              IconButton(
+                onPressed: () => _handleDelete(settings, entry, l10n),
+                tooltip: l10n.delete,
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          );
 
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: _cs.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected
-                  ? _cs.primary
-                  : _cs.outlineVariant.withValues(
-                      alpha: entry.enabled ? 0.5 : 0.25,
-                    ),
-            ),
-          ),
-          child: compact
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Checkbox(
-                          value: selected,
-                          onChanged: (_) => _toggleSelection(entry.id),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(child: info),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: actions,
-                    ),
-                  ],
-                )
-              : Row(
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Checkbox(
                       value: selected,
                       onChanged: (_) => _toggleSelection(entry.id),
                     ),
+                    const SizedBox(width: 4),
                     Expanded(child: info),
-                    const SizedBox(width: 12),
-                    actions,
                   ],
                 ),
-        );
-      },
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: controls),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: selected,
+                onChanged: (_) => _toggleSelection(entry.id),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: info),
+              const SizedBox(width: 12),
+              controls,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMetaChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: _cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 
@@ -424,23 +461,25 @@ class _ContextPageState extends State<ContextPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            l10n.contextImportSuccess(contextCount, 0, 0, 0),
-          ),
+          content: Text(l10n.contextImportSuccess(contextCount, 0, 0, 0)),
         ),
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.contextImportFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.contextImportFailed)));
     }
   }
 
-  Future<bool> _showImportPreview(List<MarkdownTermImportResult> previews) async {
+  Future<bool> _showImportPreview(
+    List<MarkdownTermImportResult> previews,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
-    final contextCount =
-        previews.fold<int>(0, (sum, item) => sum + item.contextEntries.length);
+    final contextCount = previews.fold<int>(
+      0,
+      (sum, item) => sum + item.contextEntries.length,
+    );
 
     final result = await showDialog<bool>(
       context: context,
@@ -474,10 +513,9 @@ class _ContextPageState extends State<ContextPage> {
                         color: Theme.of(ctx).colorScheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(ctx)
-                              .colorScheme
-                              .outlineVariant
-                              .withValues(alpha: 0.45),
+                          color: Theme.of(
+                            ctx,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.45),
                         ),
                       ),
                       child: Column(

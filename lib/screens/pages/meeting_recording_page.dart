@@ -89,7 +89,7 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
             dictionarySuffix: widget.dictionarySuffix,
             dictionaryEntries: settings.dictionaryEntries,
             termContextEntries: settings.termContextEntries,
-            historyEntries: context.read<RecordingProvider>().history,
+            historyEntries: context.read<RecordingProvider>().contextHistory,
             entityMemories: settings.entityMemories,
             entityAliases: settings.entityAliases,
             entityRelations: settings.entityRelations,

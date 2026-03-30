@@ -14,6 +14,7 @@ import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/dictation_term_memory_service.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
+import '../../widgets/modern_ui.dart';
 
 class HistoryPage extends StatefulWidget {
   final VoidCallback? onOpenPendingCandidates;
@@ -55,6 +56,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final recording = context.watch<RecordingProvider>();
     final settings = context.watch<SettingsProvider>();
     final history = recording.history;
+    final contextHistoryCount = recording.contextHistory.length;
     final pendingCandidates = settings.dictationTermPendingCandidates;
     final hasLearnableEditedHistory = history.any(
       (item) =>
@@ -66,30 +68,20 @@ class _HistoryPageState extends State<HistoryPage> {
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      color: _cs.surfaceContainerLow,
-      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 36),
+      color: Colors.transparent,
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 标题栏
           Row(
             children: [
-              Icon(
-                Icons.description_outlined,
-                size: 22,
-                color: _cs.onSurfaceVariant.withValues(alpha: 0.7),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                l10n.history,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: _cs.onSurface,
-                  letterSpacing: 0.3,
+              const Expanded(
+                child: ModernSectionHeader(
+                  icon: Icons.insights_outlined,
+                  title: '转写总览',
+                  subtitle: '先看整体数量，再处理待确认术语和历史记录。',
                 ),
               ),
-              const Spacer(),
               if (hasLearnableEditedHistory)
                 IconButton(
                   icon: Icon(
@@ -113,16 +105,94 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
+          _buildHistoryOverview(
+            history.length,
+            pendingCandidates.length,
+            contextHistoryCount,
+            l10n,
+          ),
+          const SizedBox(height: 14),
           if (pendingCandidates.isNotEmpty) ...[
             _buildPendingCandidatesSummary(pendingCandidates),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
           ],
-          // 列表
           Expanded(
             child: history.isEmpty
                 ? _buildEmpty(l10n)
                 : _buildList(context, recording, history, l10n),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryOverview(
+    int historyCount,
+    int pendingCount,
+    int contextHistoryCount,
+    AppLocalizations l10n,
+  ) {
+    return ModernSurfaceCard(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      backgroundColor: _cs.surfaceContainerLow.withValues(alpha: 0.38),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          _buildOverviewChip(
+            icon: Icons.history_rounded,
+            label: l10n.history,
+            value: '$historyCount',
+          ),
+          _buildOverviewChip(
+            icon: Icons.pending_actions_outlined,
+            label: '待确认术语',
+            value: '$pendingCount',
+          ),
+          _buildOverviewChip(
+            icon: Icons.auto_awesome_outlined,
+            label: l10n.historyContextCount,
+            value: '$contextHistoryCount',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewChip({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _cs.primary.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: _cs.primary),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: _cs.onSurface,
+            ),
           ),
         ],
       ),
@@ -203,30 +273,10 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _buildEmpty(AppLocalizations l10n) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.history_rounded,
-            size: 52,
-            color: _cs.outline.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            l10n.noHistory,
-            style: TextStyle(fontSize: 15, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.historyHint,
-            style: TextStyle(
-              fontSize: 13,
-              color: _cs.outline.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
-      ),
+    return ModernEmptyState(
+      icon: Icons.history_rounded,
+      title: l10n.noHistory,
+      description: l10n.historyHint,
     );
   }
 
@@ -234,14 +284,8 @@ class _HistoryPageState extends State<HistoryPage> {
     List<DictationTermPendingCandidate> pendingCandidates,
   ) {
     final previewItems = pendingCandidates.take(3).toList(growable: false);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
+    return ModernSurfaceCard(
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -317,8 +361,8 @@ class _HistoryPageState extends State<HistoryPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: _cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Wrap(
         spacing: 8,
@@ -355,15 +399,16 @@ class _HistoryPageState extends State<HistoryPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.10)),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: foreground,
+          color: color,
         ),
       ),
     );
@@ -382,24 +427,11 @@ class _HistoryPageState extends State<HistoryPage> {
         final number = history.length - index;
         final dateStr = DateFormat('M月d日 HH:mm').format(item.createdAt);
         final wasEdited = recording.isHistoryEdited(item.id);
+        final useForContext = recording.isHistoryUsedForContext(item.id);
 
-        return Container(
+        return ModernSurfaceCard(
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          decoration: BoxDecoration(
-            color: _cs.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _cs.outlineVariant.withValues(alpha: 0.28),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _cs.shadow.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -453,6 +485,42 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                   ],
+                  const SizedBox(width: 8),
+                  FilterChip(
+                    selected: useForContext,
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    selectedColor: _cs.primary.withValues(alpha: 0.10),
+                    backgroundColor: _cs.primary.withValues(alpha: 0.03),
+                    side: BorderSide(
+                      color: _cs.primary.withValues(
+                        alpha: useForContext ? 0.16 : 0.08,
+                      ),
+                    ),
+                    avatar: Icon(
+                      useForContext
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded,
+                      size: 16,
+                      color: useForContext ? _cs.primary : _cs.onSurfaceVariant,
+                    ),
+                    label: Text(
+                      useForContext
+                          ? l10n.historyContextApplied
+                          : l10n.historyContextSkipped,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: useForContext
+                            ? _cs.primary
+                            : _cs.onSurfaceVariant,
+                      ),
+                    ),
+                    onSelected: (value) async {
+                      await recording.setHistoryUsedForContext(item.id, value);
+                    },
+                  ),
                   const Spacer(),
                   // 复制按钮
                   _ActionIcon(
@@ -757,7 +825,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<EntityType>(
-                    value: type,
+                    initialValue: type,
                     decoration: const InputDecoration(
                       labelText: '类型',
                       border: OutlineInputBorder(),
@@ -777,7 +845,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<EntityAliasType>(
-                    value: aliasType,
+                    initialValue: aliasType,
                     decoration: const InputDecoration(
                       labelText: '别名类型',
                       border: OutlineInputBorder(),

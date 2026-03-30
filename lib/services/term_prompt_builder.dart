@@ -61,10 +61,10 @@ class TermPromptBuilder {
       return const TermPromptBundle();
     }
 
-    final mergedPreferredTerms = <String>[
+    final mergedPreferredTerms = {
       ...preferredTerms,
       ...entityBundle.entities.map((e) => e.memory.canonicalName),
-    ].toSet().toList(growable: false);
+    }.toList(growable: false);
     final preserveTerms = mergedPreferredTerms.toList(growable: false);
     final correctionReferences = _buildCorrectionReferences(
       dictionaryEntries,

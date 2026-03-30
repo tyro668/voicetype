@@ -8,6 +8,9 @@
   "promptWorkshop": "提示词设置",
   "aiEnhanceHub": "智能增强",
   "history": "转写档案",
+  "historyContextApplied": "用于上下文",
+  "historyContextSkipped": "不用于上下文",
+  "historyContextCount": "上下文档案",
   "logs": "日志",
   "about": "关于",
 
@@ -697,6 +700,7 @@
   "originalSttText": "原始语音识别文本",
 
   "home": "首页",
+  "workspaceLabel": "工作区",
   "settings": "设置",
 
   "vendorLocalModel": "本地模型",

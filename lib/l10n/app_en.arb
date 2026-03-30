@@ -13,6 +13,9 @@
   "promptWorkshop": "Prompt Settings",
   "aiEnhanceHub": "AI Enhancement",
   "history": "Transcription Archive",
+  "historyContextApplied": "Used for Context",
+  "historyContextSkipped": "Not in Context",
+  "historyContextCount": "Context History",
   "logs": "Logs",
   "about": "About",
 
@@ -702,6 +705,7 @@
   "originalSttText": "Original speech-to-text",
 
   "home": "Home",
+  "workspaceLabel": "Workspace",
   "settings": "Settings",
 
   "vendorLocalModel": "Local Model",

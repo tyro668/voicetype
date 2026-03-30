@@ -7,6 +7,7 @@ import '../../models/correction_change_log.dart';
 import '../../models/dashboard_stats.dart';
 import '../../services/correction_change_log_service.dart';
 import '../../services/dashboard_service.dart';
+import '../../widgets/modern_ui.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -74,29 +75,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildEmptyState() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: _cs.primaryContainer.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.bar_chart_rounded,
-              size: 36,
-              color: _cs.primary.withValues(alpha: 0.5),
-            ),
+          ModernEmptyState(
+            icon: Icons.bar_chart_rounded,
+            title: _l10n.noDataYet,
+            description: '开始一次录音或会议后，这里会逐步形成你的使用概览与趋势数据。',
           ),
-          const SizedBox(height: 12),
-          Text(
-            _l10n.noDataYet,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildCorrectionChangeLogsSection(),
         ],
       ),
@@ -107,7 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -164,35 +152,55 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     ];
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: items.map((item) {
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: item == items.last ? 0 : 12),
-              child: _buildHeroCard(item),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 980;
+        if (compact) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _buildHeroCard(items[0])),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildHeroCard(items[1])),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _buildHeroCard(items[2])),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildHeroCard(items[3])),
+                ],
+              ),
+            ],
           );
-        }).toList(),
-      ),
+        }
+
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: items.map((item) {
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: item == items.last ? 0 : 12),
+                  child: _buildHeroCard(item),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildHeroCard(_HeroData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            data.gradient[0].withValues(alpha: 0.08),
-            data.gradient[1].withValues(alpha: 0.03),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: data.gradient[0].withValues(alpha: 0.15)),
+    return ModernSurfaceCard(
+      radius: 20,
+      padding: const EdgeInsets.all(18),
+      backgroundColor: Color.alphaBlend(
+        _cs.primary.withValues(alpha: 0.012),
+        _cs.surface,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,8 +210,8 @@ class _DashboardPageState extends State<DashboardPage> {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: data.gradient[0].withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              color: data.gradient[0].withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(data.icon, size: 15, color: data.gradient[0]),
           ),
@@ -288,7 +296,12 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Period tabs as chips
+          _buildSectionHeading(
+            _l10n.home,
+            '按时间范围查看会话数、录音时长与字符量。',
+            Icons.date_range_rounded,
+          ),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -327,7 +340,6 @@ class _DashboardPageState extends State<DashboardPage> {
             }),
           ),
           const SizedBox(height: 20),
-          // Stats in a row with dividers
           Row(
             children: [
               Expanded(
@@ -359,7 +371,6 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           const SizedBox(height: 12),
-          // Averages row
           Divider(color: _cs.outlineVariant.withValues(alpha: 0.5), height: 1),
           const SizedBox(height: 12),
           Wrap(
@@ -418,13 +429,10 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          _buildSectionHeading(
             _l10n.activity,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurfaceVariant,
-            ),
+            '最近活跃度、连续使用与高频时段概览。',
+            Icons.local_fire_department_rounded,
           ),
           const SizedBox(height: 16),
           _buildActivityRow(
@@ -557,13 +565,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    _buildSectionHeading(
                       _l10n.usageTrend,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _cs.onSurfaceVariant,
-                      ),
+                      '观察使用频率在不同时间粒度下的变化。',
+                      Icons.insights_outlined,
                     ),
                     const SizedBox(height: 8),
                     chips,
@@ -572,16 +577,16 @@ class _DashboardPageState extends State<DashboardPage> {
               }
 
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _l10n.usageTrend,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _cs.onSurfaceVariant,
+                  Expanded(
+                    child: _buildSectionHeading(
+                      _l10n.usageTrend,
+                      '观察使用频率在不同时间粒度下的变化。',
+                      Icons.insights_outlined,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
                   chips,
                 ],
               );
@@ -873,6 +878,12 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildSectionHeading(
+            _l10n.allTokenUsage,
+            '聚合展示增强、会议、纠错与回溯的 token 消耗。',
+            Icons.token_rounded,
+          ),
+          const SizedBox(height: 16),
           // Summary row at top if both exist
           if (showAll) ...[
             Wrap(
@@ -964,13 +975,10 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          _buildSectionHeading(
             _l10n.correctionRecallEfficiency,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurfaceVariant,
-            ),
+            '衡量术语召回和 LLM 介入效率。',
+            Icons.auto_fix_high_outlined,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1029,13 +1037,10 @@ class _DashboardPageState extends State<DashboardPage> {
           Row(
             children: [
               Expanded(
-                child: Text(
+                child: _buildSectionHeading(
                   _l10n.correctionChangesTitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurfaceVariant,
-                  ),
+                  '查看最近发生过的纠错前后变化。',
+                  Icons.compare_arrows_rounded,
                 ),
               ),
               TextButton.icon(
@@ -1187,13 +1192,10 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          _buildSectionHeading(
             _l10n.retroSectionTitle,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurfaceVariant,
-            ),
+            '追踪终态回溯修正的触发与文本变化率。',
+            Icons.history_toggle_off_rounded,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1242,13 +1244,10 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          _buildSectionHeading(
             _l10n.glossarySectionTitle,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurfaceVariant,
-            ),
+            '查看术语注入、强提升和覆盖的使用情况。',
+            Icons.menu_book_outlined,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1411,6 +1410,56 @@ class _DashboardPageState extends State<DashboardPage> {
     }
     return DateFormat('yyyy/M/d').format(dt);
   }
+
+  Widget _buildSectionHeading(String title, String subtitle, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                _cs.primary.withValues(alpha: 0.16),
+                _cs.primary.withValues(alpha: 0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _cs.primary.withValues(alpha: 0.12)),
+          ),
+          child: Icon(icon, size: 16, color: _cs.primary),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: _cs.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: _cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1437,14 +1486,10 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return ModernSurfaceCard(
+      radius: 20,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
-      ),
+      backgroundColor: cs.surface.withValues(alpha: 0.96),
       child: child,
     );
   }

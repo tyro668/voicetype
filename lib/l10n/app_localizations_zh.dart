@@ -33,6 +33,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get history => '转写档案';
 
   @override
+  String get historyContextApplied => '用于上下文';
+
+  @override
+  String get historyContextSkipped => '不用于上下文';
+
+  @override
+  String get historyContextCount => '上下文档案';
+
+  @override
   String get logs => '日志';
 
   @override
@@ -1507,6 +1516,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get home => '首页';
+
+  @override
+  String get workspaceLabel => '工作区';
 
   @override
   String get settings => '设置';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/modern_ui.dart';
 import 'pages/general_page.dart';
 import 'pages/stt_page.dart';
 import 'pages/ai_model_page.dart';
@@ -65,127 +66,142 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         body: Column(
           children: [
-            // 弹窗标题栏（含关闭按钮）
-            Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: _cs.surface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: _cs.outlineVariant.withValues(alpha: 0.32),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: const Size(32, 32),
+                    backgroundColor: Color.alphaBlend(
+                      _cs.primary.withValues(alpha: 0.02),
+                      _cs.surface,
+                    ),
+                    side: BorderSide(
+                      color: _cs.primary.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: _cs.onSurfaceVariant,
                   ),
                 ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Text(
-                    l10n.settings,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _cs.onSurface,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: MaterialLocalizations.of(
-                      context,
-                    ).closeButtonTooltip,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                  ),
-                ],
-              ),
             ),
-            // 左侧导航 + 右侧内容
             Expanded(
-              child: Row(
-                children: [
-                  // 设置子导航栏
-                  Container(
-                    width: 180,
-                    decoration: BoxDecoration(
-                      color: _cs.surfaceContainerLow,
-                      border: Border(
-                        right: BorderSide(
-                          color: _cs.outlineVariant.withValues(alpha: 0.32),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                child: ModernSurfaceCard(
+                  padding: EdgeInsets.zero,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 220,
+                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+                        decoration: BoxDecoration(
+                          color: Color.alphaBlend(
+                            _cs.primary.withValues(alpha: 0.025),
+                            _cs.surfaceContainerLow.withValues(alpha: 0.72),
+                          ),
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(22),
+                          ),
                         ),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        ...List.generate(items.length, (i) {
-                          final item = items[i];
-                          final selected = _selectedIndex == i;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 1,
-                            ),
-                            child: Material(
-                              color: selected
-                                  ? _cs.secondaryContainer
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => setState(() => _selectedIndex = i),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 9,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        item.icon,
-                                        size: 16,
-                                        color: selected
-                                            ? _cs.onSurface
-                                            : _cs.onSurfaceVariant,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...List.generate(items.length, (i) {
+                              final item = items[i];
+                              final selected = _selectedIndex == i;
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 3,
+                                ),
+                                child: Material(
+                                  color: selected
+                                      ? _cs.primary.withValues(alpha: 0.09)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () =>
+                                        setState(() => _selectedIndex = i),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 12,
                                       ),
-                                      const SizedBox(width: 10),
-                                      Flexible(
-                                        child: Text(
-                                          item.label,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: selected
-                                                ? FontWeight.w600
-                                                : FontWeight.w400,
-                                            color: selected
-                                                ? _cs.onSurface
-                                                : _cs.onSurfaceVariant,
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: selected
+                                                  ? _cs.primary.withValues(
+                                                      alpha: 0.08,
+                                                    )
+                                                  : Color.alphaBlend(
+                                                      _cs.primary.withValues(
+                                                        alpha: 0.015,
+                                                      ),
+                                                      _cs.surface,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(11),
+                                            ),
+                                            child: Icon(
+                                              item.icon,
+                                              size: 16,
+                                              color: selected
+                                                  ? _cs.primary
+                                                  : _cs.onSurfaceVariant,
+                                            ),
                                           ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                          const SizedBox(width: 10),
+                                          Flexible(
+                                            child: Text(
+                                              item.label,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: selected
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                                color: selected
+                                                    ? _cs.onSurface
+                                                    : _cs.onSurfaceVariant,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          color: Color.alphaBlend(
+                            _cs.primary.withValues(alpha: 0.01),
+                            _cs.surface.withValues(alpha: 0.82),
+                          ),
+                          child: _buildPage(),
+                        ),
+                      ),
+                    ],
                   ),
-                  // 设置内容区域
-                  Expanded(
-                    child: Container(
-                      color: _cs.surfaceContainerLow,
-                      child: _buildPage(),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],

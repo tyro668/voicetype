@@ -146,6 +146,24 @@ abstract class AppLocalizations {
   /// **'Transcription Archive'**
   String get history;
 
+  /// No description provided for @historyContextApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for Context'**
+  String get historyContextApplied;
+
+  /// No description provided for @historyContextSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in Context'**
+  String get historyContextSkipped;
+
+  /// No description provided for @historyContextCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Context History'**
+  String get historyContextCount;
+
   /// No description provided for @logs.
   ///
   /// In en, this message translates to:
@@ -2941,6 +2959,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Home'**
   String get home;
+
+  /// No description provided for @workspaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get workspaceLabel;
 
   /// No description provided for @settings.
   ///

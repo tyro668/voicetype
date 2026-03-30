@@ -82,15 +82,18 @@ class StyledDropdown<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         decoration: InputDecoration(
           filled: true,
-          fillColor: cs.surfaceContainerHighest,
+          fillColor: Color.alphaBlend(
+            cs.primary.withValues(alpha: 0.025),
+            cs.surfaceContainerHighest,
+          ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.08)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.08)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -151,11 +154,154 @@ class StyledTextField extends StatelessWidget {
           hintText: hintText,
           hintStyle: TextStyle(color: cs.outline, fontSize: 14),
           filled: true,
-          fillColor: cs.surfaceContainerHighest,
+          fillColor: Color.alphaBlend(
+            cs.primary.withValues(alpha: 0.025),
+            cs.surfaceContainerHighest,
+          ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.08)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.08)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cs.primary, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ModelDialogShell extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final String submitLabel;
+  final VoidCallback onClose;
+  final VoidCallback? onSubmit;
+
+  const ModelDialogShell({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.child,
+    required this.submitLabel,
+    required this.onClose,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: 440,
+          maxHeight: MediaQuery.of(context).size.height * 0.82,
+        ),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            cs.primary.withValues(alpha: 0.02),
+            cs.surface.withValues(alpha: 0.98),
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: cs.primary.withValues(alpha: 0.05),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: cs.primary.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Icon(icon, size: 18, color: cs.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: onClose,
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      padding: const EdgeInsets.all(8),
+                      minimumSize: const Size(32, 32),
+                      backgroundColor: Color.alphaBlend(
+                        cs.primary.withValues(alpha: 0.02),
+                        cs.surface,
+                      ),
+                      side: BorderSide(
+                        color: cs.primary.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Expanded(child: child),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.only(top: 14),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: cs.primary.withValues(alpha: 0.08)),
+                  ),
+                ),
+                child: FilledButton(
+                  onPressed: onSubmit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
+                    disabledBackgroundColor: cs.primary.withValues(alpha: 0.18),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    submitLabel,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -198,6 +344,35 @@ class EmptyStateCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(subtitle, style: TextStyle(fontSize: 13, color: cs.outline)),
         ],
+      ),
+    );
+  }
+}
+
+class StyledReadOnlyField extends StatelessWidget {
+  final String text;
+
+  const StyledReadOnlyField({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          cs.primary.withValues(alpha: 0.02),
+          cs.surfaceContainerHighest,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.08)),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant),
       ),
     );
   }

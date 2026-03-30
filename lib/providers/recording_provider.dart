@@ -36,6 +36,8 @@ class RecordingProvider extends ChangeNotifier {
   static const Duration _segmentDuration = Duration(seconds: 10);
   static const String _overlayOwner = 'dictation';
   static const String _editedHistoryIdsKey = 'edited_history_ids_v1';
+  static const String _historyContextOverridesKey =
+      'history_context_overrides_v1';
 
   final AudioRecorderService _recorder = AudioRecorderService();
   final HistoryDb _historyDb = HistoryDb.instance;
@@ -52,6 +54,7 @@ class RecordingProvider extends ChangeNotifier {
   StreamSubscription<double>? _amplitudeSub;
   final List<Transcription> _history = [];
   final Set<String> _editedHistoryIds = {};
+  final Map<String, bool> _historyContextOverrides = {};
   Completer<void>? _stopCompleter;
   Completer<void>? _segmentDrainCompleter;
   VadService? _vadService;
@@ -177,8 +180,16 @@ class RecordingProvider extends ChangeNotifier {
   String get error => _error;
   Duration get recordingDuration => _recordingDuration;
   List<Transcription> get history => List.unmodifiable(_history);
+  List<Transcription> get contextHistory => List.unmodifiable(
+    _history.where((item) => isHistoryUsedForContext(item.id)).toList(),
+  );
   Stream<double> get amplitudeStream => _recorder.amplitudeStream;
   bool isHistoryEdited(String id) => _editedHistoryIds.contains(id);
+  bool isHistoryUsedForContext(String id) {
+    final override = _historyContextOverrides[id];
+    if (override != null) return override;
+    return isHistoryEdited(id);
+  }
 
   void setOverlayStateLabels({
     required String starting,
@@ -803,7 +814,7 @@ class RecordingProvider extends ChangeNotifier {
           if (historyContextEnhancementEnabled) {
             final contextHints = _contextRecallService.recall(
               currentText: rawText,
-              history: _history,
+              history: contextHistory,
             );
             if (contextHints.hasContent) {
               effectiveEnhanceConfig = aiEnhanceConfig.copyWith(
@@ -951,6 +962,15 @@ class RecordingProvider extends ChangeNotifier {
       _editedHistoryIds
         ..clear()
         ..addAll(_decodeEditedHistoryIds(raw));
+      final contextRaw = await AppDatabase.instance.getSetting(
+        _historyContextOverridesKey,
+      );
+      _historyContextOverrides
+        ..clear()
+        ..addAll(_decodeHistoryContextOverrides(contextRaw));
+      _historyContextOverrides.removeWhere(
+        (id, _) => !_history.any((item) => item.id == id),
+      );
       notifyListeners();
     } catch (e) {
       // ignore
@@ -968,10 +988,30 @@ class RecordingProvider extends ChangeNotifier {
     return <String>{};
   }
 
+  Map<String, bool> _decodeHistoryContextOverrides(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return <String, bool>{};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is Map) {
+        return decoded.map<String, bool>((key, value) {
+          return MapEntry('$key', value == true);
+        });
+      }
+    } catch (_) {}
+    return <String, bool>{};
+  }
+
   Future<void> _saveEditedHistoryIds() async {
     await AppDatabase.instance.setSetting(
       _editedHistoryIdsKey,
       json.encode(_editedHistoryIds.toList()..sort()),
+    );
+  }
+
+  Future<void> _saveHistoryContextOverrides() async {
+    await AppDatabase.instance.setSetting(
+      _historyContextOverridesKey,
+      json.encode(_historyContextOverrides),
     );
   }
 
@@ -988,7 +1028,9 @@ class RecordingProvider extends ChangeNotifier {
   void removeHistory(int index) {
     final item = _history.removeAt(index);
     _editedHistoryIds.remove(item.id);
+    _historyContextOverrides.remove(item.id);
     unawaited(_saveEditedHistoryIds());
+    unawaited(_saveHistoryContextOverrides());
     _historyDb.deleteById(item.id);
     notifyListeners();
   }
@@ -1012,14 +1054,32 @@ class RecordingProvider extends ChangeNotifier {
     _history[index] = updated;
     _editedHistoryIds.add(id);
     await _saveEditedHistoryIds();
+    if (_historyContextOverrides[id] == true) {
+      _historyContextOverrides.remove(id);
+      await _saveHistoryContextOverrides();
+    }
     await _historyDb.insert(updated);
+    notifyListeners();
+  }
+
+  Future<void> setHistoryUsedForContext(String id, bool enabled) async {
+    if (!_history.any((entry) => entry.id == id)) return;
+    final defaultValue = isHistoryEdited(id);
+    if (enabled == defaultValue) {
+      _historyContextOverrides.remove(id);
+    } else {
+      _historyContextOverrides[id] = enabled;
+    }
+    await _saveHistoryContextOverrides();
     notifyListeners();
   }
 
   void clearAllHistory() {
     _history.clear();
     _editedHistoryIds.clear();
+    _historyContextOverrides.clear();
     unawaited(_saveEditedHistoryIds());
+    unawaited(_saveHistoryContextOverrides());
     _historyDb.clear();
     notifyListeners();
   }

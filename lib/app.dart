@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'l10n/app_localizations.dart';
 import 'providers/meeting_provider.dart';
@@ -18,12 +19,16 @@ class VoiceTypeApp extends StatelessWidget {
         : null;
   }
 
-  ThemeData _buildTheme(Brightness brightness) {
-    return ThemeData(
+  ShadThemeData _buildTheme(Brightness brightness) {
+    final textTheme = _platformFontFamily == null
+        ? ShadTextTheme()
+        : ShadTextTheme(family: _platformFontFamily);
+    return ShadThemeData(
       brightness: brightness,
-      colorSchemeSeed: const Color(0xFF6C63FF),
-      useMaterial3: true,
-      fontFamily: _platformFontFamily,
+      colorScheme: brightness == Brightness.dark
+          ? const ShadBlueColorScheme.dark()
+          : const ShadBlueColorScheme.light(),
+      textTheme: textTheme,
     );
   }
 
@@ -37,7 +42,7 @@ class VoiceTypeApp extends StatelessWidget {
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
-          return MaterialApp(
+          return ShadApp(
             onGenerateTitle: (context) =>
                 AppLocalizations.of(context)?.appTitle ?? 'Offhand',
             debugShowCheckedModeBanner: false,
@@ -48,6 +53,7 @@ class VoiceTypeApp extends StatelessWidget {
             supportedLocales: const [Locale('en'), Locale('zh')],
             localizationsDelegates: const [
               AppLocalizations.delegate,
+              GlobalShadLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,

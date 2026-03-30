@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/modern_ui.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -10,39 +11,31 @@ class AboutPage extends StatelessWidget {
 
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.about,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-            ),
+          ModernSurfaceCard(
+            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const ModernSectionHeader(
+                  icon: Icons.waving_hand_outlined,
+                  title: '产品信息',
+                  subtitle: '应用定位、版本信息与语音工作台说明。',
+                  compact: true,
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Icon(Icons.mic, color: cs.primary, size: 24),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       l10n.appTitle,
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -58,7 +51,7 @@ class AboutPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     color: cs.onSurfaceVariant,
-                    height: 1.5,
+                    height: 1.6,
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -967,7 +967,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
             dictionarySuffix: settings.dictionaryWordsForPrompt,
             dictionaryEntries: settings.dictionaryEntries,
             termContextEntries: settings.termContextEntries,
-            historyEntries: context.read<RecordingProvider>().history,
+            historyEntries: context.read<RecordingProvider>().contextHistory,
             entityMemories: settings.entityMemories,
             entityAliases: settings.entityAliases,
             entityRelations: settings.entityRelations,

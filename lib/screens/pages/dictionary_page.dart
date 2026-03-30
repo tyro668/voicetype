@@ -15,6 +15,7 @@ import '../../providers/meeting_provider.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
+import '../../widgets/modern_ui.dart';
 import 'context_page.dart';
 import 'entity_page.dart';
 
@@ -130,15 +131,16 @@ class _DictionaryPageState extends State<DictionaryPage> {
     return DefaultTabController(
       length: 3,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: _cs.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _cs.outlineVariant),
+                color: _cs.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
               ),
               child: TabBar(
                 tabs: [
@@ -146,9 +148,29 @@ class _DictionaryPageState extends State<DictionaryPage> {
                   Tab(text: l10n.contextTab),
                   const Tab(text: '实体'),
                 ],
+                dividerColor: Colors.transparent,
                 labelColor: _cs.primary,
                 unselectedLabelColor: _cs.onSurfaceVariant,
+                labelStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
                 indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: _cs.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _cs.primary.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -206,18 +228,13 @@ class _DictionaryPageState extends State<DictionaryPage> {
           const SizedBox(height: 16),
         ],
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: _cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _cs.outlineVariant),
-            ),
-            clipBehavior: Clip.antiAlias,
+          child: ModernSurfaceCard(
+            padding: EdgeInsets.zero,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                  padding: const EdgeInsets.fromLTRB(18, 18, 12, 0),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final compact = constraints.maxWidth < 980;
@@ -332,6 +349,15 @@ class _DictionaryPageState extends State<DictionaryPage> {
                               visualDensity: VisualDensity.compact,
                               materialTapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,
+                              backgroundColor: _cs.primary.withValues(
+                                alpha: 0.03,
+                              ),
+                              selectedColor: _cs.primary.withValues(
+                                alpha: 0.08,
+                              ),
+                              side: BorderSide(
+                                color: _cs.primary.withValues(alpha: 0.08),
+                              ),
                             ),
                           IconButton(
                             onPressed: () => _handleExportCsv(settings, l10n),
@@ -365,6 +391,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
 
                       if (compact) {
                         return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             searchBox,
                             const SizedBox(height: 8),
@@ -376,12 +403,15 @@ class _DictionaryPageState extends State<DictionaryPage> {
                         );
                       }
 
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      return Column(
                         children: [
-                          Expanded(child: searchBox),
-                          const SizedBox(width: 8),
-                          Flexible(child: controls),
+                          Row(
+                            children: [
+                              Expanded(child: searchBox),
+                              const SizedBox(width: 12),
+                              Flexible(child: controls),
+                            ],
+                          ),
                         ],
                       );
                     },
@@ -787,7 +817,8 @@ class _DictionaryPageState extends State<DictionaryPage> {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _cs.outlineVariant),
+            color: _cs.primary.withValues(alpha: 0.025),
+            border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
           ),
           alignment: Alignment.center,
           child: Row(
@@ -829,9 +860,12 @@ class _DictionaryPageState extends State<DictionaryPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _cs.surface,
+        color: Color.alphaBlend(
+          _cs.primary.withValues(alpha: 0.018),
+          _cs.surface,
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant),
+        border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

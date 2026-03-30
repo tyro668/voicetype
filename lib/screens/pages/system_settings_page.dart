@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/settings_provider.dart';
 import '../../database/app_database.dart';
 import '../../services/overlay_service.dart';
+import '../../widgets/modern_ui.dart';
 
 class SystemSettingsPage extends StatefulWidget {
   const SystemSettingsPage({super.key});
@@ -52,9 +53,11 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(enabled
-                ? AppLocalizations.of(context)!.launchAtLoginFailed
-                : AppLocalizations.of(context)!.disableLaunchAtLoginFailed),
+            content: Text(
+              enabled
+                  ? AppLocalizations.of(context)!.launchAtLoginFailed
+                  : AppLocalizations.of(context)!.disableLaunchAtLoginFailed,
+            ),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),
@@ -106,46 +109,42 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
     return Align(
       alignment: Alignment.topCenter,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          // ===== 系统设置 =====
-          Text(
-            l10n.systemSettings,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
+            ModernSurfaceCard(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ModernSectionHeader(
+                    icon: Icons.desktop_windows_outlined,
+                    title: '启动与桌面行为',
+                    subtitle: '控制开机启动、Dock 显示和桌面常驻行为。',
+                    compact: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLaunchAtLoginSection(l10n),
+                  if (Platform.isMacOS) ...[
+                    const SizedBox(height: 12),
+                    _buildShowInDockSection(l10n),
+                  ],
+                  const SizedBox(height: 36),
+                  ModernSectionHeader(
+                    icon: Icons.lan_outlined,
+                    title: l10n.networkSettings,
+                    subtitle: l10n.networkSettingsDescription,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNetworkProxySection(l10n, settings, mode),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildLaunchAtLoginSection(l10n),
-          if (Platform.isMacOS) ...[
-            const SizedBox(height: 12),
-            _buildShowInDockSection(l10n),
+            const SizedBox(height: 40),
           ],
-          const SizedBox(height: 36),
-
-          // ===== 网络设置 =====
-          Text(
-            l10n.networkSettings,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.networkSettingsDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 12),
-          _buildNetworkProxySection(l10n, settings, mode),
-          const SizedBox(height: 40),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -161,7 +160,11 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       ),
       child: Row(
         children: [
-          Icon(Icons.power_settings_new_outlined, size: 20, color: _cs.onSurfaceVariant),
+          Icon(
+            Icons.power_settings_new_outlined,
+            size: 20,
+            color: _cs.onSurfaceVariant,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

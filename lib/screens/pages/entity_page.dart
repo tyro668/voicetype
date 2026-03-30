@@ -3,12 +3,13 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../models/entity_alias.dart';
 import '../../models/entity_memory.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/markdown_entity_import_service.dart';
+import '../../widgets/modern_ui.dart';
 
 class EntityPage extends StatefulWidget {
   final bool embedded;
@@ -40,8 +41,9 @@ class _EntityPageState extends State<EntityPage> {
         settings.entityMemories
             .where((entity) {
               if (search.isEmpty) return true;
-              if (entity.canonicalName.toLowerCase().contains(search))
+              if (entity.canonicalName.toLowerCase().contains(search)) {
                 return true;
+              }
               return settings
                   .aliasesForEntity(entity.id)
                   .any(
@@ -51,70 +53,37 @@ class _EntityPageState extends State<EntityPage> {
             .toList(growable: false)
           ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 960;
-            final searchBox = SizedBox(
-              width: compact ? double.infinity : 280,
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: '搜索实体或别名',
-                  prefixIcon: const Icon(Icons.search, size: 18),
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+    final content = ModernSurfaceCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildToolbar(cs, entities.length),
+          const SizedBox(height: 18),
+          Expanded(
+            child: entities.isEmpty
+                ? ModernEmptyState(
+                    icon: Icons.hub_outlined,
+                    title: '暂无实体',
+                    description: '导入 Markdown 或手动新增后，这里会集中展示实体、别名和启用状态。',
+                    action: ShadButton(
+                      onPressed: _showAddEntityDialog,
+                      child: const Text('新增实体'),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: entities.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final entity = entities[index];
+                      final aliases = settings.aliasesForEntity(entity.id)
+                        ..sort((a, b) => a.aliasText.compareTo(b.aliasText));
+                      return _buildEntityCard(cs, settings, entity, aliases);
+                    },
                   ),
-                ),
-              ),
-            );
-            final actions = Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _importMarkdown,
-                  icon: const Icon(Icons.file_upload_outlined, size: 18),
-                  label: const Text('导入 Markdown'),
-                ),
-                FilledButton.icon(
-                  onPressed: _showAddEntityDialog,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('新增实体'),
-                ),
-              ],
-            );
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [searchBox, const SizedBox(height: 12), actions],
-              );
-            }
-            return Row(children: [searchBox, const Spacer(), actions]);
-          },
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: entities.isEmpty
-              ? Center(
-                  child: Text('暂无实体', style: TextStyle(color: cs.outline)),
-                )
-              : ListView.separated(
-                  itemCount: entities.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final entity = entities[index];
-                    final aliases = settings.aliasesForEntity(entity.id)
-                      ..sort((a, b) => a.aliasText.compareTo(b.aliasText));
-                    return _buildEntityCard(cs, settings, entity, aliases);
-                  },
-                ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
 
     if (widget.embedded) {
@@ -124,6 +93,87 @@ class _EntityPageState extends State<EntityPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: content,
+    );
+  }
+
+  Widget _buildToolbar(ColorScheme cs, int count) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 960;
+        final searchBox = SizedBox(
+          width: compact ? double.infinity : 320,
+          child: ModernSearchInput(
+            controller: _searchCtrl,
+            hintText: '搜索实体或别名',
+            onChanged: (_) => setState(() {}),
+            onClear: () {
+              _searchCtrl.clear();
+              setState(() {});
+            },
+          ),
+        );
+        final importButton = ShadButton.outline(
+          onPressed: _importMarkdown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.file_upload_outlined, size: 16),
+              SizedBox(width: 8),
+              Text('导入 Markdown'),
+            ],
+          ),
+        );
+        final addButton = ShadButton(
+          onPressed: _showAddEntityDialog,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.add, size: 16),
+              SizedBox(width: 8),
+              Text('新增实体'),
+            ],
+          ),
+        );
+        final summary = Text(
+          '共 $count 个实体',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurfaceVariant,
+          ),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: searchBox),
+                  const SizedBox(width: 10),
+                  importButton,
+                  const SizedBox(width: 10),
+                  addButton,
+                ],
+              ),
+              const SizedBox(height: 12),
+              summary,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: searchBox),
+            const SizedBox(width: 12),
+            importButton,
+            const SizedBox(width: 10),
+            addButton,
+            const SizedBox(width: 12),
+            summary,
+          ],
+        );
+      },
     );
   }
 
@@ -143,15 +193,11 @@ class _EntityPageState extends State<EntityPage> {
       if (latestEvidence != null)
         '来源 ${_sourceLabel(latestEvidence.sourceType)}',
     ];
-    return Container(
+    return ModernSurfaceCard(
+      radius: 18,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant),
-      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         onTap: () => _showEntityDetailDialog(entity.id),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,7 +219,10 @@ class _EntityPageState extends State<EntityPage> {
                       const SizedBox(height: 4),
                       Text(
                         meta.join(' · '),
-                        style: TextStyle(fontSize: 12, color: cs.outline),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -198,6 +247,7 @@ class _EntityPageState extends State<EntityPage> {
                 children: aliases
                     .map((alias) {
                       return Chip(
+                        backgroundColor: cs.surfaceContainerLow,
                         label: Text(
                           '${alias.aliasText} · ${_aliasLabel(alias.aliasType)}',
                         ),
@@ -241,7 +291,7 @@ class _EntityPageState extends State<EntityPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<EntityType>(
-                        value: type,
+                        initialValue: type,
                         decoration: const InputDecoration(
                           labelText: '类型',
                           border: OutlineInputBorder(),
@@ -317,12 +367,12 @@ class _EntityPageState extends State<EntityPage> {
     if (currentEntity == null) return;
 
     final canonicalCtrl = TextEditingController(
-      text: currentEntity!.canonicalName,
+      text: currentEntity.canonicalName,
     );
     final aliasCtrl = TextEditingController();
-    var type = currentEntity!.type;
-    var enabled = currentEntity!.enabled;
-    var highConfidence = currentEntity!.confidence >= 0.95;
+    var type = currentEntity.type;
+    var enabled = currentEntity.enabled;
+    var highConfidence = currentEntity.confidence >= 0.95;
     EntityAliasType aliasType = EntityAliasType.alias;
     var aliases = settings.aliasesForEntity(entityId)
       ..sort((a, b) => a.aliasText.compareTo(b.aliasText));
@@ -379,7 +429,7 @@ class _EntityPageState extends State<EntityPage> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<EntityType>(
-                          value: type,
+                          initialValue: type,
                           decoration: const InputDecoration(
                             labelText: '类型',
                             border: OutlineInputBorder(),
@@ -461,7 +511,7 @@ class _EntityPageState extends State<EntityPage> {
                             SizedBox(
                               width: 140,
                               child: DropdownButtonFormField<EntityAliasType>(
-                                value: aliasType,
+                                initialValue: aliasType,
                                 isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: '类型',
@@ -489,18 +539,20 @@ class _EntityPageState extends State<EntityPage> {
                           child: OutlinedButton.icon(
                             onPressed: () async {
                               final alias = aliasCtrl.text.trim();
-                              if (alias.isEmpty || currentEntity == null)
+                              if (alias.isEmpty || currentEntity == null) {
                                 return;
+                              }
+                              final entity = currentEntity!;
                               final provider = context.read<SettingsProvider>();
                               await provider.addOrMergeEntityAlias(
-                                entityId: currentEntity!.id,
+                                entityId: entity.id,
                                 aliasText: alias,
                                 aliasType: aliasType,
                                 source: 'manual',
                                 confidence: highConfidence ? 0.95 : 0.85,
                               );
                               await provider.addEntityEvidence(
-                                entityId: currentEntity!.id,
+                                entityId: entity.id,
                                 sourceType: 'manual',
                                 sourceRef: 'entity-detail',
                                 beforeText: alias,
@@ -616,6 +668,7 @@ class _EntityPageState extends State<EntityPage> {
     final content = file.bytes != null
         ? utf8.decode(file.bytes!, allowMalformed: true)
         : await File(file.path!).readAsString();
+    if (!mounted) return;
     final candidates = _importService.parse(content);
     final settings = context.read<SettingsProvider>();
     for (final candidate in candidates) {

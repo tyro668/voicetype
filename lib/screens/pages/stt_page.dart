@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uuid/uuid.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/provider_config.dart';
@@ -10,6 +11,7 @@ import '../../services/sense_voice_ffi_service.dart';
 import '../../services/stt_service.dart';
 import '../../services/whisper_cpp_service.dart';
 import '../../widgets/model_form_widgets.dart';
+import '../../widgets/modern_ui.dart';
 
 class SttPage extends StatefulWidget {
   const SttPage({super.key});
@@ -19,8 +21,6 @@ class SttPage extends StatefulWidget {
 }
 
 class _SttPageState extends State<SttPage> {
-  ColorScheme get _cs => Theme.of(context).colorScheme;
-
   static bool isLocalModelEntry(SttModelEntry entry) {
     return entry.vendorName == 'Local Model' ||
         entry.vendorName == '本地模型' ||
@@ -44,49 +44,47 @@ class _SttPageState extends State<SttPage> {
     return Align(
       alignment: Alignment.topCenter,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(l10n),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showAddDialog(context, settings, l10n),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(l10n.addVoiceModel),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _cs.onSurface,
-                  side: BorderSide(color: _cs.outline),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            ModernSurfaceCard(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ModernSectionHeader(
+                    icon: Icons.settings_voice_outlined,
+                    title: '语音模型列表',
+                    subtitle: '新增、测试并切换当前可用的语音识别模型。',
+                    compact: true,
                   ),
-                ),
+                  const SizedBox(height: 14),
+                  ShadButton.outline(
+                    onPressed: () => _showAddDialog(context, settings, l10n),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add, size: 16),
+                        const SizedBox(width: 8),
+                        Text(l10n.addVoiceModel),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (entries.isEmpty)
+                    _buildEmptyState(context, l10n)
+                  else
+                    ...entries.map(
+                      (entry) =>
+                          _buildEntryCard(context, settings, entry, l10n),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            if (entries.isEmpty)
-              _buildEmptyState(context, l10n)
-            else
-              ...entries.map(
-                (entry) => _buildEntryCard(context, settings, entry, l10n),
-              ),
             const SizedBox(height: 40),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(AppLocalizations l10n) {
-    return Text(
-      l10n.voiceModelSettings,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: _cs.onSurface,
       ),
     );
   }
@@ -312,109 +310,51 @@ class _AddModelDialogState extends State<_AddModelDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 440,
-          maxHeight: MediaQuery.of(context).size.height * 0.82,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _isLocalModel
-                    ? _buildLocalModelDialogBody(l10n)
-                    : SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildDialogHeader(l10n),
-                            const SizedBox(height: 14),
-                            FormFieldLabel(l10n.vendor, required: true),
-                            const SizedBox(height: 6),
-                            _buildVendorDropdown(l10n),
-                            const SizedBox(height: 12),
-                            FormFieldLabel(l10n.model, required: true),
-                            const SizedBox(height: 6),
-                            if (_isCustom)
-                              _buildTextField(
-                                controller: _customModelController,
-                                hintText: l10n.enterModelName('whisper-1'),
-                              )
-                            else
-                              _buildModelDropdown(l10n),
-                            const SizedBox(height: 12),
-                            if (_isCustom) ...[
-                              FormFieldLabel(l10n.endpointUrl, required: true),
-                              const SizedBox(height: 6),
-                              _buildTextField(
-                                controller: _customBaseUrlController,
-                                hintText: 'https://api.openai.com/v1',
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                            FormFieldLabel(l10n.apiKey, required: true),
-                            const SizedBox(height: 6),
-                            _buildTextField(
-                              controller: _apiKeyController,
-                              hintText: l10n.enterApiKey,
-                              obscureText: true,
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _canSubmit ? _submit : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _cs.onSurface,
-                    foregroundColor: _cs.onPrimary,
-                    disabledBackgroundColor: _cs.outline,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+    return ModelDialogShell(
+      icon: Icons.mic_outlined,
+      title: l10n.addVoiceModel,
+      submitLabel: l10n.addModel,
+      onClose: () => Navigator.pop(context),
+      onSubmit: _canSubmit ? _submit : null,
+      child: _isLocalModel
+          ? _buildLocalModelDialogBody(l10n)
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FormFieldLabel(l10n.vendor, required: true),
+                  const SizedBox(height: 6),
+                  _buildVendorDropdown(l10n),
+                  const SizedBox(height: 12),
+                  FormFieldLabel(l10n.model, required: true),
+                  const SizedBox(height: 6),
+                  if (_isCustom)
+                    _buildTextField(
+                      controller: _customModelController,
+                      hintText: l10n.enterModelName('whisper-1'),
+                    )
+                  else
+                    _buildModelDropdown(l10n),
+                  const SizedBox(height: 12),
+                  if (_isCustom) ...[
+                    FormFieldLabel(l10n.endpointUrl, required: true),
+                    const SizedBox(height: 6),
+                    _buildTextField(
+                      controller: _customBaseUrlController,
+                      hintText: 'https://api.openai.com/v1',
                     ),
+                    const SizedBox(height: 12),
+                  ],
+                  FormFieldLabel(l10n.apiKey, required: true),
+                  const SizedBox(height: 6),
+                  _buildTextField(
+                    controller: _apiKeyController,
+                    hintText: l10n.enterApiKey,
+                    obscureText: true,
                   ),
-                  child: Text(
-                    l10n.addModel,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDialogHeader(AppLocalizations l10n) {
-    return Row(
-      children: [
-        Text(
-          l10n.addVoiceModel,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: _cs.onSurface,
-          ),
-        ),
-        const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.close, size: 18),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ],
+            ),
     );
   }
 
@@ -422,8 +362,6 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDialogHeader(l10n),
-        const SizedBox(height: 14),
         FormFieldLabel(l10n.vendor, required: true),
         const SizedBox(height: 6),
         _buildVendorDropdown(l10n),
@@ -1100,132 +1038,82 @@ class _EditModelDialogState extends State<_EditModelDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      l10n.editVoiceModel,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _cs.onSurface,
-                      ),
+    return ModelDialogShell(
+      icon: Icons.edit_outlined,
+      title: l10n.editVoiceModel,
+      submitLabel: l10n.saveChanges,
+      onClose: () => Navigator.pop(context),
+      onSubmit: _submit,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FormFieldLabel(l10n.vendor),
+            const SizedBox(height: 6),
+            StyledReadOnlyField(
+              text: localizedVendorName(widget.entry.vendorName, widget.l10n),
+            ),
+            const SizedBox(height: 12),
+            if (_isLocalModel) ...[
+              FormFieldLabel(l10n.model, required: true),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _modelController,
+                      hintText: _isSenseVoiceModel
+                          ? 'sense-voice-zh-en'
+                          : 'ggml-tiny.bin',
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
+                  ),
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: l10n.openModelDir,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.folder_open,
+                        size: 20,
+                        color: _cs.onSurfaceVariant,
+                      ),
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                FormFieldLabel(l10n.vendor),
-                const SizedBox(height: 6),
-                _buildReadOnlyField(
-                  localizedVendorName(widget.entry.vendorName, widget.l10n),
-                ),
-                const SizedBox(height: 12),
-
-                if (_isLocalModel) ...[
-                  FormFieldLabel(l10n.model, required: true),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _modelController,
-                          hintText: _isSenseVoiceModel
-                              ? 'sense-voice-zh-en'
-                              : 'ggml-tiny.bin',
-                        ),
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
                       ),
-                      const SizedBox(width: 6),
-                      Tooltip(
-                        message: l10n.openModelDir,
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.folder_open,
-                            size: 20,
-                            color: _cs.onSurfaceVariant,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 36,
-                            minHeight: 36,
-                          ),
-                          onPressed: () => _openModelFileLocation(
-                            _modelController.text.trim(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  if (_isCustom) ...[
-                    FormFieldLabel(l10n.endpointUrl, required: true),
-                    const SizedBox(height: 6),
-                    _buildTextField(
-                      controller: _baseUrlController,
-                      hintText: 'https://api.example.com/v1',
+                      onPressed: () =>
+                          _openModelFileLocation(_modelController.text.trim()),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  FormFieldLabel(l10n.model, required: true),
-                  const SizedBox(height: 6),
-                  _buildTextField(
-                    controller: _modelController,
-                    hintText: l10n.enterModelName('whisper-1'),
-                  ),
-                  const SizedBox(height: 12),
-
-                  FormFieldLabel(l10n.apiKey, required: true),
-                  const SizedBox(height: 6),
-                  _buildTextField(
-                    controller: _apiKeyController,
-                    hintText: l10n.enterApiKey,
-                    obscureText: true,
                   ),
                 ],
-
-                const SizedBox(height: 14),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _cs.onSurface,
-                      foregroundColor: _cs.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      l10n.saveChanges,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ),
+              ),
+            ] else ...[
+              if (_isCustom) ...[
+                FormFieldLabel(l10n.endpointUrl, required: true),
+                const SizedBox(height: 6),
+                _buildTextField(
+                  controller: _baseUrlController,
+                  hintText: 'https://api.example.com/v1',
                 ),
+                const SizedBox(height: 12),
               ],
-            ),
-          ),
+              FormFieldLabel(l10n.model, required: true),
+              const SizedBox(height: 6),
+              _buildTextField(
+                controller: _modelController,
+                hintText: l10n.enterModelName('whisper-1'),
+              ),
+              const SizedBox(height: 12),
+              FormFieldLabel(l10n.apiKey, required: true),
+              const SizedBox(height: 6),
+              _buildTextField(
+                controller: _apiKeyController,
+                hintText: l10n.enterApiKey,
+                obscureText: true,
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -1256,23 +1144,6 @@ class _EditModelDialogState extends State<_EditModelDialog> {
     );
     widget.onSave(updated);
     Navigator.pop(context);
-  }
-
-  Widget _buildReadOnlyField(String text) {
-    return Container(
-      width: double.infinity,
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-      ),
-    );
   }
 
   Widget _buildTextField({

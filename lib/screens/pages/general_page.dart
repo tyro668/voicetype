@@ -11,6 +11,7 @@ import '../../providers/settings_provider.dart';
 import '../../services/audio_recorder.dart';
 import '../../services/log_service.dart';
 import '../../services/overlay_service.dart';
+import '../../widgets/modern_ui.dart';
 
 class GeneralPage extends StatefulWidget {
   const GeneralPage({super.key});
@@ -282,268 +283,238 @@ class _GeneralPageState extends State<GeneralPage> {
     final settings = context.watch<SettingsProvider>();
     final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ===== 激活模式 =====
-          Text(
-            l10n.activationMode,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _ActivationModeSelector(settings: settings, l10n: l10n),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              settings.activationMode == ActivationMode.tapToTalk
-                  ? l10n.tapToTalkDescription
-                  : l10n.pushToTalkDescription,
-              style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
-            ),
-          ),
-          const SizedBox(height: 32),
+          ModernSurfaceCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ModernSectionHeader(
+                  icon: Icons.touch_app_outlined,
+                  title: l10n.activationMode,
+                  subtitle: '选择唤起方式，并让录音入口行为更符合你的使用习惯。',
+                  compact: true,
+                ),
+                const SizedBox(height: 12),
+                _ActivationModeSelector(settings: settings, l10n: l10n),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    settings.activationMode == ActivationMode.tapToTalk
+                        ? l10n.tapToTalkDescription
+                        : l10n.pushToTalkDescription,
+                    style: TextStyle(fontSize: 13, color: _cs.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-          // ===== 听写快捷键 =====
-          Text(
-            l10n.dictationHotkey,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.dictationHotkeyDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _HotkeyCapture(settings: settings, l10n: l10n),
-          const SizedBox(height: 36),
+                // ===== 听写快捷键 =====
+                ModernSectionHeader(
+                  icon: Icons.keyboard_command_key_outlined,
+                  title: l10n.dictationHotkey,
+                  subtitle: l10n.dictationHotkeyDescription,
+                  compact: true,
+                ),
+                const SizedBox(height: 16),
+                _HotkeyCapture(settings: settings, l10n: l10n),
+                const SizedBox(height: 36),
 
-          // ===== 会议快捷键 =====
-          Text(
-            l10n.meetingHotkey,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.meetingHotkeyDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _MeetingHotkeyCapture(settings: settings, l10n: l10n),
-          const SizedBox(height: 36),
+                // ===== 会议快捷键 =====
+                ModernSectionHeader(
+                  icon: Icons.groups_2_outlined,
+                  title: l10n.meetingHotkey,
+                  subtitle: l10n.meetingHotkeyDescription,
+                  compact: true,
+                ),
+                const SizedBox(height: 16),
+                _MeetingHotkeyCapture(settings: settings, l10n: l10n),
+                const SizedBox(height: 36),
 
-          // ===== 权限设置 =====
-          Text(
-            l10n.permissions,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.permissionsDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildPermissionButtons(l10n),
-          const SizedBox(height: 12),
-          _buildPermissionHint(l10n),
-          const SizedBox(height: 36),
+                // ===== 权限设置 =====
+                ModernSectionHeader(
+                  icon: Icons.verified_user_outlined,
+                  title: l10n.permissions,
+                  subtitle: l10n.permissionsDescription,
+                  compact: true,
+                ),
+                const SizedBox(height: 16),
+                _buildPermissionButtons(l10n),
+                const SizedBox(height: 12),
+                _buildPermissionHint(l10n),
+                const SizedBox(height: 36),
 
-          // ===== 麦克风输入 =====
-          Text(
-            l10n.microphoneInput,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.microphoneInputDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildPreferBuiltIn(settings, l10n),
-          const SizedBox(height: 12),
-          _buildCurrentDevice(l10n),
-          const SizedBox(height: 36),
+                // ===== 麦克风输入 =====
+                ModernSectionHeader(
+                  icon: Icons.mic_external_on_outlined,
+                  title: l10n.microphoneInput,
+                  subtitle: l10n.microphoneInputDescription,
+                  compact: true,
+                ),
+                const SizedBox(height: 16),
+                _buildPreferBuiltIn(settings, l10n),
+                const SizedBox(height: 12),
+                _buildCurrentDevice(l10n),
+                const SizedBox(height: 36),
 
-          // ===== 最短录音时长 =====
-          Text(
-            l10n.minRecordingDuration,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.minRecordingDurationDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildMinDuration(settings, l10n),
-          const SizedBox(height: 36),
+                // ===== 最短录音时长 =====
+                ModernSectionHeader(
+                  icon: Icons.timer_outlined,
+                  title: l10n.minRecordingDuration,
+                  subtitle: l10n.minRecordingDurationDescription,
+                  compact: true,
+                ),
+                const SizedBox(height: 16),
+                _buildMinDuration(settings, l10n),
+                const SizedBox(height: 36),
 
-          // ===== 智能静音检测 (VAD) =====
-          Text(
-            l10n.vadTitle,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.vadDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildVadSection(settings, l10n),
-          const SizedBox(height: 36),
+                // ===== 智能静音检测 (VAD) =====
+                Text(
+                  l10n.vadTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.vadDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildVadSection(settings, l10n),
+                const SizedBox(height: 36),
 
-          // ===== 场景模式 =====
-          Text(
-            l10n.sceneModeTitle,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.sceneModeDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildSceneModeSelector(settings, l10n),
-          const SizedBox(height: 36),
+                // ===== 场景模式 =====
+                Text(
+                  l10n.sceneModeTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.sceneModeDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildSceneModeSelector(settings, l10n),
+                const SizedBox(height: 36),
 
-          Text(
-            l10n.textProcessing,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.textProcessingDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildCorrectionSection(settings, l10n),
-          const SizedBox(height: 12),
-          _buildHistoryContextSection(settings, l10n),
-          const SizedBox(height: 36),
+                Text(
+                  l10n.textProcessing,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.textProcessingDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildCorrectionSection(settings, l10n),
+                const SizedBox(height: 12),
+                _buildHistoryContextSection(settings, l10n),
+                const SizedBox(height: 36),
 
-          Text(
-            l10n.language,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.languageDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildLanguageSelector(settings, l10n),
-          const SizedBox(height: 36),
+                Text(
+                  l10n.language,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.languageDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildLanguageSelector(settings, l10n),
+                const SizedBox(height: 36),
 
-          // ===== 外观主题 =====
-          Text(
-            l10n.theme,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.themeDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildThemeSelector(settings, l10n),
-          const SizedBox(height: 36),
+                // ===== 外观主题 =====
+                Text(
+                  l10n.theme,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.themeDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildThemeSelector(settings, l10n),
+                const SizedBox(height: 36),
 
-          // ===== 本地模型闲置释放 =====
-          Text(
-            l10n.localModelIdleUnloadTitle,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.localModelIdleUnloadDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildLocalLlmIdleUnloadSection(settings, l10n),
-          const SizedBox(height: 36),
+                // ===== 本地模型闲置释放 =====
+                Text(
+                  l10n.localModelIdleUnloadTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.localModelIdleUnloadDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildLocalLlmIdleUnloadSection(settings, l10n),
+                const SizedBox(height: 36),
 
-          // ===== 日志 =====
-          Text(
-            l10n.logs,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.logsDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildLogSection(l10n),
-          const SizedBox(height: 36),
+                // ===== 日志 =====
+                Text(
+                  l10n.logs,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.logsDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildLogSection(l10n),
+                const SizedBox(height: 36),
 
-          // ===== 录音文件存储 =====
-          Text(
-            l10n.recordingStorage,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurface,
+                // ===== 录音文件存储 =====
+                Text(
+                  l10n.recordingStorage,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.recordingStorageDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildRecordingsSection(l10n),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.recordingStorageDescription,
-            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          _buildRecordingsSection(l10n),
           const SizedBox(height: 40),
         ],
       ),

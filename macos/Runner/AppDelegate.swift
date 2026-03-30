@@ -201,13 +201,22 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       case "setShowInDock":
         if let args = call.arguments as? [String: Any],
            let show = args["show"] as? Bool {
-          let policy: NSApplication.ActivationPolicy = show ? .regular : .accessory
-          let ok = NSApp.setActivationPolicy(policy)
-          if show {
-            NSApp.activate(ignoringOtherApps: true)
+          DispatchQueue.main.async { [weak self] in
+            let targetPolicy: NSApplication.ActivationPolicy = show ? .regular : .accessory
+            let setResult = NSApp.setActivationPolicy(targetPolicy)
+
+            if show {
+              self?.showMainWindow()
+              NSApp.activate(ignoringOtherApps: true)
+            }
+
+            let actualPolicy = NSApp.activationPolicy()
+            let ok = actualPolicy == targetPolicy
+            self?.log(
+              "[dock] setShowInDock show=\(show) setResult=\(setResult) actualPolicy=\(actualPolicy.rawValue) targetPolicy=\(targetPolicy.rawValue) ok=\(ok)"
+            )
+            result(ok)
           }
-          self?.log("[dock] setShowInDock show=\(show) ok=\(ok)")
-          result(ok)
         } else {
           result(false)
         }

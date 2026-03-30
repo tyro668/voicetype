@@ -489,7 +489,7 @@ class _MainScreenState extends State<MainScreen> {
         dictionarySuffix: settings.dictionaryWordsForPrompt,
         dictionaryEntries: settings.dictionaryEntries,
         termContextEntries: settings.termContextEntries,
-        historyEntries: context.read<RecordingProvider>().history,
+        historyEntries: context.read<RecordingProvider>().contextHistory,
         entityMemories: settings.entityMemories,
         entityAliases: settings.entityAliases,
         entityRelations: settings.entityRelations,
@@ -574,12 +574,62 @@ class _MainScreenState extends State<MainScreen> {
     OverlayService.setTrayLabels(open: l10n.trayOpen, quit: l10n.trayQuit);
 
     return Scaffold(
-      backgroundColor: _cs.surfaceContainerLow,
-      body: Row(
-        children: [
-          _buildSidebar(),
-          Expanded(child: _buildContent()),
-        ],
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.alphaBlend(
+                _cs.primary.withValues(alpha: 0.08),
+                _cs.surface,
+              ),
+              Color.alphaBlend(
+                _cs.primary.withValues(alpha: 0.04),
+                _cs.surfaceContainerLow,
+              ),
+              _cs.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          minimum: const EdgeInsets.all(20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                _cs.primary.withValues(alpha: 0.015),
+                _cs.surface.withValues(alpha: 0.98),
+              ),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: _cs.primary.withValues(alpha: 0.09)),
+              boxShadow: [
+                BoxShadow(
+                  color: _cs.primary.withValues(alpha: 0.04),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: Row(
+                children: [
+                  _buildSidebar(),
+                  Expanded(
+                    child: Container(
+                      color: _cs.surface,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+                        child: _buildContent(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -592,11 +642,14 @@ class _MainScreenState extends State<MainScreen> {
       pendingCandidateCount: settings.dictationTermPendingCandidates.length,
     );
     return Container(
-      width: 188,
+      width: 252,
       decoration: BoxDecoration(
-        color: _cs.surfaceContainer,
+        color: Color.alphaBlend(
+          _cs.primary.withValues(alpha: 0.035),
+          _cs.surfaceContainerLow.withValues(alpha: 0.88),
+        ),
         border: Border(
-          right: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.6)),
+          right: BorderSide(color: _cs.primary.withValues(alpha: 0.08)),
         ),
       ),
       child: SafeArea(
@@ -604,62 +657,111 @@ class _MainScreenState extends State<MainScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: _cs.surface,
-                      borderRadius: BorderRadius.circular(10),
+                      color: _cs.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       Icons.mic_rounded,
-                      size: 20,
+                      size: 21,
                       color: _cs.primary,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      l10n.appTitle,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: _cs.onSurface,
-                        height: 1,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.appTitle,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: _cs.onSurface,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Speak freely, write unbound',
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            height: 1.2,
+                            color: _cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+              child: Text(
+                l10n.workspaceLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _cs.onSurfaceVariant.withValues(alpha: 0.72),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
             ...List.generate(navItems.length, (i) {
               final item = navItems[i];
               final selected = _selectedNav == i;
               return Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: 12,
+                  vertical: 5,
                 ),
                 child: Material(
                   color: selected
-                      ? _cs.primaryContainer.withValues(alpha: 0.62)
+                      ? _cs.primary.withValues(alpha: 0.10)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     onTap: () => setState(() => _selectedNav = i),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
-                        vertical: 11,
+                        vertical: 13,
                       ),
                       child: Row(
                         children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? _cs.primary.withValues(alpha: 0.10)
+                                  : Color.alphaBlend(
+                                      _cs.primary.withValues(alpha: 0.02),
+                                      _cs.surface,
+                                    ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              item.icon,
+                              size: 18,
+                              color: selected
+                                  ? _cs.primary
+                                  : _cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               item.label,
@@ -684,8 +786,8 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: selected
-                                    ? _cs.primary
-                                    : _cs.secondaryContainer,
+                                    ? _cs.primary.withValues(alpha: 0.16)
+                                    : _cs.primary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
@@ -696,8 +798,8 @@ class _MainScreenState extends State<MainScreen> {
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: selected
-                                      ? _cs.onPrimary
-                                      : _cs.onSecondaryContainer,
+                                      ? _cs.primary
+                                      : _cs.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -714,37 +816,51 @@ class _MainScreenState extends State<MainScreen> {
               child: Divider(
                 height: 1,
                 thickness: 1,
-                color: _cs.outlineVariant,
+                color: _cs.outlineVariant.withValues(alpha: 0.7),
               ),
             ),
             // 底部设置按钮
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
               child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                color: Color.alphaBlend(
+                  _cs.primary.withValues(alpha: 0.015),
+                  _cs.surface,
+                ),
+                borderRadius: BorderRadius.circular(18),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(18),
                   onTap: _openSettings,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
-                      vertical: 11,
+                      vertical: 14,
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.settings_outlined,
-                          size: 16,
-                          color: _cs.onSurfaceVariant,
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Color.alphaBlend(
+                              _cs.primary.withValues(alpha: 0.05),
+                              _cs.surfaceContainerHigh,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.settings_outlined,
+                            size: 16,
+                            color: _cs.onSurfaceVariant,
+                          ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Text(
                           l10n.settings,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: _cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                            color: _cs.onSurface,
                           ),
                         ),
                         const Spacer(),

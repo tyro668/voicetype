@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
@@ -11,6 +11,7 @@ import '../../providers/meeting_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import '../../widgets/meeting_markdown_view.dart';
+import '../../widgets/modern_ui.dart';
 import 'meeting_detail_page.dart';
 import 'meeting_recording_page.dart';
 
@@ -81,18 +82,29 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
         .firstOrNull;
     final showRightPanel = provider.isRecording || selectedMeeting != null;
 
-    return Row(
-      children: [
-        Expanded(
-          flex: showRightPanel ? 5 : 10,
-          child: _buildLeftPanel(provider, l10n),
-        ),
-        if (showRightPanel)
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      child: Column(
+        children: [
           Expanded(
-            flex: 5,
-            child: _buildRightPanel(provider, l10n, selectedMeeting),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: showRightPanel ? 5 : 10,
+                  child: _buildLeftPanel(provider, l10n),
+                ),
+                if (showRightPanel) ...[
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 5,
+                    child: _buildRightPanel(provider, l10n, selectedMeeting),
+                  ),
+                ],
+              ],
+            ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -125,52 +137,57 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     final meetings = provider.meetings;
     final filteredMeetings = _filterMeetings(meetings);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainerLow,
-        border: Border(
-          right: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.32)),
-        ),
-      ),
+    return ModernSurfaceCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 搜索栏
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
             child: Row(
               children: [
                 Expanded(child: _buildSearchBar(l10n)),
-                const SizedBox(width: 10),
-                SizedBox(
-                  height: 44,
-                  child: FilledButton(
-                    onPressed: provider.isRecording ? null : _startNewMeeting,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _cs.error,
-                      foregroundColor: _cs.onError,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Icon(Icons.add_rounded, size: 20),
+                const SizedBox(width: 12),
+                ShadButton(
+                  enabled: !provider.isRecording,
+                  onPressed: provider.isRecording ? null : _startNewMeeting,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add_rounded, size: 16),
+                      const SizedBox(width: 8),
+                      Text(l10n.meetingNew),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Text(
-              l10n.meetingMinutes,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _cs.onSurfaceVariant,
-                letterSpacing: 0.2,
-              ),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _buildSummaryChip(
+                  icon: Icons.library_books_outlined,
+                  label: '全部会议',
+                  value: '${meetings.length}',
+                ),
+                _buildSummaryChip(
+                  icon: Icons.search_outlined,
+                  label: '当前结果',
+                  value: '${filteredMeetings.length}',
+                ),
+                if (provider.isRecording)
+                  _buildSummaryChip(
+                    icon: Icons.radio_button_checked,
+                    label: '实时录制',
+                    value: '进行中',
+                    tone: _cs.error,
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
@@ -192,39 +209,14 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   // ── 搜索栏 ──
 
   Widget _buildSearchBar(AppLocalizations l10n) {
-    return TextField(
+    return ModernSearchInput(
       controller: _searchController,
+      hintText: l10n.meetingSearchHint,
       onChanged: (v) => setState(() => _searchQuery = v.trim()),
-      decoration: InputDecoration(
-        hintText: l10n.meetingSearchHint,
-        prefixIcon: const Icon(Icons.search, size: 20),
-        suffixIcon: _searchQuery.isEmpty
-            ? null
-            : IconButton(
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
-                icon: const Icon(Icons.close, size: 18),
-              ),
-        filled: true,
-        fillColor: _cs.surface,
-        contentPadding: const EdgeInsets.symmetric(vertical: 11),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: _cs.outlineVariant.withValues(alpha: 0.28),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _cs.primary, width: 1.5),
-        ),
-      ),
+      onClear: () {
+        _searchController.clear();
+        setState(() => _searchQuery = '');
+      },
     );
   }
 
@@ -250,21 +242,11 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
         onTap: () => _onMeetingTap(meeting, provider),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isSelected
-                ? _cs.primaryContainer.withValues(alpha: 0.24)
-                : _cs.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? _cs.primary.withValues(alpha: 0.45)
-                  : isEmpty
-                  ? _cs.error.withValues(alpha: 0.3)
-                  : _cs.outlineVariant.withValues(alpha: 0.28),
-              width: isSelected ? 1.4 : 1.0,
-            ),
-          ),
+        child: ModernSurfaceCard(
+          radius: 18,
+          backgroundColor: isSelected
+              ? _cs.primary.withValues(alpha: 0.08)
+              : _cs.surface,
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +293,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                     vertical: 9,
                   ),
                   decoration: BoxDecoration(
-                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.28),
+                    color: _cs.primary.withValues(alpha: 0.035),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: SizedBox(
@@ -396,23 +378,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
   // ── 空状态 ──
 
   Widget _buildEmptyState(AppLocalizations l10n) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.event_note_outlined, size: 56, color: _cs.outline),
-          const SizedBox(height: 12),
-          Text(
-            l10n.meetingEmpty,
-            style: TextStyle(fontSize: 16, color: _cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.meetingEmptyHint,
-            style: TextStyle(fontSize: 13, color: _cs.outline),
-          ),
-        ],
-      ),
+    return ModernEmptyState(
+      icon: Icons.event_note_outlined,
+      title: l10n.meetingEmpty,
+      description: l10n.meetingEmptyHint,
     );
   }
 
@@ -433,28 +402,25 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     final summary = (meeting.summary ?? '').trim();
     final transcription = (meeting.fullTranscription ?? '').trim();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        border: Border(
-          left: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.32)),
-        ),
-      ),
+    return ModernSurfaceCard(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    l10n.meetingDetailTab,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: _cs.onSurfaceVariant,
-                      letterSpacing: 0.2,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ModernSectionHeader(
+                        icon: Icons.article_outlined,
+                        title: l10n.meetingDetailTab,
+                        subtitle: '查看会议摘要、合并笔记和最终文本内容。',
+                        compact: true,
+                      ),
+                    ],
                   ),
                 ),
                 OutlinedButton.icon(
@@ -483,8 +449,8 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                   Text(
                     meeting.title,
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: _cs.onSurface,
                     ),
                   ),
@@ -506,7 +472,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildSectionTitle(l10n.meetingSummaryTab),
+                  _buildSectionTitle(
+                    l10n.meetingSummaryTab,
+                    Icons.summarize_outlined,
+                  ),
                   const SizedBox(height: 8),
                   _buildDetailCard(
                     child: summary.isNotEmpty
@@ -519,7 +488,10 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                         : _buildPanelEmptyText(l10n.meetingNoContent),
                   ),
                   const SizedBox(height: 12),
-                  _buildSectionTitle(l10n.meetingMergedNoteView),
+                  _buildSectionTitle(
+                    l10n.meetingMergedNoteView,
+                    Icons.notes_outlined,
+                  ),
                   const SizedBox(height: 8),
                   _buildDetailCard(
                     child: transcription.isNotEmpty
@@ -540,16 +512,8 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     );
   }
 
-  Widget _buildSectionTitle(String label) {
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        color: _cs.onSurfaceVariant,
-        letterSpacing: 0.2,
-      ),
-    );
+  Widget _buildSectionTitle(String label, IconData icon) {
+    return ModernSectionHeader(icon: icon, title: label, compact: true);
   }
 
   Widget _buildDetailCard({required Widget child}) {
@@ -557,9 +521,12 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: _cs.surface,
+        color: Color.alphaBlend(
+          _cs.primary.withValues(alpha: 0.015),
+          _cs.surface,
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+        border: Border.all(color: _cs.primary.withValues(alpha: 0.06)),
       ),
       child: child,
     );
@@ -594,30 +561,24 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     final timeStr = _formatDuration(duration);
     final isStoppingUi = _isStoppingMeeting || provider.isStoppingMeeting;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _cs.surface,
-        border: Border(
-          left: BorderSide(color: _cs.outlineVariant.withValues(alpha: 0.32)),
-        ),
-      ),
+    return ModernSurfaceCard(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           // ── 实时会议标题头 ──
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(
-                      l10n.meetingDashboardLive,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _cs.onSurfaceVariant,
-                        letterSpacing: 0.2,
+                    Expanded(
+                      child: ModernSectionHeader(
+                        icon: Icons.graphic_eq_outlined,
+                        title: l10n.meetingDashboardLive,
+                        subtitle: '实时查看转写片段、合并笔记与增量摘要。',
+                        compact: true,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -669,11 +630,12 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
             child: Container(
               height: 86,
               decoration: BoxDecoration(
-                color: _cs.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: _cs.outlineVariant.withValues(alpha: 0.24),
+                color: Color.alphaBlend(
+                  _cs.primary.withValues(alpha: 0.015),
+                  _cs.surface,
                 ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _cs.primary.withValues(alpha: 0.06)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: _LiveWaveform(
@@ -694,10 +656,13 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: _cs.surface,
+                  color: Color.alphaBlend(
+                    _cs.primary.withValues(alpha: 0.012),
+                    _cs.surface,
+                  ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: _cs.outlineVariant.withValues(alpha: 0.24),
+                    color: _cs.primary.withValues(alpha: 0.06),
                   ),
                 ),
                 child: _buildLiveContent(provider, l10n),
@@ -770,6 +735,47 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
             color: isSelected ? _cs.onPrimaryContainer : _cs.onSurfaceVariant,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? tone,
+  }) {
+    final chipTone = tone ?? _cs.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: chipTone.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: chipTone.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: chipTone),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: _cs.onSurface,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1324,8 +1330,9 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.08)),
       ),
       child: Text(
         label,

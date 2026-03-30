@@ -53,6 +53,7 @@ dependencies:
   file_picker: ^8.1.7
   flutter_smooth_markdown: ^0.7.1
   sherpa_onnx: ^1.12.28
+  shadcn_ui: ^0.53.1
 
 dev_dependencies:
   flutter_test:

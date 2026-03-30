@@ -33,6 +33,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get history => 'Transcription Archive';
 
   @override
+  String get historyContextApplied => 'Used for Context';
+
+  @override
+  String get historyContextSkipped => 'Not in Context';
+
+  @override
+  String get historyContextCount => 'Context History';
+
+  @override
   String get logs => 'Logs';
 
   @override
@@ -1567,6 +1576,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get home => 'Home';
+
+  @override
+  String get workspaceLabel => 'Workspace';
 
   @override
   String get settings => 'Settings';
