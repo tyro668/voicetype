@@ -986,22 +986,62 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     NSApp.activate(ignoringOtherApps: true)
   }
 
+  /// 已知不支持通过 Accessibility API 设置文本的终端类应用 bundle id。
+  /// 对这些应用，直接走剪贴板 + Cmd+V 的路径，避免 AX 调用导致文本插入失败或异常。
+  static let terminalLikeBundleIds: Set<String> = [
+    "com.apple.Terminal",
+    "com.googlecode.iterm2",
+    "net.kovidgoyal.kitty",
+    "io.alacritty",
+    "org.alacritty",
+    "co.zeit.hyper",
+    "com.github.wez.wezterm",
+    "dev.warp.Warp-Stable",
+    "dev.warp.Warp",
+    "com.tabby.Tabby",
+    "com.mitchellh.ghostty",
+    "io.tabby",
+  ]
+
+  func isTerminalLikeApp(_ app: NSRunningApplication?) -> Bool {
+    guard let bundleId = app?.bundleIdentifier else { return false }
+    if AppDelegate.terminalLikeBundleIds.contains(bundleId) { return true }
+    // 兜底：bundle id 中含有 terminal/iterm/wezterm/kitty/alacritty 等关键字
+    let lower = bundleId.lowercased()
+    let keywords = ["terminal", "iterm", "wezterm", "alacritty", "kitty", "warp", "hyper", "ghostty", "tabby"]
+    return keywords.contains { lower.contains($0) }
+  }
+
   func insertTextAtCursor(_ text: String) {
-    if insertTextViaAccessibility(text) {
+    let targetIsTerminal = isTerminalLikeApp(lastActiveApp)
+    if targetIsTerminal {
+      log("[insert] target is terminal-like (\(lastActiveApp?.bundleIdentifier ?? "?")), skipping AX path")
+    } else if insertTextViaAccessibility(text) {
       log("[insert] success via accessibility")
       return
+    } else {
+      log("[insert] accessibility insert failed, fallback to paste")
     }
-    log("[insert] accessibility insert failed, fallback to paste")
+    // 终端类应用对换行非常敏感（\n 会被解释为回车执行命令），
+    // 因此仅去掉末尾的换行，避免误触发命令执行。
+    var pasteText = text
+    if targetIsTerminal {
+      while pasteText.hasSuffix("\n") || pasteText.hasSuffix("\r") {
+        pasteText.removeLast()
+      }
+    }
     let pasteboard = NSPasteboard.general
     let previousString = pasteboard.string(forType: .string)
     pasteboard.clearContents()
-    pasteboard.setString(text, forType: .string)
+    pasteboard.setString(pasteText, forType: .string)
     if let targetApp = lastActiveApp,
        targetApp.bundleIdentifier != Bundle.main.bundleIdentifier {
       targetApp.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
     }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+    // 终端类应用激活需要更稳妥的延时，避免 Cmd+V 在切换前发送到错误窗口。
+    let pasteDelay: Double = targetIsTerminal ? 0.22 : 0.15
+    DispatchQueue.main.asyncAfter(deadline: .now() + pasteDelay) {
       self.sendPasteShortcut()
     }
 
